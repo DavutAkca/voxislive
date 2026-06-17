@@ -1,0 +1,72 @@
+# --- Voxis Production Git Ignore ---
+
+# --- Runtime secrets & tokens ---
+.env
+.env.local
+.env.*.local
+config.json
+config.json._pending_default_restore
+# Runtime artifacts a source run drops in the repo root (from source the
+# user-data dir resolves to the repo root; see app/paths.py). Never publish.
+jwt.dat
+*.dat
+install.secret
+legacy_machine.secret
+*.secret
+voxis.log
+
+# --- Proprietary / closed-source ---
+# Open-core premium add-ons
+premium/
+# Server-side auth service — self-host deployers maintain a private fork
+backend/
+# Marketing site — deployed separately to the server, not part of the public repo
+website/
+# Offline dubbing product — separate commercial tool, planning + future source (private)
+voxis-dubber/
+# Server-side anti-abuse strategy/specs — kept private (lives on the host, not public)
+docs/server/
+# End-user (SaaS) install guide — published on voxislive.com, not in the OSS repo
+docs/INSTALL_SAAS.md
+
+# --- Per-user runtime data ---
+# DPAPI-wrapped BYOK key slots (CURRENT_USER + per-install entropy; useless cross-machine)
+profiles/
+
+# --- Python artefacts ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# --- Flutter / Dart artefacts ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# --- Packaged release output (built by app/build_official.py; too large for git) ---
+production_release/
+# Microsoft VC++ redistributable, fetched at build time by build_official.py (not vendored)
+installer/redist/
+
+# --- Session output ---
+transcripts/
+obs_subtitle.txt
+
+# --- OS noise ---
+.DS_Store
+Thumbs.db
+
+# --- AI session memory (stays local) ---
+.claude/
+
+# --- Internal strategy/roadmap (private planning — never publish) ---
+ROADMAP.md
+STRATEGY_REPORT.md
+
+# --- SQLite WAL fragments ---
+*.db-shm
+*.db-wal

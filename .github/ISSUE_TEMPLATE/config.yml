@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Commercial licensing & hosted product
+    url: https://voxislive.com/licensing
+    about: Commercial use, white-label, or the official SaaS build.
+  - name: Report a security vulnerability
+    url: https://github.com/DavutAkca/voxislive/security/advisories/new
+    about: Please report security issues privately, not as a public issue.

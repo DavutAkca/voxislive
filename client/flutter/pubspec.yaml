@@ -1,0 +1,22 @@
+name: voxis_client
+# Network/auth layer. Public entry point: lib/voxis_client.dart (barrel);
+# graph wired by lib/di.dart (manual factory, no service-locator dependency).
+description: Voxis Live — Flutter client network layer
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.4.3
+  flutter_secure_storage: ^10.0.0
+  equatable: ^2.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.3
+  flutter_lints: ^4.0.0
