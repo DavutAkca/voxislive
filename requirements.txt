@@ -1,0 +1,25 @@
+# Direct runtime dependencies, version-pinned (==) so two official builds embed
+# byte-identical code. Transitive deps + hashes are expanded by CI into
+# requirements.lock (pip-compile --generate-hashes); see that file's header.
+#
+# Target runtime: CPython 3.13 (x64) — the newest Python with stable cp313 wheels
+# for numpy and the CPU-only onnxruntime. Python 3.14 would force a numpy dev
+# build and the onnxruntime-directml variant (ships DirectML.dll), so the engine
+# stays on 3.13 until stable cp314 wheels exist.
+google-genai==2.8.0
+sounddevice==0.5.5
+numpy==2.4.6
+onnxruntime==1.27.0
+soxr==1.1.0
+scipy==1.17.1
+python-dotenv==1.2.2
+# Ed25519 verification of signed update manifests + migration of legacy Fernet
+# BYOK slots. Required by the frozen official build (the updater fails closed
+# without it, so updates would never apply).
+cryptography==49.0.0
+pywebview==6.2.1
+pycaw==20251023
+# keyboard installs a low-level global hook (admin/AV-sensitive, unmaintained);
+# re-evaluate before each release — a scoped hotkey lib may replace it.
+keyboard==0.13.5
+PyAudioWPatch==0.2.12.8

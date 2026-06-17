@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a problem with Voxis
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Do not include your Gemini API key or any secret.**
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Video / Game
+        - Meeting
+        - Other / N/A
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: e.g. Windows 11 23H2
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: e.g. 3.13.x (from source) or N/A (installer)
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / errors
+      description: Paste relevant output. Redact any key or token first.
+      render: shell

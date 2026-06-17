@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an idea or improvement for Voxis
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to do, and what gets in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to see happen?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

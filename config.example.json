@@ -1,0 +1,34 @@
+{
+  "target_language_incoming": "tr",
+  "target_language_outgoing": "en",
+  "devices": {
+    "system_capture": "CABLE Output (VB-Audio Virtual Cable)",
+    "meeting_mic_playback": "",
+    "meeting_virtual_mic": "",
+    "headphones_output": "",
+    "microphone": ""
+  },
+  "original_audio": "duck",
+  "show_subtitles": false,
+  "ui_language": "tr",
+  "tts_volume": 1.5,
+  "overlay_enabled": true,
+  "obs_subtitle_enabled": false,
+  "meeting_consent_ack": false,
+  "hotkeys": {
+    "video": "ctrl+alt+1",
+    "meeting": "ctrl+alt+2",
+    "stop": "ctrl+alt+0",
+    "overlay": "ctrl+alt+o"
+  },
+  "update_check_url": "",
+  "duck_gain": 0.16,
+  "session_rotate_minutes": 13,
+  "quality_preset": "max_quality",
+  "active_profile": "custom",
+  "gemini_voice": "Vindemiatrix",
+  "gemini_temperature": 0.3,
+  "capture_backend": "vbcable",
+  "ui_theme": "dark",
+  "max_ambient_delay_ms": 400
+}
