@@ -22,6 +22,8 @@ premium/
 backend/
 # Marketing site — deployed separately to the server, not part of the public repo
 website/
+# Microsoft Store listing copy (official-product marketing — kept private, like website/)
+store-listings/
 # Offline dubbing product — separate commercial tool, planning + future source (private)
 voxis-dubber/
 # Server-side anti-abuse strategy/specs — kept private (lives on the host, not public)
