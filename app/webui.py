@@ -890,7 +890,12 @@ class Bridge:
 
     def open_cable_download(self) -> bool:
         """Open the VB-CABLE download page so a user missing the virtual mic can
-        install it. Returns False if no system browser could be launched."""
+        install it. Disabled on the official build: Store policy 10.1.5 excludes
+        an app from facilitating acquisition of a non-Microsoft driver, so the
+        SaaS flavor only informs and the user installs VB-CABLE themselves.
+        Returns False if disabled or no system browser could be launched."""
+        if IS_OFFICIAL_RELEASE:
+            return False
         try:
             import webbrowser
             return webbrowser.open("https://vb-audio.com/Cable/")
