@@ -313,6 +313,9 @@ class IncomingPipeline:
                     self.player.feed_passthrough(chunk)
 
             self.capture = Capture(cap_dev, on_chunk, stereo=True)
+            # Match the ambient resampler to the capture device's true rate so the
+            # M/S passthrough never clicks on a capture/playback clock mismatch.
+            self.player.configure_passthrough(self.capture.rate)
             self._source = _GatedSource(self.capture.rate, SpeechGate(**vad_cfg), send_fn,
                                         smart=not stream_gated(cfg))
 
@@ -639,6 +642,14 @@ class ModeController:
         self.stop()
         if not self.api_key:
             raise RuntimeError(t("st_no_key"))
+        # Premium auto-routing: when a virtual cable is present, run the
+        # music-preserving spatial (vbcable) path; otherwise driverless. The user
+        # never chooses. No-op on the OSS build (premium absent → stays driverless).
+        if _premium is not None and hasattr(_premium, "resolve_capture_backend"):
+            try:
+                self.cfg["capture_backend"] = _premium.resolve_capture_backend(self.cfg)
+            except Exception:
+                pass
         last_err: Exception | None = None
         for attempt in range(3):
             # Stale PortAudio device list is a known cause of WDM-KS -9999.

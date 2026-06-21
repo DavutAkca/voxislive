@@ -30,6 +30,8 @@ voxis-dubber/
 docs/server/
 # End-user (SaaS) install guide — published on voxislive.com, not in the OSS repo
 docs/INSTALL_SAAS.md
+# Marketing / growth / backlink strategy — competitive intel, kept private
+docs/marketing/
 
 # --- Per-user runtime data ---
 # DPAPI-wrapped BYOK key slots (CURRENT_USER + per-install entropy; useless cross-machine)
@@ -72,3 +74,7 @@ STRATEGY_REPORT.md
 # --- SQLite WAL fragments ---
 *.db-shm
 *.db-wal
+
+# --- Benchmark fixtures (regenerate via fetch_fleurs.py) + run outputs ---
+scripts/bench/fixtures/**/*.wav
+scripts/bench/results*.jsonl

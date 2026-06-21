@@ -51,6 +51,37 @@ APP_DESCRIPTION = (
 MIN_VERSION = "10.0.19041.0"
 MAX_VERSION_TESTED = "10.0.26100.0"
 
+# C++ Runtime framework package for Desktop Bridge. A packaged (MSIX) desktop app
+# CANNOT use the vcruntime/msvcp DLLs that ship with Visual Studio / VCRedist — the
+# Inno installer's vc_redist.x64.exe prerequisite has no MSIX equivalent, and the
+# app-local copies PyInstaller drops under _internal are the very VS/VCRedist copies
+# Microsoft forbids inside a container (they "might fail" → "Failed to load Python
+# DLL python313.dll" on a clean machine, which is exactly why the Store rejected the
+# upload). The supported path is to declare a dependency on the VCLibs framework
+# package; the Store delivers and updates it automatically.
+# Ref: https://learn.microsoft.com/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge
+VCLIBS_NAME = "Microsoft.VCLibs.140.00.UWPDesktop"
+# Conservative floor: every machine with the Store framework (or any VC++ 2015-2022
+# runtime) satisfies it, while the Store still delivers the newest 14.0 build. Do not
+# raise this past a published version or resolution fails ("dependency unavailable").
+VCLIBS_MIN_VERSION = "14.0.24217.0"
+VCLIBS_PUBLISHER = "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+
+# App-local VC++ runtime DLLs to drop from the MSIX layout so the framework-package
+# versions are the ones the loader resolves (an app-local copy sits in python313.dll's
+# own directory and would win the search, re-introducing the unsupported-runtime fault).
+# UCRT files (ucrtbase.dll, api-ms-win-crt-*) are intentionally NOT removed: the UCRT is
+# an OS component on Win10/11 and is not part of VCLibs.
+VCRUNTIME_DLLS = (
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+    "msvcp140.dll",
+    "msvcp140_1.dll",
+    "msvcp140_2.dll",
+    "concrt140.dll",
+    "vccorlib140.dll",
+)
+
 # Required visual assets: (filename, width, height).
 ASSET_SIZES = [
     ("Square44x44Logo.png", 44, 44),
@@ -122,6 +153,7 @@ def write_manifest(version: str):
   </Properties>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="{MIN_VERSION}" MaxVersionTested="{MAX_VERSION_TESTED}" />
+    <PackageDependency Name="{VCLIBS_NAME}" MinVersion="{VCLIBS_MIN_VERSION}" Publisher="{VCLIBS_PUBLISHER}" />
   </Dependencies>
   <Resources>
     <Resource Language="en-us" />
@@ -168,6 +200,30 @@ def stage_bundle():
         else:
             shutil.copy2(item, dst)
     print(f"[+] Staged bundle -> {LAYOUT_DIR}")
+    strip_app_local_vcruntime()
+
+
+def strip_app_local_vcruntime():
+    """Remove PyInstaller's app-local VC++ runtime DLLs from the MSIX layout.
+
+    These come straight from the build machine's VS/VCRedist toolset; inside a Desktop
+    Bridge container that runtime is unsupported and the loader would still pick the
+    app-local copy over the declared VCLibs framework package. Deleting them forces the
+    framework-package DLLs to be used (the manifest PackageDependency makes them
+    available). Only mutates the throwaway layout, never dist/VoxisLive — the Inno build
+    keeps its app-local copies + the vc_redist prerequisite.
+    """
+    internal = LAYOUT_DIR / "_internal"
+    removed = []
+    for name in VCRUNTIME_DLLS:
+        f = internal / name
+        if f.exists():
+            f.unlink()
+            removed.append(name)
+    if removed:
+        print(f"[+] Stripped app-local VC++ runtime (using VCLibs framework): {', '.join(removed)}")
+    else:
+        print("[!] No app-local VC++ runtime DLLs found to strip — verify _internal layout.")
 
 
 def pack(version: str) -> pathlib.Path:
@@ -197,6 +253,9 @@ def main():
     print("    No code-signing needed — the Store re-signs it.")
     print("    To smoke-test locally, sign with a self-signed cert whose subject")
     print(f"    matches Publisher exactly: {PUBLISHER}")
+    print(f"    Sideload prerequisite: install the {VCLIBS_NAME} framework appx first")
+    print("    (Store installs auto-resolve it; sideloads do not). Latest x64 build:")
+    print("    https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx")
 
 
 if __name__ == "__main__":

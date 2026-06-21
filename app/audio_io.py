@@ -551,6 +551,16 @@ class Player:
         self._tts_rem = b""
         self._tts_lock = threading.Lock()
         self.passthrough = _Ring(2.0, self.rate, channels=2)
+        # Ambient (passthrough) rate conversion + jitter buffer. The capture
+        # device (e.g. CABLE Output) and this output device are INDEPENDENT
+        # WASAPI clocks: without rate conversion AND a small standing buffer the
+        # ring under/overruns and the pulled blocks click. Resamplers are
+        # per-channel (the streaming resampler is mono) and identity/no-op when
+        # the rates match — so a matched-rate device pays only the jitter buffer.
+        self._pass_in_rate = None
+        self._pass_rs_l = None
+        self._pass_rs_r = None
+        self._pass_prefill = int(self.rate * 0.08)  # ~80 ms drift/jitter slack
         # Headroom must exceed the longest single translated utterance: Gemini
         # delivers a turn's audio faster than realtime and the callback drains at
         # realtime, so the unplayed tail of a long sentence sits here. With
@@ -581,14 +591,19 @@ class Player:
             width = self.width
             delay_target = self.delay_target_samples
             tts_mono = self.tts.pull(frames).reshape(-1)
-            amb = self.passthrough.pull(frames)
             if route_ambient:
+                # Drain the ambient ring ONLY once routing is live. Pulling during
+                # the prefill window would empty the jitter buffer as fast as it
+                # fills, so the fill threshold would never trip and ambient would
+                # never route (→ video muted, only TTS audible).
+                amb = self.passthrough.pull(frames)
                 self._amb_delay.set_target(delay_target)
                 mg = np.full((frames, 1), mid_gain, dtype=np.float32)
                 d = self._amb_delay.process(np.concatenate([amb, mg], axis=1))
                 stereo = _mix_to_stereo(tts_mono, d[:, :2], tts_gain,
                                         width, True, d[:, 2])
             else:
+                amb = np.zeros((frames, 2), dtype=np.float32)
                 stereo = _mix_to_stereo(tts_mono, amb, tts_gain, width, False)
             y = self._limiter.process(stereo)
             # Cheap finite-value safety net on the device-bound buffer: a single
@@ -618,14 +633,40 @@ class Player:
             self._tts_rem = b""
             self.tts.clear()
 
+    def configure_passthrough(self, in_rate: int):
+        """Set up ambient rate conversion from the capture device's rate to this
+        output device's rate. Two mono streaming resamplers (one per channel); a
+        1.0 ratio is a no-op, so matched-rate devices pay nothing here. Call once
+        after the capture is opened and before audio flows."""
+        self._pass_in_rate = int(in_rate)
+        if int(in_rate) != self.rate:
+            self._pass_rs_l = _make_resampler(int(in_rate), self.rate)
+            self._pass_rs_r = _make_resampler(int(in_rate), self.rate)
+        else:
+            self._pass_rs_l = self._pass_rs_r = None
+
     def feed_passthrough(self, chunk: np.ndarray):
-        # Push first, then enable the M/S widening path — flipping route_ambient
-        # before any ambient has landed would make the callback read an empty
-        # passthrough ring as silence-routed ambient for one block.
-        # A mono chunk is auto-promoted by _Ring (L == R → Side = 0); a real
-        # stereo capture is required for the width effect to be audible.
+        # Rate-convert the captured ambient to the output rate, per channel (the
+        # streaming resampler is mono). Skipped when configure_passthrough saw a
+        # matched rate. Without it the two device clocks drift the ring into
+        # under/overrun and every pulled block clicks.
+        chunk = np.asarray(chunk, dtype=np.float32)
+        if self._pass_rs_l is not None and chunk.ndim == 2 and chunk.shape[1] >= 2:
+            l = self._pass_rs_l(np.ascontiguousarray(chunk[:, 0]))
+            r = self._pass_rs_r(np.ascontiguousarray(chunk[:, 1]))
+            n = min(len(l), len(r))
+            if n == 0:
+                return
+            chunk = np.stack([l[:n], r[:n]], axis=1)
         self.passthrough.push(chunk)
-        self.route_ambient = True
+        # Enable the M/S widening path only once a small jitter buffer has built
+        # up, so the first blocks (and minor clock drift) never pull a near-empty
+        # ring and silence-pad it into clicks. A mono chunk is auto-promoted by
+        # _Ring (L == R → Side = 0); a real stereo capture is required for the
+        # width effect to be audible. route_ambient latches on (set only here;
+        # __init__ leaves it False), so a transient dip cannot toggle it back off.
+        if not self.route_ambient and self.passthrough.fill >= self._pass_prefill:
+            self.route_ambient = True
 
     def feed_tts_pcm16(self, data: bytes):
         # Streaming chunks may split a 16-bit sample in half — carry the odd byte.

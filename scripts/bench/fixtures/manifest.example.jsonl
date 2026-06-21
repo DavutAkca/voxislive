@@ -1,0 +1,2 @@
+{"id":"example_tr_en_1","audio":"scripts/bench/fixtures/your_clip_1.wav","target_lang":"en","reference":"the meeting was postponed to friday","source_ref":"toplantı cumaya ertelendi"}
+{"id":"example_tr_en_2","audio":"scripts/bench/fixtures/your_clip_2.wav","target_lang":"en","reference":"i will call you tomorrow morning","source_ref":"seni yarın sabah arayacağım"}
