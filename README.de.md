@@ -10,7 +10,7 @@
 >
 > Marke: **Voxis** · Website: **[voxislive.com](https://voxislive.com)**
 
-**📖 Anleitung:** [Entwickler / BYOK-Setup](docs/INSTALL_BYOK.md) — Endnutzer-Doku (setup.exe) unter [voxislive.com](https://voxislive.com).
+**📖 Anleitung:** [Entwickler / BYOK-Setup](docs/INSTALL_BYOK.md) — die Endnutzer-App wird über den **Microsoft Store** ausgeliefert; Setup-Doku unter [voxislive.com](https://voxislive.com).
 
 ---
 
@@ -24,6 +24,8 @@ Zwei Betriebsmodi:
 
 - **Video / Spiel** — einseitige eingehende Übersetzung; das Originalaudio wird abgesenkt, während die Übersetzung spricht.
 - **Meeting** — zweiseitig: Die Stimme der Gegenseite wird in deine Sprache übersetzt (auf deine Kopfhörer), und deine Stimme wird in deren Sprache übersetzt und als virtuelles Mikrofon in den Anruf eingespeist.
+
+Jede Sitzung kann als **TXT / SRT / VTT** (zweisprachige Untertitel) gespeichert und exportiert werden, und vergangene Sitzungen bleiben im In-App-Verlaufspanel durchsuchbar.
 
 ---
 
@@ -85,7 +87,7 @@ Voxis wird in zwei Varianten ausgeliefert, die zur Build-Zeit über `IS_OFFICIAL
 
 `start.bat` setzt `VOXIS_OFFICIAL_RELEASE` nicht, sodass ein Start aus dem Quellcode standardmäßig den BYOK-/Entwickler-Pfad verwendet (dein eigener Schlüssel — kein Server, keine Authentifizierung). Die offizielle SaaS-`.exe` wird separat von `release.py` erzeugt, dessen Build-Schritt den `OFFICIAL`-Marker in das eingefrorene Bundle schreibt.
 
-**Netzwerk-Oberfläche des Open-Source-Builds.** Ein eingefrorener (frozen) Entwickler-Build trägt keinen `OFFICIAL`-Marker, fällt daher auf BYOK zurück und macht **von sich aus keine ausgehenden Aufrufe**: Registrierung, Anmeldung, Verifizierung, Kontingent, das serverseitige Abrufen des Sitzungsschlüssels, der Nutzungs-Heartbeat und sämtliche Telemetrie sind deaktiviert oder fest auf lokale Mock-Antworten verdrahtet. Das einzige Netzwerk, das er berührt, ist der Gemini-Live-WebSocket, den dein eigener Schlüssel öffnet. Die Auto-Update-Prüfung läuft nur in eingefrorenen Builds und hängt von `update_check_url` ab, das standardmäßig leer ist. Das öffentliche Repository wird durch ein Release-Hygiene-Gate (`scripts/check_release_hygiene.py`, in CI und einen Pre-Push-Hook eingebunden) frei von Closed-Core-Pfaden und Live-Secrets gehalten.
+**Netzwerk-Oberfläche des Open-Source-Builds.** Ein eingefrorener (frozen) Entwickler-Build trägt keinen `OFFICIAL`-Marker, fällt daher auf BYOK zurück und macht **von sich aus keine ausgehenden Aufrufe**: Registrierung, Anmeldung, Verifizierung, Kontingent, das serverseitige Abrufen des Sitzungsschlüssels, der Nutzungs-Heartbeat und sämtliche Telemetrie sind deaktiviert oder fest auf lokale Mock-Antworten verdrahtet. Das einzige Netzwerk, das er berührt, ist der Gemini-Live-WebSocket, den dein eigener Schlüssel öffnet. Es gibt keinen In-App-Auto-Updater (er wurde entfernt; die offizielle App aktualisiert sich über den Microsoft Store). Das öffentliche Repository wird durch ein Release-Hygiene-Gate (`scripts/check_release_hygiene.py`, in CI und einen Pre-Push-Hook eingebunden) frei von Closed-Core-Pfaden und Live-Secrets gehalten.
 
 ---
 
@@ -145,11 +147,11 @@ Was Voxis auf der Client-Seite *tatsächlich* optimiert: Es füttert das Modell 
 | `tts_volume` | Wiedergabelautstärke der Übersetzung |
 | `session_rotate_minutes` | Rotation der Live-Sitzung (vor dem 15-Minuten-Limit) |
 
-**Qualitäts-Presets** werden auf das lokale VAD-Gate abgebildet, das den kontinuierlichen Stream an das Modell formt. `max_savings` („Saver") gated den Stream — nur Sprache wird gesendet, Stille-Lücken werden verworfen — um weniger abgerechnete Minuten zu verbrauchen. Der offizielle Build zeigt drei benutzerfreundliche Optionen (**Smooth** = `balanced`, **Fast** = `turbo`, **Saver** = `max_savings`); der Entwickler-Build legt die vollständige Preset-Liste offen (`max_quality`, `balanced`, `max_savings`, `turbo`).
+**Qualitäts-Presets** werden auf das lokale VAD-Gate abgebildet, das den kontinuierlichen Stream an das Modell formt. `max_savings` („Saver") gated den Stream — nur Sprache wird gesendet, Stille-Lücken werden verworfen — um weniger abgerechnete Minuten zu verbrauchen. Der offizielle Build zeigt vier benutzerfreundliche Optionen (**Smooth** = `balanced`, **Fast** = `turbo`, **Callout** = `callout`, **Saver** = `max_savings`); der Entwickler-Build legt die vollständige Preset-Liste offen (`max_quality`, `balanced`, `max_savings`, `turbo`).
 
 Das Übersetzungsmodell ist ein nativer Simultandolmetscher, daher sendet der Client keine Endpoint-Konfiguration — er füttert einen kontinuierlichen Stream und überlässt das Endpointing dem Modell selbst.
 
-**Oberflächensprachen** (die App-UI) sind **nur Türkisch und Englisch** — gesetzt über `ui_language`. **Übersetzungs-Zielsprachen** (wohin das Modell übersetzt) sind davon unabhängig und umfassen: `tr, en, de, fr, es, it, pt, ru, ar, ja, ko, zh-Hans` (gesetzt über `target_language_incoming` / `target_language_outgoing`).
+**Oberflächensprachen** (die App-UI) umfassen **16 Sprachen** — gesetzt über `ui_language`. **Übersetzungs-Zielsprachen** (wohin das Modell übersetzt) sind davon unabhängig und umfassen **79 Sprachen** (`tr, en, es, fr, de, it, pt, ru, ar, zh-Hans, ja, ko, hi, …`), gesetzt über `target_language_incoming` / `target_language_outgoing`.
 
 ---
 
@@ -171,7 +173,7 @@ Das Übersetzungsmodell ist ein nativer Simultandolmetscher, daher sendet der Cl
 
 Ein optionales `premium/`-Paket (Open-Core-Hook, per .gitignore ausgeschlossen) kann eine ONNX-basierte Gesangs-/Instrumententrennung bereitstellen; fehlt es, wird die deterministische M/S-Mitten-Unterdrückung als Fallback verwendet.
 
-Das SaaS-Backend (`backend/auth-core/`, Go + PocketBase, hinter Caddy auf `voxislive.com`) gibt Schlüssel pro Sitzung aus und erfasst die Nutzung; der Open-Source-Build kontaktiert es niemals.
+Das SaaS-Backend (ein Go-+-PocketBase-Dienst hinter Caddy auf `voxislive.com`) gibt Schlüssel pro Sitzung aus und erfasst die Nutzung; der Open-Source-Build kontaktiert es niemals.
 
 ---
 

@@ -10,7 +10,7 @@
 >
 > Brand: **Voxis** · Site: **[voxislive.com](https://voxislive.com)**
 
-**📖 Guide:** [Developer / BYOK setup](docs/INSTALL_BYOK.md) — end-user (setup.exe) docs live at [voxislive.com](https://voxislive.com).
+**📖 Guide:** [Developer / BYOK setup](docs/INSTALL_BYOK.md) — the end-user app ships via the **Microsoft Store**; setup docs live at [voxislive.com](https://voxislive.com).
 
 ---
 
@@ -24,6 +24,8 @@ Two operating modes:
 
 - **Video / Game** — one-way incoming translation; the original audio is ducked while the translation speaks.
 - **Meeting** — two-way: the other party's voice is translated into your language (to your headphones), and your voice is translated into their language and fed into the call as a virtual microphone.
+
+Every session can be saved and exported as **TXT / SRT / VTT** (bilingual cues), and past sessions stay searchable in the in-app History panel.
 
 ---
 
@@ -85,7 +87,7 @@ Voxis ships in two flavors, selected at build time by `IS_OFFICIAL_RELEASE` (env
 
 `start.bat` leaves `VOXIS_OFFICIAL_RELEASE` unset, so a launch from source defaults to the BYOK / developer path (your own key — no server, no auth). The official SaaS `.exe` is produced separately by `release.py`, whose build step writes the `OFFICIAL` marker into the frozen bundle.
 
-**Network surface of the open-source build.** A frozen developer build carries no `OFFICIAL` marker, so it resolves to BYOK and makes **no outbound calls of its own**: registration, login, verification, quota, server session-key fetch, usage heartbeat, and all telemetry are bypassed or hard-gated to local mock responses. The only network it touches is the Gemini Live WebSocket your own key opens. The auto-update check runs in frozen builds only and depends on `update_check_url`, which is empty by default. The public repo is kept free of any closed-core path or live secret by a release-hygiene gate (`scripts/check_release_hygiene.py`, wired into CI and a pre-push hook).
+**Network surface of the open-source build.** A frozen developer build carries no `OFFICIAL` marker, so it resolves to BYOK and makes **no outbound calls of its own**: registration, login, verification, quota, server session-key fetch, usage heartbeat, and all telemetry are bypassed or hard-gated to local mock responses. The only network it touches is the Gemini Live WebSocket your own key opens. There is no in-app auto-updater (it was removed; the official app updates through the Microsoft Store). The public repo is kept free of any closed-core path or live secret by a release-hygiene gate (`scripts/check_release_hygiene.py`, wired into CI and a pre-push hook).
 
 ---
 
@@ -145,11 +147,11 @@ What Voxis *does* optimize on the client side: it feeds the model a continuous s
 | `tts_volume` | Translation playback volume |
 | `session_rotate_minutes` | Live session rotation (before the 15-min ceiling) |
 
-**Quality presets** map to the local VAD gate that shapes the continuous stream sent to the model. `max_savings` ("Saver") gates the stream — only speech is sent, silence gaps are dropped — to use fewer billed minutes. The official build surfaces three friendly options (**Smooth** = `balanced`, **Fast** = `turbo`, **Saver** = `max_savings`); the developer build exposes the full preset list (`max_quality`, `balanced`, `max_savings`, `turbo`).
+**Quality presets** map to the local VAD gate that shapes the continuous stream sent to the model. `max_savings` ("Saver") gates the stream — only speech is sent, silence gaps are dropped — to use fewer billed minutes. The official build surfaces four friendly options (**Smooth** = `balanced`, **Fast** = `turbo`, **Callout** = `callout`, **Saver** = `max_savings`); the developer build exposes the full preset list (`max_quality`, `balanced`, `max_savings`, `turbo`).
 
 The translate model is a native simultaneous interpreter, so the client sends no endpointing configuration — it feeds a continuous stream and lets the model own its own endpointing.
 
-**Interface languages** (the app UI) are **Turkish and English only** — set via `ui_language`. **Translation target languages** (what the model translates *into*) are independent and cover: `tr, en, de, fr, es, it, pt, ru, ar, ja, ko, zh-Hans` (set via `target_language_incoming` / `target_language_outgoing`).
+**Interface languages** (the app UI) cover **16 locales** — set via `ui_language`. **Translation target languages** (what the model translates *into*) are independent and cover **79 languages** (`tr, en, es, fr, de, it, pt, ru, ar, zh-Hans, ja, ko, hi, …`), set via `target_language_incoming` / `target_language_outgoing`.
 
 ---
 
@@ -171,7 +173,7 @@ The translate model is a native simultaneous interpreter, so the client sends no
 
 An optional `premium/` package (open-core hook, gitignored) can provide ONNX vocal/instrument separation; when absent, the deterministic M/S center-suppression fallback is used.
 
-The SaaS backend (`backend/auth-core/`, Go + PocketBase, behind Caddy on `voxislive.com`) issues per-session keys and records usage; the open-source build never contacts it.
+The SaaS backend (a Go + PocketBase service behind Caddy on `voxislive.com`) issues per-session keys and records usage; the open-source build never contacts it.
 
 ---
 
