@@ -13,9 +13,8 @@ onnxruntime==1.27.0
 soxr==1.1.0
 scipy==1.17.1
 python-dotenv==1.2.2
-# Ed25519 verification of signed update manifests + migration of legacy Fernet
-# BYOK slots. Required by the frozen official build (the updater fails closed
-# without it, so updates would never apply).
+# Migration of legacy Fernet-wrapped BYOK slots (migrate-on-read decoder in
+# byok_store). DPAPI is the at-rest wrapper now; this only decrypts old slots.
 cryptography==49.0.0
 pywebview==6.2.1
 pycaw==20251023

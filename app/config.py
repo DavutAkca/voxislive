@@ -61,7 +61,6 @@ DEFAULTS = {
         "stop": "ctrl+alt+0",
         "overlay": "ctrl+alt+o",
     },
-    "update_check_url": "",
     "duck_gain": 0.30,
     "session_rotate_minutes": 13,
     "quality_preset": "balanced",

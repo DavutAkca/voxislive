@@ -24,7 +24,11 @@ import requests
 
 from .config import IS_OFFICIAL_RELEASE
 from .i18n import t
-from .paths import user_path
+from .paths import client_channel, user_path
+
+# Distribution channel ("store" | "desktop"), resolved once and sent with each
+# usage heartbeat so the backend can attribute minutes by source.
+_CLIENT_CHANNEL: str = client_channel()
 
 # Legacy cleartext store, imported once then superseded by the DPAPI token below.
 _ENV_PATH: str = user_path(".env")
@@ -415,13 +419,22 @@ def get_session_key() -> tuple[Optional[str], Optional[str]]:
     return None, _core_error(resp)
 
 
-def report_usage(session_id: str, delta_minutes: float, source: str) -> bool:
-    """Reports session usage to auth-core. Fire-and-forget."""
+def report_usage(session_id: str, delta_minutes: float, source: str) -> str:
+    """Reports session usage to auth-core. Fire-and-forget.
+
+    Returns one of:
+      * "ok"    — accepted (HTTP 204), quota still positive.
+      * "quota" — accepted but the license is now exhausted (HTTP 402). The
+                  caller should stop the running session: the server is not in
+                  the audio path, so the mid-session cutoff happens client-side.
+      * "fail"  — not reported (disabled build, no token, transport error, or any
+                  other non-204/402 status). Best-effort; never raises.
+    """
     if not IS_OFFICIAL_RELEASE:
-        return False
+        return "fail"
     token = _valid_jwt()
     if not token or delta_minutes <= 0:
-        return False
+        return "fail"
     try:
         resp = requests.post(
             f"{_BASE_URL}/usage/report",
@@ -430,25 +443,39 @@ def report_usage(session_id: str, delta_minutes: float, source: str) -> bool:
                 "session_id":    session_id,
                 "delta_minutes": round(delta_minutes, 4),
                 "source":        source,
+                "client":        _CLIENT_CHANNEL,
             },
             timeout=_TIMEOUT,
         )
         if resp.status_code == 401:
             clear_jwt()
-        return resp.status_code == 204
+            return "fail"
+        if resp.status_code == 402:
+            return "quota"
+        return "ok" if resp.status_code == 204 else "fail"
     except requests.RequestException as exc:
         _log_detail("report_usage", exc)
-        return False
+        return "fail"
 
 
-def report_usage_async(session_id: str, delta_minutes: float, source: str):
-    t = threading.Thread(
-        target=report_usage,
-        args=(session_id, delta_minutes, source),
+def report_usage_async(session_id: str, delta_minutes: float, source: str,
+                       on_quota_exceeded=None):
+    """Fire the usage report on a worker thread. When the server signals quota
+    exhaustion (402) and on_quota_exceeded is provided, invoke it so the caller
+    can tear the session down. The callback runs on this worker thread."""
+    def _run():
+        status = report_usage(session_id, delta_minutes, source)
+        if status == "quota" and on_quota_exceeded is not None:
+            try:
+                on_quota_exceeded()
+            except Exception:
+                pass
+
+    threading.Thread(
+        target=_run,
         daemon=True,
         name="voxis-usage-report",
-    )
-    t.start()
+    ).start()
 
 
 _load_stored_jwt()

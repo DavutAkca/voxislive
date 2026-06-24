@@ -47,16 +47,16 @@ VersionInfoVersion={#MyAppVersion}
 VersionInfoProductVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoProductName={#MyAppName}
-; In-place upgrade (auto-update): close the running app via the Restart Manager so
-; its files can be replaced. We relaunch it ourselves after a silent update (see [Run]).
+; In-place reinstall/upgrade: close the running app via the Restart Manager so its
+; files can be replaced. We relaunch it ourselves on a silent install (see [Run]).
 CloseApplications=yes
 RestartApplications=no
 
-; --- Code signing (REQUIRED for release) -------------------------------------
-; Setup.exe and the uninstaller are Authenticode-signed so the silent auto-update
-; path (app/updater.py -> WinVerifyTrust) can prove the binary is ours before it
-; runs elevated. SignTool=voxis below references a named sign tool that the
-; MAINTAINER must register once, on the signing host, before running ISCC.
+; --- Code signing (recommended for the sideload/OSS .exe) ---------------------
+; Distribution is Microsoft Store-only; this Inno installer is a sideload/OSS
+; artifact. Signing Setup.exe and the uninstaller keeps SmartScreen/UAC from
+; flagging the binary as from an unknown publisher. SignTool=voxis below references
+; a named sign tool that the MAINTAINER must register once on the signing host.
 ;
 ;   MAINTAINER setup (one-time, secrets NEVER stored in the repo):
 ;     1) Install the Voxis EV/OV code-signing certificate on the signing host.
@@ -64,9 +64,7 @@ RestartApplications=no
 ;        (Tools > Configure Sign Tools...), pointing at a signtool command such as:
 ;          signtool sign /fd sha256 /n "Voxis" /tr http://timestamp.digicert.com /td sha256 $f
 ;     3) BEFORE running ISCC, sign the PyInstaller output (VoxisLive.exe and any
-;        other shipped .exe) with the same cert so the installed app is trusted by
-;        the auto-updater's Authenticode check. build_official.py should perform
-;        this step before invoking ISCC.
+;        other shipped .exe) with the same cert. release.py performs this step.
 ;
 ; With the "voxis" sign tool registered, the two directives below sign Setup.exe
 ; and the generated uninstaller. Building without the tool registered fails loudly
@@ -134,7 +132,7 @@ de.InstallingRuntime=Microsoft Visual C++-Laufzeit wird installiert...
 Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; \
   StatusMsg: "{cm:InstallingRuntime}"; Check: VCRedistNeeded; Flags: waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
-; After a silent auto-update, relaunch the app (de-elevated) since the finish page is skipped.
+; On a silent install the finish page is skipped, so relaunch the app (de-elevated).
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait runasoriginaluser; Check: WizardSilent
 
 [Code]

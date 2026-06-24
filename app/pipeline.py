@@ -472,12 +472,17 @@ class ModeController:
     HEARTBEAT_SECONDS: float = 6.0
 
     def __init__(self, cfg: dict, api_key: str | None, on_text, on_status,
-                 on_usage_reported=None):
+                 on_usage_reported=None, on_quota_exceeded=None):
         self.cfg = cfg
         self.api_key = api_key
         self.on_text = on_text
         self.on_status = on_status
         self.on_usage_reported = on_usage_reported or (lambda: None)
+        # Fired (at most once per session) when the server reports the license is
+        # exhausted via a 402 on /usage/report. The server cannot stop a running
+        # Live session, so the bridge wires this to its session teardown.
+        self.on_quota_exceeded = on_quota_exceeded or (lambda: None)
+        self._quota_exhausted = threading.Event()
         self._pipelines: list = []
         self.mode: str | None = None
         self._session_id: str | None = None
@@ -623,8 +628,22 @@ class ModeController:
             if not sid:
                 continue
             if delta > 0:
-                voxis_client.report_usage_async(sid, delta, source)
+                voxis_client.report_usage_async(
+                    sid, delta, source,
+                    on_quota_exceeded=self._fire_quota_exceeded)
             self._dispatch_usage_reported()
+
+    def _fire_quota_exceeded(self):
+        """Server signaled the license is exhausted (402). Fire-once per session:
+        several in-flight heartbeat reports can each receive the 402, but only the
+        first should trigger teardown. Reset in start()."""
+        if self._quota_exhausted.is_set():
+            return
+        self._quota_exhausted.set()
+        try:
+            self.on_quota_exceeded()
+        except Exception:
+            pass
 
     def _dispatch_usage_reported(self):
         """Run the UI quota-refresh callback off the heartbeat thread."""
@@ -675,6 +694,8 @@ class ModeController:
                 self._session_start = time.monotonic()
                 self._last_report = self._session_start
                 self._session_mode = mode
+                # New session — re-arm the one-shot quota cutoff.
+                self._quota_exhausted.clear()
                 # Never run two heartbeats at once: a prior thread that survived
                 # stop()'s bounded join would race this one on _last_report and
                 # double-bill. Refuse to start until it is truly gone.

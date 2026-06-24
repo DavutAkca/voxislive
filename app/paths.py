@@ -47,6 +47,29 @@ def official_marker() -> str:
     return os.path.join(_bundle_root(), "OFFICIAL")
 
 
+def store_marker() -> str:
+    """Path to the Microsoft Store distribution marker. app/build_msix.py writes
+    this into the MSIX layout (alongside OFFICIAL) so a running build can report
+    which channel it shipped through. Absent in the Inno / sideload .exe."""
+    return os.path.join(_bundle_root(), "STORE")
+
+
+def is_store_build() -> bool:
+    """True only for the MSIX (Microsoft Store) artifact: a frozen bundle that
+    carries the STORE marker. The Inno official .exe is frozen+OFFICIAL but has no
+    STORE marker, and a source run is not frozen at all."""
+    return is_frozen() and os.path.exists(store_marker())
+
+
+def client_channel() -> str:
+    """The distribution channel this desktop build was delivered through, reported
+    with each usage heartbeat so the backend can attribute minutes by source.
+      * "store"   — Microsoft Store (MSIX).
+      * "desktop" — Inno installer / sideload .exe (or a source run).
+    The browser extension reports "extension" from its own client."""
+    return "store" if is_store_build() else "desktop"
+
+
 def user_data_dir() -> str:
     """User-writable root. Frozen: %APPDATA%\\Voxis; source: repo root."""
     if is_frozen():

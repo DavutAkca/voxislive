@@ -13,8 +13,6 @@ import subprocess
 import re
 import zipfile
 import pathlib
-import hashlib
-import json
 import urllib.request
 
 # Define Paths
@@ -51,25 +49,6 @@ def _read_app_version() -> str:
 APP_VERSION = _read_app_version()
 RELEASE_VERSION = f"v{APP_VERSION}"
 OUTPUT_DIR = ROOT_DIR / "production_release" / f"VoxisLive_{RELEASE_VERSION}_Setup"
-
-# Where the installer will be hosted for auto-update downloads.
-DOWNLOAD_BASE = "https://voxislive.com/download"
-
-
-def write_update_manifest(setup_exe: pathlib.Path):
-    """Write latest.json (version, download URL, sha256) next to the installer."""
-    sha = hashlib.sha256(setup_exe.read_bytes()).hexdigest()
-    manifest = {
-        "version": APP_VERSION,
-        "url": f"{DOWNLOAD_BASE}/{setup_exe.name}",
-        "sha256": sha,
-        "notes": "",
-        "mandatory": False,
-    }
-    out = OUTPUT_DIR / "latest.json"
-    out.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"[+] Update manifest written -> {out}")
-    print(f"    sha256={sha}")
 
 
 def log_phase(name: str):
@@ -331,15 +310,9 @@ def main():
                 raise RuntimeError(f"ISCC compilation failed with return code {iscc_result.returncode}")
 
             print(f"[+] Setup installer successfully created at {OUTPUT_DIR}")
-
-            # Emit the auto-update manifest. Upload the .exe to {DOWNLOAD_BASE} and
-            # latest.json to https://voxislive.com/update/latest.json — clients then
-            # update themselves (see app/updater.py).
-            setup_exe = OUTPUT_DIR / f"VoxisLive_v{APP_VERSION}_Setup.exe"
-            if setup_exe.exists():
-                write_update_manifest(setup_exe)
-            else:
-                print(f"[-] Setup exe not found for manifest: {setup_exe}")
+            # Distribution is Microsoft Store-only: the Store delivers updates, so
+            # no self-update manifest (latest.json) is emitted. The .exe here is a
+            # sideload/OSS artifact only.
         else:
             print("[-] Inno Setup Compiler (ISCC.exe) not found. Falling back to compressed ZIP compilation...")
             # The ZIP has no installer, so it cannot run the VC++ redist. Users on an

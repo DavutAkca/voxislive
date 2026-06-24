@@ -813,6 +813,7 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
     </div>
     <div class="dsection">
       <button class="btn btn-ghost" id="showtourbtn" style="width:auto" data-i18n="show_tour">Tanıtım turunu tekrar göster</button>
+      <button class="btn btn-ghost" id="storebtn" style="width:auto;display:none" data-i18n="store_view">Microsoft Store'da görüntüle</button>
     </div>
   </div>
   <footer>
@@ -1037,7 +1038,7 @@ const I18N = {
     cable_title:"Çift yönlü toplantı (isteğe bağlı)",
     cable_install:"VB-CABLE kur", cable_cancel:"Vazgeç",
     show_tour:"Tanıtım turunu tekrar göster",
-    update_now:"Şimdi güncelle", update_later:"Sonra",
+    update_now:"Şimdi güncelle", update_later:"Sonra", store_view:"Microsoft Store'da görüntüle",
   },
   en: {
     brand_badge_locked:"Subscription required",
@@ -1123,7 +1124,7 @@ const I18N = {
     cable_title:"Two-way meeting (optional)",
     cable_install:"Install VB-CABLE", cable_cancel:"Cancel",
     show_tour:"Show the tour again",
-    update_now:"Update now", update_later:"Later",
+    update_now:"Update now", update_later:"Later", store_view:"View in Microsoft Store",
   },
   de: {
     brand_badge_locked:"Abonnement erforderlich",
@@ -2564,6 +2565,8 @@ async function init(){
     $('#gemkey').disabled = true;
     $('#logoutbtn').style.display = '';
     $('#manageplanbtn').style.display = '';
+    // Store-delivered build: offer a shortcut to the listing (updates come via Store).
+    { const sb=$('#storebtn'); if(sb) sb.style.display=''; }
     // Model id is internal plumbing; customers don't need to see it.
     const footModel = $('#foot-model');
     if(footModel) footModel.style.display = 'none';
@@ -2869,6 +2872,7 @@ $('#showtourbtn').onclick = async()=>{
   closeDrawer();
   openOnboard();
 };
+$('#storebtn').onclick = async()=>{ try{ await api().open_store_page(); }catch(_){} };
 $('#showgem').onclick = e=>{
   e.preventDefault();
   const g=$('#gemkey'); const show=g.type==='password';
@@ -3021,38 +3025,6 @@ function updateFooter(p){
   $('#footlat').textContent = p.latency ? ('~'+p.latency.toFixed(1)+'s') : '—';
 }
 
-/* ---------- auto-update banner ---------- */
-let updateShown=false;
-function showUpdateBanner(u){
-  if(updateShown) return; updateShown=true;
-  const bar=document.createElement('div');
-  bar.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;'
-    +'display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:14px;'
-    +'background:rgba(20,22,30,.96);border:1px solid rgba(120,130,255,.35);'
-    +'box-shadow:0 12px 40px rgba(0,0,0,.5);color:#eef;font-size:13px;backdrop-filter:blur(8px)';
-  const txt=document.createElement('div');
-  txt.textContent=u.title || ('Update '+(u.version||'')); txt.style.fontWeight='600';
-  bar.appendChild(txt);
-  if(u.notes){ const n=document.createElement('div'); n.textContent=u.notes;
-    n.style.cssText='opacity:.7;font-weight:400;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'; bar.appendChild(n); }
-  const go=document.createElement('button');
-  // Button labels come from local i18n, not the remote manifest (notes stay as
-  // textContent so a manifest can never inject markup).
-  go.textContent=T('update_now');
-  go.style.cssText='cursor:pointer;border:0;border-radius:10px;padding:8px 14px;font-weight:600;'
-    +'background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff';
-  go.onclick=async()=>{ go.disabled=true; go.textContent='…'; try{ await api().apply_update(); }catch(e){ updateShown=false; bar.remove(); } };
-  bar.appendChild(go);
-  if(!u.mandatory){
-    const later=document.createElement('button');
-    later.textContent=T('update_later');
-    later.style.cssText='cursor:pointer;border:0;border-radius:10px;padding:8px 12px;background:transparent;color:#aab;';
-    later.onclick=()=>{ bar.remove(); };
-    bar.appendChild(later);
-  }
-  document.body.appendChild(bar);
-}
-
 /* ---------- poll ---------- */
 async function poll(){
   try{
@@ -3062,7 +3034,6 @@ async function poll(){
       else if(ev[0]==='trans'){ onTrans(ev[1], ev[2]); }
       else if(ev[0]==='src'){ onSrc(ev[1]); }
       else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
-      else if(ev[0]==='update'){ showUpdateBanner(ev[1]); }
     });
     $('#badge').textContent = p.badge.text;
     setPillState(p);

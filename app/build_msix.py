@@ -200,6 +200,12 @@ def stage_bundle():
         else:
             shutil.copy2(item, dst)
     print(f"[+] Staged bundle -> {LAYOUT_DIR}")
+    # Distribution marker: tags this artifact as the Microsoft Store (MSIX) build
+    # so the running client reports client="store" on usage heartbeats. The Inno
+    # .exe carries OFFICIAL but not STORE, so it reports client="desktop".
+    store_marker = LAYOUT_DIR / "_internal" / "STORE"
+    store_marker.write_text("store\n", encoding="utf-8")
+    print(f"[+] Wrote Store channel marker -> {store_marker.relative_to(LAYOUT_DIR)}")
     strip_app_local_vcruntime()
 
 

@@ -2,18 +2,19 @@
 """
 Voxis Release Automation
 Kullanim: python release.py
+
+Dagitim Microsoft Store-only: guncellemeler Store tarafindan dagitilir, bu yuzden
+bu akis self-update manifesti (latest.json) uretmez ve sunucuya yukleme yapmaz.
+Uretilen .exe yalnizca sideload/OSS artefakti olarak cikti klasorunde kalir.
 """
 from __future__ import annotations
-import hashlib, json, os, pathlib, re, shutil, subprocess, sys, threading, time, urllib.request, urllib.error
+import json, os, pathlib, re, shutil, subprocess, sys, threading, time
 
 ROOT      = pathlib.Path(__file__).resolve().parent
 APP_INIT  = ROOT / "app" / "__init__.py"
 BUILD_PY  = ROOT / "app" / "build_official.py"
 HYGIENE   = ROOT / "scripts" / "check_release_hygiene.py"
 SIGN_DIR  = pathlib.Path.home() / ".voxis-signing"
-PRIV_KEY  = SIGN_DIR / "manifest_ed25519_private.b64"
-SIGN_PY   = SIGN_DIR / "sign_manifest.py"
-SERVER_CFG = SIGN_DIR / "server.json"
 PREFS     = SIGN_DIR / "prefs.json"
 PYTHON    = sys.executable
 
@@ -123,45 +124,13 @@ def check_prerequisites():
     section("On Kontroller")
     t = {}
 
-    # cryptography
-    try:
-        import cryptography  # noqa: F401
-        ok("cryptography paketi yuklu")
-        t["crypto"] = True
-    except ImportError:
-        warn("cryptography bulunamadi, yukleniyor...")
-        r = subprocess.run([PYTHON, "-m", "pip", "install", "cryptography", "-q"],
-                           capture_output=True)
-        if r.returncode == 0:
-            ok("cryptography yuklendi")
-            t["crypto"] = True
-        else:
-            err("cryptography yuklenemedi")
-            t["crypto"] = False
-
-    # private key
-    if PRIV_KEY.exists():
-        ok(f"Private key mevcut ({PRIV_KEY.name})")
-        t["privkey"] = True
-    else:
-        err(f"Private key bulunamadi: {PRIV_KEY}")
-        t["privkey"] = False
-
-    # sign_manifest.py
-    if SIGN_PY.exists():
-        ok("sign_manifest.py mevcut")
-        t["sign_py"] = True
-    else:
-        err(f"sign_manifest.py bulunamadi: {SIGN_PY}")
-        t["sign_py"] = False
-
     # Inno Setup
     iscc = find_exe("ISCC.exe", ISCC_PATHS) or find_exe("ISCC")
     if iscc:
         ok(f"Inno Setup bulundu")
         t["iscc"] = iscc
     else:
-        warn("Inno Setup (ISCC.exe) bulunamadi -> ZIP bundle uretilecek (auto-update calisMAZ)")
+        warn("Inno Setup (ISCC.exe) bulunamadi -> ZIP bundle uretilecek (installer YOK)")
         t["iscc"] = ""
 
     # signtool
@@ -181,9 +150,6 @@ def check_prerequisites():
     else:
         warn("git bulunamadi -> commit adimi atlanacak")
         t["git"] = ""
-
-    # scp
-    t["scp"] = shutil.which("scp") or ""
 
     return t
 
@@ -226,44 +192,6 @@ def save_prefs(p):
         PREFS.write_text(json.dumps(p, indent=2), encoding="utf-8")
     except Exception:
         pass
-
-
-# ── Sunucu yapılandırması ──────────────────────────────────────────────────────
-
-def get_server_cfg():
-    saved = {}
-    if SERVER_CFG.exists():
-        try:
-            saved = json.loads(SERVER_CFG.read_text(encoding="utf-8"))
-        except Exception:
-            saved = {}
-    if saved.get("host"):
-        saved.setdefault("port", "22")  # eski kayitlarda port olmayabilir
-        info(f"Kayitli sunucu: {saved['user']}@{saved['host']}:{saved['port']}")
-        if ask_yn("Bu sunucu ayarlarini kullan?", default=True):
-            return saved
-
-    # Yeniden girilecekse her alanin varsayilani son kayit -> Enter ile koru
-    print(f"\n  {WH}Sunucu baglanti bilgileri:{R}  {DM}(Enter = onceki deger){R}")
-    host         = ask("SSH host (IP veya domain)", saved.get("host", ""))
-    port         = ask("SSH port", saved.get("port", "22"))
-    user         = ask("SSH kullanici", saved.get("user", "root"))
-    download_dir = ask("Installer dizini (sunucu)", saved.get("download_path", "/var/www/voxis-backend/download"))
-    update_dir   = ask("Manifest dizini (sunucu)", saved.get("update_path", "/var/www/voxis-backend/update"))
-    base_url     = ask("Download base URL", saved.get("base_url", "https://voxislive.com/download"))
-    manifest_url = ask("Manifest URL", saved.get("manifest_url", "https://voxislive.com/update/latest.json"))
-
-    cfg = {
-        "host": host, "port": port or "22", "user": user,
-        "download_path": download_dir,
-        "update_path": update_dir,
-        "base_url": base_url.rstrip("/"),
-        "manifest_url": manifest_url,
-    }
-    SIGN_DIR.mkdir(parents=True, exist_ok=True)
-    SERVER_CFG.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-    ok("Sunucu ayarlari kaydedildi (~/.voxis-signing/server.json)")
-    return cfg
 
 
 # ── Faz uygulayicilari ─────────────────────────────────────────────────────────
@@ -310,61 +238,6 @@ def sign_exe(exe_path, signtool):
     return r.returncode == 0
 
 
-def sign_manifest(version, exe_path, download_url, notes, mandatory):
-    out = SIGN_DIR / "latest.json"
-    cmd = [PYTHON, str(SIGN_PY), version, download_url, str(exe_path),
-           "--out", str(out)]
-    if notes:     cmd += ["--notes", notes]
-    if mandatory: cmd += ["--mandatory"]
-    r = subprocess.run(cmd, capture_output=True, text=True, cwd=SIGN_DIR)
-    if r.returncode != 0:
-        print(f"\n{RD}{r.stdout}\n{r.stderr}{R}")
-        return None
-    return out if out.exists() else None
-
-
-def upload(exe_path, json_path, cfg):
-    remote_exe  = f"{cfg['user']}@{cfg['host']}:{cfg['download_path']}/{exe_path.name}"
-    remote_json = f"{cfg['user']}@{cfg['host']}:{cfg['update_path']}/latest.json"
-    port = str(cfg.get("port", "22"))
-    scp = ["scp", "-P", port] if port and port != "22" else ["scp"]
-
-    info(f"SCP: {exe_path.name} -> sunucu (port {port})")
-    r1 = subprocess.run(scp + [str(exe_path), remote_exe])
-    if r1.returncode != 0:
-        err("Installer yuklenemedi")
-        return False
-    ok("Installer yuklendi")
-
-    info("SCP: latest.json -> sunucu")
-    r2 = subprocess.run(scp + [str(json_path), remote_json])
-    if r2.returncode != 0:
-        err("latest.json yuklenemedi")
-        return False
-    ok("latest.json yuklendi")
-    return True
-
-
-def verify(manifest_url, download_url):
-    all_ok = True
-    for url, label in [(manifest_url, "Manifest"), (download_url, "Installer")]:
-        try:
-            req = urllib.request.Request(url, method="HEAD",
-                                         headers={"User-Agent": "Voxis-Release/1"})
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                code = resp.status
-        except urllib.error.HTTPError as e:
-            code = e.code
-        except Exception as e:
-            code = 0; warn(f"{label}: {e}")
-        if code == 200:
-            ok(f"{label}: HTTP 200")
-        else:
-            err(f"{label}: HTTP {code or 'ERR'}")
-            all_ok = False
-    return all_ok
-
-
 def git_commit(version):
     cmds = [
         ["git", "add", "app/__init__.py"],
@@ -393,24 +266,18 @@ def open_folder(path):
 def main():
     print(f"""
 {BD}{CY}  ╔══════════════════════════════════════╗
-  ║    VOXIS  RELEASE  AUTOMATION  v2    ║
+  ║    VOXIS  RELEASE  AUTOMATION  v3    ║
   ╚══════════════════════════════════════╝{R}
+  {DM}Microsoft Store-only — self-update manifesti uretilmez{R}
 """)
 
     # ── 0. On kontroller ──────────────────────────────────────────────────────
     tools = check_prerequisites()
 
-    if not tools["privkey"]:
-        abort(f"Private key bulunamadi.\n     Konum: {PRIV_KEY}")
-    if not tools["sign_py"]:
-        abort(f"sign_manifest.py bulunamadi.\n     Konum: {SIGN_PY}")
-    if not tools["crypto"]:
-        abort("cryptography paketi yuklenemedi. Sorunlari gider ve tekrar calistir.")
-
     if not tools["iscc"]:
         print(f"\n  {YW}Inno Setup kurulu degil!{R}")
         print(f"  {DM}installer uretmek icin: https://jrsoftware.org/isdl.php{R}")
-        if ask_yn("Inno Setup olmadan devam edilsin mi? (ZIP uretilir, auto-update calisMAZ)", default=False):
+        if ask_yn("Inno Setup olmadan devam edilsin mi? (sadece ZIP uretilir)", default=False):
             pass
         else:
             abort("Inno Setup kur ve tekrar calistir.")
@@ -432,25 +299,10 @@ def main():
         else:
             break
 
-    notes     = ask("Surum notlari (bos birakilabilir)", prefs.get("notes", ""))
-    mandatory = ask_yn("Zorunlu guncelleme?", default=prefs.get("mandatory", False))
-    do_upload = ask_yn("Sunucuya yuklensin mi?", default=prefs.get("upload", True))
-
-    server_cfg = None
-    if do_upload:
-        if not tools["scp"]:
-            warn("scp komutu bulunamadi (OpenSSH kurul) -> upload atlanacak")
-            do_upload = False
-        else:
-            server_cfg = get_server_cfg()
-            if not server_cfg.get("host"):
-                warn("Sunucu bilgisi girilmedi -> upload atlanacak")
-                do_upload = False; server_cfg = None
-
     do_git = bool(tools["git"]) and ask_yn("Git commit + push yapilsin mi?", default=prefs.get("git", True))
 
     # Secimleri sonraki calistirma icin hatirla (Enter ile gelecekte kabul edilir)
-    save_prefs({"notes": notes, "mandatory": mandatory, "upload": do_upload, "git": do_git})
+    save_prefs({"git": do_git})
 
     # Ozet onay
     section("Ozet")
@@ -458,16 +310,13 @@ def main():
   {DM}Mevcut{R}  {WH}{current}{R}
   {DM}Yeni{R}    {GN}{BD}{version}{R}
 
-  Surum notu   : {notes if notes else DM+'(yok)'+R}
-  Zorunlu      : {'Evet' if mandatory else 'Hayir'}
-  Upload       : {'Evet — ' + server_cfg['user'] + '@' + server_cfg['host'] + ':' + str(server_cfg.get('port', '22')) if do_upload and server_cfg else 'Hayir'}
   Git commit   : {'Evet' if do_git else 'Hayir'}
 """)
     if not ask_yn("Baslayalim mi?", default=True):
         print(f"\n  Iptal edildi.\n"); sys.exit(0)
 
     # ── Fazlar ────────────────────────────────────────────────────────────────
-    TOTAL = 8
+    TOTAL = 5
     results = {}
     prev_version = current  # geri alma icin
 
@@ -509,7 +358,6 @@ def main():
         zips = list(out_dir.glob("*.zip"))
         if zips:
             warn(f".exe bulunamadi, ZIP bulundu: {zips[0].name}")
-            warn("Auto-update calisMAZ. Inno Setup kur, tekrar build al.")
             exe_path = zips[0]
         else:
             write_version(prev_version)
@@ -526,67 +374,14 @@ def main():
             results["Authenticode"] = "OK"
         else:
             warn("Authenticode imzasi basarisiz (sertifika tanimli degil olabilir)")
-            warn("Devam ediliyor — kurulum calisir, auto-update imzali .exe bekler")
             results["Authenticode"] = "! (hata)"
     else:
         reason = "signtool yok" if not tools["signtool"] else "ZIP bundle"
         warn(f"Authenticode atlandi ({reason})")
         results["Authenticode"] = "ATLANMADI"
 
-    # [5] Manifest imzalama
-    phase(5, TOTAL, "Manifest Imzalama", "Ed25519 private key")
-    if do_upload and server_cfg:
-        download_url = f"{server_cfg['base_url']}/{exe_path.name}"
-    else:
-        download_url = ask(
-            "Download URL (sunucuya yuklemesen de gir)",
-            f"https://voxislive.com/download/{exe_path.name}",
-        )
-
-    with Spinner("sign_manifest.py") as sp:
-        json_path = sign_manifest(version, exe_path, download_url, notes, mandatory)
-        if not json_path: sp.fail()
-    if json_path:
-        ok(f"latest.json olusturuldu")
-        results["Manifest"] = "OK"
-    else:
-        write_version(prev_version)
-        abort("Manifest imzalanamadi. Private key gecerli mi kontrol et.")
-
-    # [6] Ciktilari topla
-    phase(6, TOTAL, "Ciktilar Toplanıyor", out_dir.name)
-    dest_json = out_dir / "latest.json"
-    shutil.copy2(json_path, dest_json)
-    ok(f"latest.json -> {out_dir.name}/latest.json")
-    ok(f"Klasor: {out_dir}")
-    results["Cikti"] = "OK"
-
-    # [7] Upload
-    phase(7, TOTAL, "Sunucuya Yukleme", "SCP transfer")
-    if do_upload and server_cfg:
-        # SCP interaktif (sifre sorabiliyor) — spinner yok
-        up_ok = upload(exe_path, json_path, server_cfg)
-        if up_ok:
-            results["Upload"] = "OK"
-            # Dogrula
-            print(); info("Dogrulaniyor...")
-            murl = server_cfg.get("manifest_url", "")
-            if murl:
-                v_ok = verify(murl, download_url)
-                results["Verify"] = "OK" if v_ok else "! (hata)"
-            else:
-                results["Verify"] = "ATLANMADI"
-        else:
-            err("Upload basarisiz")
-            results["Upload"] = "! (hata)"
-            results["Verify"] = "ATLANMADI"
-    else:
-        info("Upload atlandirildi")
-        results["Upload"] = "ATLANMADI"
-        results["Verify"] = "ATLANMADI"
-
-    # [8] Git
-    phase(8, TOTAL, "Git Commit", f"chore: bump version to {version}")
+    # [5] Git
+    phase(5, TOTAL, "Git Commit", f"chore: bump version to {version}")
     if do_git:
         with Spinner("git add + commit + push") as sp:
             g_ok = git_commit(version)
@@ -619,21 +414,15 @@ def main():
     print(f"\n  {BL}Cikti klasoru:{R}")
     print(f"  {WH}{BD}{out_dir}{R}\n")
 
-    if not do_upload:
-        print(f"  {YW}Upload yapilmadi.{R}")
-        print(f"  Asagidaki iki dosyayi sunucuya yukle:")
-        print(f"  {DM}{exe_path.name} -> /download/{exe_path.name}{R}")
-        print(f"  {DM}latest.json      -> /update/latest.json{R}\n")
+    print(f"  {DM}Dagitim Store uzerinden: MSIX paketini app/build_msix.py ile{R}")
+    print(f"  {DM}uretip Partner Center'a yukle. Bu .exe sideload/OSS artefaktidir.{R}\n")
 
     if not do_git:
         print(f"  {YW}Git commit yapilmadi.{R}")
         print(f"  {DM}git add app/__init__.py && git commit -m \"chore: bump version to {version}\" && git push{R}\n")
 
-    # Upload basariliysa dosyalar sunucuda — Explorer'i acmaya gerek yok.
-    # Sadece elle yukleme gerektiginde (upload atlandi/basarisiz) klasoru ac.
-    if results.get("Upload") != "OK":
-        open_folder(out_dir)
-        print(f"  {DM}Klasor Explorer'da acildi.{R}\n")
+    open_folder(out_dir)
+    print(f"  {DM}Klasor Explorer'da acildi.{R}\n")
 
 
 if __name__ == "__main__":

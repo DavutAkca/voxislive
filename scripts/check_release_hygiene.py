@@ -54,6 +54,7 @@ FORBIDDEN_PREFIXES = (
     "premium/",          # open-core premium DSP — the moat
     "website/",          # marketing site — deployed separately
     "voxis-dubber/",     # separate commercial product
+    "extension/",        # Chromium/Edge MV3 extension — closed-core SaaS product
     "docs/server/",      # server-side anti-abuse strategy
     "profiles/",         # per-user DPAPI-wrapped BYOK slots
     "production_release/",  # packaged build output

@@ -12,7 +12,7 @@ import time
 
 import webview
 
-from . import APP_VERSION, i18n, updater
+from . import APP_VERSION, i18n
 from .audio_io import detect_virtual_cable, find_device, list_device_names, resolve_name
 from .config import (
     GEMINI_VOICES,
@@ -116,6 +116,7 @@ class Bridge:
         self.controller = ModeController(
             cfg, None, self._on_text, self._on_status,
             on_usage_reported=self._on_usage_reported,
+            on_quota_exceeded=self._on_quota_exceeded,
         )
 
         self._lines, self._cur_line = [], ""
@@ -135,10 +136,8 @@ class Bridge:
         self._overlay_until = 0.0
         self._maximized = False
         self._badge = (t("badge_idle"), "#8593a6", "")
-        self._update_manifest = None
-        self._update_checked = False
         # Assigned in run() once the main window exists; referenced by
-        # win_* controls and apply_update before then, so default to None.
+        # win_* controls before then, so default to None.
         self._main_window = None
         # Serializes the session lifecycle: start/stop/_maybe_restart all run on
         # background threads, so without this a rapid start→stop or a flurry of
@@ -220,6 +219,16 @@ class Bridge:
     def _on_usage_reported(self):
         self._events.put(("quota_refresh", None))
 
+    def _on_quota_exceeded(self):
+        """Server reported the license is exhausted (402 on /usage/report). The
+        server isn't in the audio path, so the cutoff is enforced here: surface a
+        status line, push a quota refresh, and stop the session. Runs on a
+        usage-report worker thread; self.stop() dispatches teardown to its own
+        thread under the session lock, so calling it here is safe."""
+        self._emit_status(t("st_quota_exceeded"), "warn")
+        self._events.put(("quota_refresh", None))
+        self.stop()
+
     def _obs_write(self, text):
         if not self.cfg.get("obs_subtitle_enabled"):
             return
@@ -249,7 +258,6 @@ class Bridge:
         mics = list_device_names("input")
         from . import byok_store
         byok_set = byok_store.has_byok(self._user_id) if self._user_id else False
-        self._start_update_check()
         return {
             "version": APP_VERSION,
             "outputs": outs,
@@ -275,66 +283,18 @@ class Bridge:
                     ["max_savings", t("quality_saver")]]
         return [[k, t(f"quality_{k}")] for k in QUALITY_PRESETS]
 
-    # ---------- auto-update ----------
-    def _start_update_check(self):
-        """Background check on first init; pushes an 'update' event if a newer
-        version is available. Only active in frozen builds."""
-        # Cost-isolation guarantee: an OSS build must not beacon to voxislive.com
-        # on launch. Restrict the update check to the official SaaS build, or to
-        # a developer who explicitly opted in via cfg['auto_update_enabled'].
-        if not (IS_OFFICIAL_RELEASE or self.cfg.get("auto_update_enabled")):
-            return
-        if self._update_checked or not updater.available():
-            return
-        self._update_checked = True
-
-        def work():
-            try:
-                manifest = updater.check(self.cfg.get("update_check_url", ""))
-            except Exception:
-                manifest = None
-            if manifest:
-                self._update_manifest = manifest
-                ver = manifest.get("version", "")
-                self._events.put(("update", {
-                    "version": ver,
-                    "notes": manifest.get("notes", ""),
-                    "mandatory": bool(manifest.get("mandatory")),
-                    "title": t("update_title", version=ver),
-                    "btn": t("update_btn"),
-                    "later": t("update_later"),
-                }))
-
-        threading.Thread(target=work, daemon=True).start()
-
-    def apply_update(self):
-        """Download (verifying checksum) and launch the silent installer, then
-        close the app so the installer can replace files and relaunch it."""
-        manifest = self._update_manifest
-        if not manifest:
-            return {"ok": False, "error": "no_update"}
+    # ---------- store ----------
+    def open_store_page(self):
+        """Open the Voxis Microsoft Store listing in the Store app. Updates are
+        delivered by the Store itself; this is just a shortcut to the listing.
+        No-op-safe: failures are swallowed so a missing Store app never raises."""
+        url = "ms-windows-store://pdp/?productid=9P5Z0KVS58RS"
         try:
-            self._emit_status(t("update_downloading"))
-            path = updater.download(manifest)
-            updater.launch_installer(path)
+            os.startfile(url)  # Windows shell handles the ms-windows-store: scheme
+            return {"ok": True}
         except Exception as e:
-            _log.exception("update apply failed")
-            self._emit_status(t("update_failed", err=str(e)), "error")
+            _log.exception("open_store_page failed")
             return {"ok": False, "error": str(e)}
-        # Hand off to the installer: close the window so locked files are
-        # released. If destroy fails the process MUST still exit, otherwise the
-        # installer cannot replace the locked binary — force it rather than
-        # silently swallowing the failure and leaving a half-updated install.
-        try:
-            if self._main_window:
-                self._main_window.destroy()
-        except Exception:
-            _log.exception("apply_update: window destroy failed; forcing exit")
-            try:
-                sys.exit(0)
-            except SystemExit:
-                os._exit(0)
-        return {"ok": True}
 
     def _cfg_view(self, outs=None, mics=None):
         outs = outs or list_device_names("output")
