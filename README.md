@@ -81,6 +81,7 @@ Voxis ships in two flavors, selected at build time by `IS_OFFICIAL_RELEASE` (env
 | | Official SaaS `.exe` (`True`) | Open-source / developer (`False`) |
 | --- | --- | --- |
 | API key | Fetched from the server per session; no key UI | Your own key (BYOK), entered in Settings |
+| Translation engine | Google Gemini Live + OpenAI, routed per target language | Google Gemini Live only |
 | Auth | Sign in (PocketBase) | None — local, offline |
 | Telemetry / billing | Usage heartbeat to the server | Fully disabled |
 | Translation settings | Locked to the best simultaneous defaults | All settings exposed for tuning |

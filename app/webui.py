@@ -258,9 +258,10 @@ class Bridge:
         outs = list_device_names("output") or ["—"]
         mics = list_device_names("input")
         from . import byok_store
-        from .config import resolve_engine, VALID_ENGINES
+        from .config import resolve_engine
         uid = self._ensure_user_id()
-        byok_status = {e: (byok_store.has_byok(uid, e) if uid else False) for e in VALID_ENGINES}
+        engines = self._engine_options()  # gemini-only on OSS; both on official
+        byok_status = {e: (byok_store.has_byok(uid, e) if uid else False) for e in engines}
         byok_set = byok_status.get("gemini", False)  # back-compat: single bool
         from .paths import client_channel
         return {
@@ -274,7 +275,7 @@ class Bridge:
             "gemini_voices": GEMINI_VOICES,
             "byok_set": byok_set,
             "byok_status": byok_status,
-            "engines": self._engine_options(),
+            "engines": engines,
             "engine": resolve_engine(self.cfg),
             "official_release": IS_OFFICIAL_RELEASE,
             "badge_removable": self._badge_removable(),
@@ -294,9 +295,10 @@ class Bridge:
 
     def _engine_options(self):
         """Engine choices for the selector. Keys only — the per-locale benefit
-        labels resolve from the JS I18N dict (app/i18n.py is TR/EN-only)."""
-        from .config import VALID_ENGINES
-        return list(VALID_ENGINES)
+        labels resolve from the JS I18N dict (app/i18n.py is TR/EN-only).
+        OpenAI is an official-build feature; the OSS/BYOK build is Gemini-only."""
+        from .config import VALID_ENGINES, ENGINE_GEMINI
+        return list(VALID_ENGINES) if IS_OFFICIAL_RELEASE else [ENGINE_GEMINI]
 
     # ---------- store ----------
     def open_store_page(self):
@@ -431,11 +433,11 @@ class Bridge:
             return False
         from . import byok_store
         current = byok_store.load_byok(uid)
-        # Preserve each field when its input is blank, so saving one engine's key
-        # never wipes the other's.
+        # OSS/BYOK is Gemini-only (OpenAI is an official-build feature); the `oai`
+        # arg is kept for signature back-compat but ignored — only the Gemini key
+        # is written, preserving any previously stored value when blank.
         new_gem = gem.strip() if gem and gem.strip() else current.get("gemini", "")
-        new_oai = oai.strip() if oai and oai.strip() else current.get("openai", "")
-        byok_store.save_byok(uid, new_gem, new_oai)
+        byok_store.save_byok(uid, new_gem, current.get("openai", ""))
         return True
 
     def clear_byok(self, engine=None) -> bool:
@@ -719,16 +721,16 @@ class Bridge:
         """
         from .config import resolve_model
         if not IS_OFFICIAL_RELEASE:
+            # OSS/BYOK is Gemini-only; OpenAI is an official-build feature.
             from . import byok_store
-            from .engines import resolve_engine_for_target
+            from .config import ENGINE_GEMINI
             uid = self._ensure_user_id()
             keys = byok_store.load_byok(uid) if uid else {}
-            if not (keys.get("gemini") or keys.get("openai")):
+            if not keys.get("gemini"):
                 raise RuntimeError(t("st_no_key_offline"))
 
             def resolve(target):
-                eng = resolve_engine_for_target(self.cfg, keys, target)
-                return eng, keys.get(eng), resolve_model(self.cfg, eng)
+                return ENGINE_GEMINI, keys.get("gemini"), resolve_model(self.cfg, ENGINE_GEMINI)
             return resolve
 
         from . import voxis_client

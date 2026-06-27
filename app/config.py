@@ -194,10 +194,13 @@ def openai_route_langs(cfg: dict) -> list:
 def route_engine(cfg: dict, target: str) -> str:
     """Pick the engine for a TARGET language: OpenAI for its (config-listed) outputs
     (faster + cheaper), Gemini for everything else (the 79-language catch-all).
-    VOXIS_ENGINE env forces one engine (ops override)."""
+    VOXIS_ENGINE env forces one engine (ops/dev override). OpenAI is an
+    OFFICIAL-build feature: the open-source / BYOK build is Gemini-only."""
     forced = os.environ.get("VOXIS_ENGINE", "").strip().lower()
     if forced in VALID_ENGINES:
         return forced
+    if not IS_OFFICIAL_RELEASE:
+        return ENGINE_GEMINI
     return ENGINE_OPENAI if _norm_lang(target) in openai_route_langs(cfg) else ENGINE_GEMINI
 
 
