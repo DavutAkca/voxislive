@@ -51,7 +51,13 @@ class _AuthInterceptor extends Interceptor {
     // instead of looping with stale credentials. A 403 (license inactive) is
     // deliberately NOT evicted — the token is still valid; only billing state
     // changed.
-    if (err.response?.statusCode == 401) {
+    final path = err.requestOptions.path;
+    final isAuthEndpoint =
+        path.contains('/auth/login') || path.contains('/auth/register');
+    // A 401 on verify/quota/usage means the stored token is stale → evict it. A
+    // 401 from login/register is a bad-credentials response, not a stale stored
+    // token, so it must NOT wipe an existing valid JWT.
+    if (err.response?.statusCode == 401 && !isAuthEndpoint) {
       await SecureStorage.instance.deleteJwt();
     }
     handler.next(err);
