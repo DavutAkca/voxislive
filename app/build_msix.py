@@ -20,7 +20,6 @@ the Store) — not secrets. The Publisher CN must match exactly or the upload is
 rejected.
 """
 
-import os
 import re
 import shutil
 import subprocess
@@ -189,6 +188,25 @@ def stage_bundle():
             f"{SRC_BUNDLE}\\VoxisLive.exe not found. Run app/build_official.py first "
             "so the MSIX includes the latest build."
         )
+    # Freshness guard: the bundle carries a BUILD_VERSION stamp written by
+    # build_official.py. Refuse to package a bundle that was frozen from a
+    # different APP_VERSION than the one going into the manifest — otherwise a
+    # "bump __init__.py then run only build_msix.py" mistake ships a new manifest
+    # wrapping a stale engine (this week's features absent, About shows the old
+    # number).
+    _raw = re.search(r'APP_VERSION\s*=\s*["\']([^"\']+)["\']',
+                     (APP_DIR / "__init__.py").read_text(encoding="utf-8"))
+    want = _raw.group(1) if _raw else None
+    stamp = SRC_BUNDLE / "_internal" / "BUILD_VERSION"
+    have = stamp.read_text(encoding="utf-8").strip() if stamp.exists() else None
+    if have != want:
+        raise SystemExit(
+            f"[!] Bundle/version mismatch: dist/VoxisLive was built for "
+            f"{have or '<no BUILD_VERSION stamp>'} but APP_VERSION is {want}. "
+            f"Re-run `python app/build_official.py` before build_msix.py so the "
+            f"packaged engine matches the manifest."
+        )
+    print(f"[+] Bundle freshness OK: BUILD_VERSION={have} == APP_VERSION={want}")
     if LAYOUT_DIR.exists():
         shutil.rmtree(LAYOUT_DIR)
     LAYOUT_DIR.mkdir(parents=True)

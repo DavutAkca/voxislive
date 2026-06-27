@@ -151,9 +151,12 @@ class ProcessExcludeLoopback:
     # kicks in.
     _QUEUE_MAX = 64
 
-    def __init__(self, on_chunk, exclude_pid: int | None = None):
+    def __init__(self, on_chunk, exclude_pid: int | None = None, rate: int = RATE):
         import os
         self._on_chunk = on_chunk
+        # Per-instance capture rate: 16 kHz for Gemini; 24 kHz when the OpenAI
+        # engine wants full-band input (overrides the class default).
+        self.rate = int(rate)
         self._pid = exclude_pid or os.getpid()
         self._run = False
         self._err: Exception | None = None
@@ -176,6 +179,13 @@ class ProcessExcludeLoopback:
             raise self._err
         self._proc.start()
 
+    @property
+    def failed(self) -> bool:
+        """True once the capture thread has died from an unexpected fault (not a
+        normal stop). Polled by the session liveness check so a dead capture
+        stops billing and surfaces an error instead of accruing silent dead air."""
+        return self._err is not None
+
     def _worker(self):
         try:
             comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
@@ -188,10 +198,10 @@ class ProcessExcludeLoopback:
             wfx = WAVEFORMATEX()
             wfx.wFormatTag = 1
             wfx.nChannels = 1
-            wfx.nSamplesPerSec = RATE
+            wfx.nSamplesPerSec = self.rate
             wfx.wBitsPerSample = 16
             wfx.nBlockAlign = 2
-            wfx.nAvgBytesPerSec = RATE * 2
+            wfx.nAvgBytesPerSec = self.rate * 2
             wfx.cbSize = 0
             client.Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK,
                               2_000_000, 0, byref(wfx), None)
@@ -227,7 +237,14 @@ class ProcessExcludeLoopback:
                     cap.ReleaseBuffer(frames)
                     self._queue.append(x)
                     self._has_data.set()
-                except Exception:
+                except Exception as e:
+                    # An unexpected mid-session WASAPI fault (endpoint unplugged,
+                    # exclusive-mode grab, sleep/resume) — record it so the
+                    # session can detect the dead capture, surface it, and stop
+                    # billing dead air. A normal stop() exits via `while self._run`,
+                    # not here, so this only fires on genuine faults.
+                    if self._run:
+                        self._err = e
                     break
         finally:
             # Release the audio client and COM apartment on the same thread that

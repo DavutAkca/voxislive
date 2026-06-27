@@ -395,31 +395,47 @@ def get_quota() -> Optional[dict]:
         return None
 
 
-def get_session_key() -> tuple[Optional[str], Optional[str]]:
-    """SaaS execution path: retrieves the server-side Gemini key. Never embedded
-    in the client build."""
+def get_session_key(target=None, caps=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
+    """SaaS execution path: retrieves a server-issued translation key. With
+    caps='engine-routing' the server picks the engine by TARGET language and also
+    returns {engine, model, quality}. Returns (key, engine, model, quality, error).
+    Never embedded in the client build."""
     if not IS_OFFICIAL_RELEASE:
-        return None, "SaaS keys are disabled in developer builds."
+        return None, None, None, None, "SaaS keys are disabled in developer builds."
     token = _valid_jwt()
     if not token:
-        return None, t("st_not_signed_in")
+        return None, None, None, None, t("st_not_signed_in")
+    params = {}
+    if caps:
+        params["caps"] = caps
+    if target:
+        params["target"] = target
     try:
         resp = requests.get(
             f"{_BASE_URL}/auth/session-key",
             headers=_auth_headers(),
+            params=params,
             timeout=_TIMEOUT,
         )
     except requests.RequestException as exc:
         _log_detail("get_session_key", exc)
-        return None, _net_error()
+        return None, None, None, None, _net_error()
     if resp.status_code == 200:
-        return resp.json().get("key"), None
+        d = resp.json()
+        return d.get("key"), d.get("engine", "gemini"), d.get("model"), d.get("quality"), None
     if resp.status_code == 401:
         clear_jwt()
-    return None, _core_error(resp)
+    if resp.status_code == 503:
+        # Distinguishable "engine unavailable" → caller falls back to Gemini.
+        try:
+            eng = resp.json().get("engine")
+        except Exception:
+            eng = None
+        return None, eng, None, None, "engine unavailable"
+    return None, None, None, None, _core_error(resp)
 
 
-def report_usage(session_id: str, delta_minutes: float, source: str) -> str:
+def report_usage(session_id: str, delta_minutes: float, source: str, engine: str = "gemini") -> str:
     """Reports session usage to auth-core. Fire-and-forget.
 
     Returns one of:
@@ -444,6 +460,7 @@ def report_usage(session_id: str, delta_minutes: float, source: str) -> str:
                 "delta_minutes": round(delta_minutes, 4),
                 "source":        source,
                 "client":        _CLIENT_CHANNEL,
+                "engine":        engine,
             },
             timeout=_TIMEOUT,
         )
@@ -459,12 +476,12 @@ def report_usage(session_id: str, delta_minutes: float, source: str) -> str:
 
 
 def report_usage_async(session_id: str, delta_minutes: float, source: str,
-                       on_quota_exceeded=None):
+                       engine: str = "gemini", on_quota_exceeded=None):
     """Fire the usage report on a worker thread. When the server signals quota
     exhaustion (402) and on_quota_exceeded is provided, invoke it so the caller
     can tear the session down. The callback runs on this worker thread."""
     def _run():
-        status = report_usage(session_id, delta_minutes, source)
+        status = report_usage(session_id, delta_minutes, source, engine)
         if status == "quota" and on_quota_exceeded is not None:
             try:
                 on_quota_exceeded()

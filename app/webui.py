@@ -6,18 +6,16 @@ JavaScript invokes Bridge methods through `window.pywebview.api`; the UI polls
 import logging
 import os
 import queue
-import sys
 import threading
 import time
 
 import webview
 
 from . import APP_VERSION, i18n
-from .audio_io import detect_virtual_cable, find_device, list_device_names, resolve_name
+from .audio_io import detect_virtual_cable, find_device, list_device_names
 from .config import (
     GEMINI_VOICES,
     IS_OFFICIAL_RELEASE,
-    PROFILES,
     QUALITY_PRESETS,
     apply_profile,
     save_config,
@@ -135,6 +133,9 @@ class Bridge:
         self._overlay_text = ""
         self._overlay_until = 0.0
         self._maximized = False
+        # Latest non-maximized window geometry, persisted to cfg["window"] on close
+        # and restored at next launch.
+        self._win_geom = {}
         self._badge = (t("badge_idle"), "#8593a6", "")
         # Assigned in run() once the main window exists; referenced by
         # win_* controls before then, so default to None.
@@ -257,9 +258,14 @@ class Bridge:
         outs = list_device_names("output") or ["—"]
         mics = list_device_names("input")
         from . import byok_store
-        byok_set = byok_store.has_byok(self._user_id) if self._user_id else False
+        from .config import resolve_engine, VALID_ENGINES
+        uid = self._ensure_user_id()
+        byok_status = {e: (byok_store.has_byok(uid, e) if uid else False) for e in VALID_ENGINES}
+        byok_set = byok_status.get("gemini", False)  # back-compat: single bool
+        from .paths import client_channel
         return {
             "version": APP_VERSION,
+            "channel": client_channel(),
             "outputs": outs,
             "mics": [t("default_mic")] + mics,
             "langs": LANGS,
@@ -267,6 +273,9 @@ class Bridge:
             "qualities": self._quality_options(),
             "gemini_voices": GEMINI_VOICES,
             "byok_set": byok_set,
+            "byok_status": byok_status,
+            "engines": self._engine_options(),
+            "engine": resolve_engine(self.cfg),
             "official_release": IS_OFFICIAL_RELEASE,
             "badge_removable": self._badge_removable(),
             "onboarding_done": bool(self.cfg.get("onboarding_done", False)),
@@ -282,6 +291,12 @@ class Bridge:
                     ["callout", t("quality_callout")],
                     ["max_savings", t("quality_saver")]]
         return [[k, t(f"quality_{k}")] for k in QUALITY_PRESETS]
+
+    def _engine_options(self):
+        """Engine choices for the selector. Keys only — the per-locale benefit
+        labels resolve from the JS I18N dict (app/i18n.py is TR/EN-only)."""
+        from .config import VALID_ENGINES
+        return list(VALID_ENGINES)
 
     # ---------- store ----------
     def open_store_page(self):
@@ -338,7 +353,7 @@ class Bridge:
         elif key == "tts_volume":
             self.controller.set_tts_volume(float(value))
         elif key in ("quality_preset", "target_language_incoming",
-                     "target_language_outgoing", "gemini_voice"):
+                     "target_language_outgoing", "gemini_voice", "engine"):
             if key == "quality_preset":
                 self._mark_custom()
             self._maybe_restart()
@@ -406,7 +421,7 @@ class Bridge:
         self._user_id = voxis_client.user_id_from_jwt()
         return self._user_id
 
-    def save_keys(self, gem):
+    def save_keys(self, gem, oai=""):
         # Official-release builds never expose BYOK entry; refuse silently as
         # a defense-in-depth check.
         if IS_OFFICIAL_RELEASE:
@@ -416,18 +431,21 @@ class Bridge:
             return False
         from . import byok_store
         current = byok_store.load_byok(uid)
+        # Preserve each field when its input is blank, so saving one engine's key
+        # never wipes the other's.
         new_gem = gem.strip() if gem and gem.strip() else current.get("gemini", "")
-        byok_store.save_byok(uid, new_gem)
+        new_oai = oai.strip() if oai and oai.strip() else current.get("openai", "")
+        byok_store.save_byok(uid, new_gem, new_oai)
         return True
 
-    def clear_byok(self) -> bool:
+    def clear_byok(self, engine=None) -> bool:
         if IS_OFFICIAL_RELEASE:
             return False
         uid = self._ensure_user_id()
         if not uid:
             return False
         from . import byok_store
-        byok_store.clear_byok(uid)
+        byok_store.clear_byok(uid, engine)
         return True
 
     def check_auth(self) -> dict:
@@ -440,25 +458,78 @@ class Bridge:
         if not jwt:
             return {"authenticated": False, "quota": None}
         self._user_id = voxis_client.user_id_from_jwt()
-        info, _ = voxis_client.verify_session()
+        info, err = voxis_client.verify_session()
         if not info:
-            return {"authenticated": False, "quota": None}
+            # Distinguish a transient transport failure (server unreachable) from
+            # a real auth rejection: verify_session returns the localized
+            # "server unreachable" message ONLY on a transport error (a 401
+            # clears the JWT). This keeps a still-authenticated user with a brief
+            # network drop from being shown a logged-out login form.
+            offline = bool(err) and err == t("st_server_unreachable")
+            return {"authenticated": False, "offline": offline, "quota": None}
         self._last_quota = info
         return {"authenticated": True, "quota": info}
 
-    def voxis_register(self, email: str, password: str) -> dict:
-        if not IS_OFFICIAL_RELEASE:
-            return {"ok": False, "quota": None, "error": "Registration is disabled in developer builds."}
-        from . import voxis_client
-        token, err = voxis_client.auth_register(email, password)
-        if not token:
-            return {"ok": False, "quota": None, "error": err or "Registration failed."}
-        self._user_id = voxis_client.user_id_from_jwt()
-        info, verr = voxis_client.verify_session()
-        if not info:
-            return {"ok": False, "quota": None, "error": verr or t("err_start_failed")}
-        self._last_quota = info
-        return {"ok": True, "quota": info, "error": None}
+    def win_resize(self, width, height, anchor="br") -> bool:
+        """Resize the frameless main window from the custom JS edge/corner grips
+        (pywebview 6.2.1 has no native frameless resize). `anchor` names the edge
+        or corner being dragged; the opposite corner is held fixed via FixPoint so
+        left/top drags move the window correctly. Clamped to the min (940x600).
+        No-op while maximized so an edge drag can't produce a half-maximized window."""
+        if self._maximized:
+            return False
+        try:
+            w = max(int(width), 940)
+            h = max(int(height), 600)
+            if self._main_window is None:
+                return False
+            fp = self._fixpoint(anchor)
+            if fp is not None:
+                self._main_window.resize(w, h, fp)
+            else:
+                self._main_window.resize(w, h)
+            return True
+        except Exception:
+            pass
+        return False
+
+    @staticmethod
+    def _fixpoint(anchor):
+        try:
+            from webview.window import FixPoint as F
+        except Exception:
+            return None
+        N, S, E, W = F.NORTH, F.SOUTH, F.EAST, F.WEST
+        return {
+            "r": N | W, "b": N | W, "br": N | W,
+            "l": N | E, "bl": N | E,
+            "t": S | W, "tr": S | W,
+            "tl": S | E,
+        }.get(anchor, N | W)
+
+    # ── Window geometry persistence (size/position/maximized) ────────────────
+    def _on_win_resized(self, *a):
+        if len(a) >= 2 and not self._maximized:
+            self._win_geom["w"], self._win_geom["h"] = int(a[0]), int(a[1])
+
+    def _on_win_moved(self, *a):
+        if len(a) >= 2 and not self._maximized:
+            self._win_geom["x"], self._win_geom["y"] = int(a[0]), int(a[1])
+
+    def _on_win_maximized(self, *a):
+        self._maximized = True
+
+    def _on_win_restored(self, *a):
+        self._maximized = False
+
+    def _on_win_closing(self, *a):
+        try:
+            g = dict(self._win_geom)
+            g["max"] = bool(self._maximized)
+            self.cfg["window"] = g
+            self._save_cfg()
+        except Exception:
+            pass
 
     def open_url(self, url: str) -> bool:
         # Allowlist http/https only so a crafted bridge call can never launch
@@ -573,8 +644,21 @@ class Bridge:
     def start(self, mode, consented=False):
         # consented=True means the UI consent modal was just accepted for THIS
         # start (the user may decline "don't show again", so it is not persisted).
-        threading.Thread(target=self._start, args=(mode, bool(consented)), daemon=True).start()
+        threading.Thread(target=self._start_thread, args=(mode, bool(consented)),
+                         daemon=True).start()
         return True
+
+    def _start_thread(self, mode, consented):
+        # Endpoint switching calls win_audio._ensure_com, which CoInitializes this
+        # short-lived session thread. Pair it with shutdown_com on the same thread
+        # so the COM apartment is released and the thread id never lingers in
+        # win_audio's per-thread bookkeeping (a later reused tid would otherwise
+        # skip init and fault on CO_E_NOTINITIALIZED). No-op if we never owned it.
+        try:
+            self._start(mode, consented)
+        finally:
+            from . import win_audio
+            win_audio.shutdown_com()
 
     def _consent_ok(self, mode, consented=False) -> bool:
         """Defense-in-depth consent gate. The primary consent modal lives in the
@@ -626,37 +710,49 @@ class Bridge:
             return False
         return True
 
-    def _resolve_api_key(self) -> str:
-        """Returns the Gemini API key.
+    def _build_engine_resolver(self):
+        """Returns resolve(target) -> (engine, key, model), called once per pipeline.
 
-        On official-release builds the SaaS path is forced — BYOK is never
-        consulted regardless of any stored values. On open-source builds the
-        BYOK store takes precedence so devs can use their own key.
-
-        Raises RuntimeError with a user-actionable message when no key can be
-        resolved, so callers never receive None silently.
+        SaaS asks the server, which routes by TARGET language and can fail over to
+        Gemini (the engine selector is server-controlled). Dev/BYOK routes locally
+        over the stored keys. Raises a localized error if no key is available.
         """
+        from .config import resolve_model
         if not IS_OFFICIAL_RELEASE:
+            from . import byok_store
+            from .engines import resolve_engine_for_target
             uid = self._ensure_user_id()
-            if uid:
-                from . import byok_store
-                keys = byok_store.load_byok(uid)
-                if keys.get("gemini"):
-                    return keys["gemini"]
-            raise RuntimeError(t("st_no_key_offline"))
+            keys = byok_store.load_byok(uid) if uid else {}
+            if not (keys.get("gemini") or keys.get("openai")):
+                raise RuntimeError(t("st_no_key_offline"))
+
+            def resolve(target):
+                eng = resolve_engine_for_target(self.cfg, keys, target)
+                return eng, keys.get(eng), resolve_model(self.cfg, eng)
+            return resolve
+
         from . import voxis_client
-        # Re-verify on every session start so the server-side cache entry is
-        # fresh. check_auth() at page-load may have run minutes earlier.
+        # Verify once so the server-side cache entry is fresh before per-target calls.
         info, verr = voxis_client.verify_session()
         if not info:
             raise RuntimeError(verr or t("st_not_signed_in"))
-        # Quota pre-check with the freshly verified snapshot.
         if not self._quota_ok():
             raise RuntimeError(t("err_quota_exhausted"))
-        key, err = voxis_client.get_session_key()
-        if not key:
+
+        def resolve(target):
+            key, engine, model, quality, err = voxis_client.get_session_key(target=target, caps="engine-routing")
+            if key:
+                if quality:
+                    self.cfg["quality_preset"] = quality  # server-controlled default
+                return engine, key, (model or resolve_model(self.cfg, engine))
+            # OpenAI unavailable (503) → fall back to Gemini via the legacy path.
+            key, engine, model, quality, err = voxis_client.get_session_key()
+            if key:
+                if quality:
+                    self.cfg["quality_preset"] = quality
+                return "gemini", key, (model or resolve_model(self.cfg, "gemini"))
             raise RuntimeError(err or t("st_no_key"))
-        return key
+        return resolve
 
     def _start(self, mode, consented=False):
         # Single-flight: serialize the whole transition so a rapid start→stop or
@@ -669,10 +765,9 @@ class Bridge:
                 return
             self._badge = (t("badge_connecting"), "#fbbf24", "warn")
             try:
-                gem_key = self._resolve_api_key()
-                if not gem_key:
-                    raise RuntimeError(t("st_no_key"))
-                self.controller.api_key = gem_key
+                # Per-target engine+key+model resolver (SaaS=server-routed,
+                # dev=local). Built once; each pipeline calls it for its target.
+                self.controller.resolve = self._build_engine_resolver()
                 self.controller.start(mode)
                 self._badge = (t("badge_active", mode=self._mode_name(mode)), "#34d399", "on")
             except Exception as e:
@@ -691,8 +786,17 @@ class Bridge:
         return t("err_start_failed")
 
     def stop(self):
-        threading.Thread(target=self._stop, daemon=True).start()
+        threading.Thread(target=self._stop_thread, daemon=True).start()
         return True
+
+    def _stop_thread(self):
+        # Endpoint restore runs on this stop thread and CoInitializes it via
+        # win_audio._ensure_com; balance it with shutdown_com on the same thread.
+        try:
+            self._stop()
+        finally:
+            from . import win_audio
+            win_audio.shutdown_com()
 
     def _stop(self):
         # Idempotent: serialized against _start so a stop racing a start cannot
@@ -978,6 +1082,9 @@ class Bridge:
         mode = self.controller.mode
         session = (t("session_active", mode=self._mode_name(mode)) if mode
                    else t("session_idle"))
+        from .config import resolve_model, route_engine
+        eng = (self.controller.current_engine()
+               or route_engine(self.cfg, self.cfg.get("target_language_incoming", "")))
         return {
             "events": evs,
             "usage": t("usage_fmt", min=in_sec / 60, usd=usd),
@@ -988,7 +1095,10 @@ class Bridge:
             "latency": self.controller.current_latency(),
             "playing": self.controller.is_playing(),
             "mode": mode,
+            "engine": eng,
+            "model": resolve_model(self.cfg, eng),
             "session": session,
+            "maximized": bool(self._maximized),
         }
 
     # ---------- helpers ----------
@@ -1140,12 +1250,55 @@ def run(cfg):
     icon = icon_path()
     if os.path.exists(icon):
         _set_taskbar_icon(icon, t("app_title"))
+    # Restore saved window geometry (size/position), clamped to the minimum.
+    geo = cfg.get("window") if isinstance(cfg.get("window"), dict) else {}
+    win_w = max(int(geo.get("w", 1180) or 1180), 940)
+    win_h = max(int(geo.get("h", 760) or 760), 600)
+    geo_kwargs = {}
+    if isinstance(geo.get("x"), int) and isinstance(geo.get("y"), int):
+        # Only restore the saved position if it still lands on a connected
+        # display; otherwise (unplugged monitor / dock change) let pywebview
+        # center the window so it can't open off-screen and invisible.
+        gx, gy = geo["x"], geo["y"]
+        try:
+            import ctypes
+            u = ctypes.windll.user32
+            SM_XV, SM_YV, SM_CXV, SM_CYV = 76, 77, 78, 79  # virtual-screen metrics
+            vx, vy = u.GetSystemMetrics(SM_XV), u.GetSystemMetrics(SM_YV)
+            vw, vh = u.GetSystemMetrics(SM_CXV), u.GetSystemMetrics(SM_CYV)
+            on_screen = (vx - 8 <= gx <= vx + vw - 100) and (vy - 8 <= gy <= vy + vh - 80)
+        except Exception:
+            on_screen = True  # fail-open: trust the saved coords if probing fails
+        if on_screen:
+            geo_kwargs["x"], geo_kwargs["y"] = gx, gy
     window = webview.create_window(
         t("app_title"), os.path.join(WEB_DIR, "index.html"),
-        js_api=bridge, width=1180, height=760, min_size=(940, 600),
+        js_api=bridge, width=win_w, height=win_h, min_size=(940, 600),
         background_color="#0b0c10", frameless=True, easy_drag=False,
+        resizable=True, **geo_kwargs,
     )
     bridge._main_window = window
+    bridge._win_geom = {"w": win_w, "h": win_h, **{k: geo[k] for k in ("x", "y") if k in geo_kwargs}}
+    # Persist size/position/maximized across launches.
+    try:
+        window.events.resized += bridge._on_win_resized
+        window.events.moved += bridge._on_win_moved
+        window.events.maximized += bridge._on_win_maximized
+        window.events.restored += bridge._on_win_restored
+        window.events.closing += bridge._on_win_closing
+    except Exception:
+        pass
+    if geo.get("max"):
+        def _restore_max():
+            try:
+                window.maximize()
+                bridge._maximized = True
+            except Exception:
+                pass
+        try:
+            window.events.shown += _restore_max
+        except Exception:
+            pass
     bridge._register_hotkeys()
     if cfg.get("overlay_enabled"):
         bridge.toggle_overlay(True)

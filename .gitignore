@@ -72,6 +72,9 @@ Thumbs.db
 # --- Internal strategy/roadmap (private planning — never publish) ---
 ROADMAP.md
 STRATEGY_REPORT.md
+# Consolidated private planning vault (master plan, dead-code report, launch kit,
+# brand assets). Competitive intel + server specs — never publish.
+PLAN/
 
 # --- SQLite WAL fragments ---
 *.db-shm
@@ -80,3 +83,11 @@ STRATEGY_REPORT.md
 # --- Benchmark fixtures (regenerate via fetch_fleurs.py) + run outputs ---
 scripts/bench/fixtures/**/*.wav
 scripts/bench/results*.jsonl
+
+# --- Local-only working notes + dev launch helper (never ship / publish) ---
+next.md
+docs/mail.md
+start-official.bat
+
+# --- Throwaway experiment: OpenAI Realtime translate sandbox (never ship) ---
+sandbox-openai-realtime/

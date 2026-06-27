@@ -21,8 +21,8 @@ try:
 except ImportError:
     _premium = None
 from .audio_io import Capture, Player, find_device, resolve_name, _make_resampler
-from .config import gate_params, stream_gated
-from .dsp import DubbingDucker
+from .config import ENGINE_OPENAI, gate_params, stream_gated
+from .engines import make_translator
 from .i18n import t
 # LiveTranslator (google.genai) and SpeechGate (onnxruntime) are imported lazily
 # inside the pipeline constructors so the heavy runtimes don't load until a
@@ -62,24 +62,45 @@ class RTTEstimator:
         self.alpha = float(ema_alpha)
         self.min_s = float(min_seconds)
         self.max_s = float(max_seconds)
-        self._ema = None
+        self._ema = None            # guarded EMA for the ambient delay line
         self._t_onset = None
+        self._t_first_onset = None  # first speech onset of the session
+        self._first_audio_s = None  # session first-audio latency (display/analysis)
         self._lock = threading.Lock()
 
     def mark_onset(self) -> None:
+        """Guarded onset (delay-line): the caller skips it while TTS is playing."""
         with self._lock:
             if self._t_onset is None:
                 self._t_onset = time.monotonic()
 
-    def mark_tts(self) -> None:
+    def mark_first_onset(self) -> None:
+        """Records the session's FIRST speech time (no guards), for the honest
+        first-audio readout — captured even if TTS is already playing."""
         with self._lock:
-            if self._t_onset is None:
-                return
-            dt = time.monotonic() - self._t_onset
-            self._t_onset = None
-            if dt < self.min_s or dt > self.max_s:
-                return
-            self._ema = dt if self._ema is None else self.alpha * dt + (1 - self.alpha) * self._ema
+            if self._t_first_onset is None:
+                self._t_first_onset = time.monotonic()
+
+    def mark_tts(self, audible: bool = True) -> None:
+        with self._lock:
+            now = time.monotonic()
+            # Honest, backlog-proof readout: span from the session's FIRST speech
+            # to the FIRST AUDIBLE translated audio. Measured ONCE, before any
+            # backlog exists, so it's comparable across engines — unlike a
+            # per-utterance onset→next-chunk reading, which a continuously-playing
+            # engine (OpenAI plays the previous translation while you speak the
+            # next) drives to a meaningless ~0.0-0.2 s. Gating on audible output
+            # ignores an initial near-silent/padding chunk that would understate it.
+            if audible and self._first_audio_s is None and self._t_first_onset is not None:
+                fa = now - self._t_first_onset
+                if 0.1 <= fa <= 30.0:
+                    self._first_audio_s = round(fa, 2)
+            # Delay-line EMA from the GUARDED onset only (uncontaminated), capped.
+            if self._t_onset is not None:
+                dt = now - self._t_onset
+                self._t_onset = None
+                if self.min_s <= dt <= self.max_s:
+                    self._ema = dt if self._ema is None else self.alpha * dt + (1 - self.alpha) * self._ema
 
     def target_samples(self) -> float:
         with self._lock:
@@ -88,6 +109,12 @@ class RTTEstimator:
     @property
     def rtt_seconds(self) -> float | None:
         return self._ema
+
+    @property
+    def first_audio_seconds(self) -> float | None:
+        """Session first-audio latency (first speech → first translated audio) for
+        the UI/analysis readout — backlog-proof and comparable across engines."""
+        return self._first_audio_s
 
 
 # Smart-stream silence ceiling: after this many consecutive non-speech frames
@@ -115,7 +142,7 @@ class _GatedSource:
     """
 
     def __init__(self, in_rate: int, gate, send_fn, suppress_when=None,
-                 always_send=False, smart=False):
+                 always_send=False, smart=False, send_rate=16000):
         self._resample = _make_resampler(in_rate, 16000)
         self._gate = gate
         self._send = send_fn
@@ -128,6 +155,21 @@ class _GatedSource:
         self._silent_run = 0
         self.speech_active = False
         self.closed = False
+        # Full-band send path. The VAD always runs at 16 kHz, but OpenAI ingests
+        # 24 kHz — so when send_rate != 16000 we keep a PARALLEL send-rate buffer +
+        # a short history and emit the time-aligned full-band frames matching the
+        # gate's send decision (incl. its preroll). send_rate==16000 -> the classic
+        # single-stream path (Gemini), byte-for-byte unchanged.
+        self._send_rate = send_rate
+        if send_rate != 16000:
+            self._resample_send = _make_resampler(in_rate, send_rate)
+            self._send_frame = _FRAME * send_rate // 16000
+            self._buf_send = np.zeros(0, dtype=np.float32)
+            self._hist_send: list[np.ndarray] = []
+            self._hist_max = 64
+            self._silence_send = _f32_to_pcm16(np.zeros(self._send_frame, dtype=np.float32))
+        else:
+            self._resample_send = None
 
     def feed(self, chunk: np.ndarray):
         if self.closed:
@@ -139,30 +181,63 @@ class _GatedSource:
             chunk = np.zeros_like(chunk)
         with self._lock:
             self._buf = np.concatenate([self._buf, self._resample(chunk)])
+            if self._resample_send is not None:
+                self._buf_send = np.concatenate([self._buf_send, self._resample_send(chunk)])
             while len(self._buf) >= _FRAME:
                 frame, self._buf = self._buf[:_FRAME], self._buf[_FRAME:]
+                # Pull the time-aligned full-band frame into history (lockstep with
+                # the 16 kHz VAD frame: 768 @24k <-> 512 @16k = same 32 ms window).
+                if self._resample_send is not None and len(self._buf_send) >= self._send_frame:
+                    sf, self._buf_send = self._buf_send[:self._send_frame], self._buf_send[self._send_frame:]
+                    self._hist_send.append(sf)
+                    if len(self._hist_send) > self._hist_max:
+                        self._hist_send = self._hist_send[-self._hist_max:]
                 active, to_send = self._gate.process(frame)
                 self.speech_active = active
                 if self._smart:
                     if to_send:
                         self._silent_run = 0
-                        for f in to_send:
-                            self._send(_f32_to_pcm16(f))
+                        self._emit(to_send)
                     elif self._silent_run < _SMART_SILENCE_MAX_FRAMES:
                         # Pad short gaps to keep the model's stream continuous,
                         # but stop once the gap is genuine so the queue drains
-                        # and the 13-min rotation can fire on the quiet window.
+                        # and rotation can fire on the quiet window.
                         self._silent_run += 1
-                        self._send(self._silence)
+                        self._emit_silence()
                 elif self._always_send:
-                    self._send(_f32_to_pcm16(frame))
+                    self._emit([frame])
                 else:
-                    for f in to_send:
-                        self._send(_f32_to_pcm16(f))
+                    self._emit(to_send)
+
+    def _emit(self, frames16):
+        """Forward the gate's decided frames at the engine's send rate. For the
+        16 kHz path that's the frames themselves; for a higher send rate it's the
+        time-aligned full-band frames from history (same count = same window)."""
+        if not frames16:
+            return
+        if self._resample_send is None:
+            for f in frames16:
+                self._send(_f32_to_pcm16(f))
+            return
+        k = len(frames16)
+        sframes = self._hist_send[-k:]
+        if len(sframes) == k:
+            for sf in sframes:
+                self._send(_f32_to_pcm16(sf))
+        else:
+            # Startup transient before history is deep enough — upsample so no
+            # audio is dropped (first few frames only).
+            for f in frames16:
+                xo = np.linspace(0.0, 1.0, num=len(f), endpoint=False)
+                xn = np.linspace(0.0, 1.0, num=self._send_frame, endpoint=False)
+                self._send(_f32_to_pcm16(np.interp(xn, xo, f).astype(np.float32)))
+
+    def _emit_silence(self):
+        self._send(self._silence_send if self._resample_send is not None else self._silence)
 
 
 class IncomingPipeline:
-    def __init__(self, cfg: dict, api_key: str, mode: str, on_text, on_status):
+    def __init__(self, cfg: dict, resolve, mode: str, on_text, on_status):
         # Default the premium flag before either capture branch so callers and
         # teardown can always read it, even on the driverless path that never
         # probes premium hardware.
@@ -201,18 +276,20 @@ class IncomingPipeline:
         self._prev_active = False
 
         def _tts_sink(data: bytes):
-            self._rtt.mark_tts()
+            # Gate the first-audio metric on AUDIBLE output: an initial near-silent
+            # / padding chunk (OpenAI pads its stream) would understate latency.
+            a = np.frombuffer(data, dtype=np.int16)
+            audible = a.size > 0 and int(np.abs(a).max()) > 512
+            self._rtt.mark_tts(audible=audible)
             self.player.feed_tts_pcm16(data)
 
-        # Gemini Live emits the translated 24 kHz audio directly.
-        from .translator import LiveTranslator  # noqa: PLC0415
-        self.translator = LiveTranslator(
-            api_key, cfg["target_language_incoming"],
-            on_audio=_tts_sink,
-            on_text=on_text, on_status=on_status,
-            rotate_minutes=cfg["session_rotate_minutes"], name=t("name_in"),
-            voice=cfg.get("gemini_voice", "Aoede"),
-            temperature=float(cfg.get("gemini_temperature", 0.3)),
+        # Resolve engine + key + model for this target ONCE (locally for BYOK,
+        # server-side for SaaS) so the capture send-rate matches the engine.
+        self._engine, _key, _model = resolve(cfg["target_language_incoming"])
+        self.translator = make_translator(
+            cfg, cfg["target_language_incoming"], engine=self._engine, key=_key, model=_model,
+            on_audio=_tts_sink, on_text=on_text, on_status=on_status,
+            name=t("name_in"),
         )
         send_fn = self.translator.send_pcm16
 
@@ -232,6 +309,9 @@ class IncomingPipeline:
 
     def _acquire_capture(self, cfg, vad_cfg, send_fn, out_name, on_status):
         from .vad import SpeechGate  # noqa: PLC0415
+        # OpenAI ingests 24 kHz; Gemini 16 kHz. Capture + the gate's send path run
+        # at this rate so OpenAI gets full-band audio; the VAD stays 16 kHz inside.
+        send_rate = 24000 if self._engine == ENGINE_OPENAI else 16000
         if self.driverless:
             # Driverless mode: WASAPI loopback captures system audio; ducking is
             # applied at source via the Windows session-volume API so the user
@@ -249,8 +329,10 @@ class IncomingPipeline:
                 # Mark speech onset here too (the spatial path does it in vbcable
                 # mode) so the ear-voice latency readout populates in driverless.
                 active = self._source.speech_active
-                if active and not self._prev_active and not self.player.tts_active:
-                    self._rtt.mark_onset()
+                if active and not self._prev_active:
+                    self._rtt.mark_first_onset()  # session first-speech (no guard)
+                    if not self.player.tts_active:
+                        self._rtt.mark_onset()
                 self._prev_active = active
                 speaking = self._source.speech_active or self.player.tts_active
                 if self._original_mode == "mix":
@@ -266,7 +348,7 @@ class IncomingPipeline:
                 # own TTS is excluded at the hardware level so the translator
                 # keeps receiving input even while playback is active.
                 from .process_loopback import ProcessExcludeLoopback
-                self.capture = ProcessExcludeLoopback(on_loop)
+                self.capture = ProcessExcludeLoopback(on_loop, rate=send_rate)
             except Exception as e:
                 on_status(f"Process-exclude loopback unavailable ({e}) — classic mode.")
                 from .audio_io import LoopbackCapture
@@ -276,6 +358,7 @@ class IncomingPipeline:
             self._source = _GatedSource(
                 self.capture.rate, SpeechGate(**vad_cfg), send_fn,
                 suppress_when=suppress, smart=not stream_gated(cfg),
+                send_rate=send_rate,
             )
         else:
             # VB-CABLE: audio is intercepted before reaching the speakers. The
@@ -292,8 +375,10 @@ class IncomingPipeline:
                 self._source.feed(mono)
                 self.input_level = _rms_level(self.input_level, mono)
                 active = self._source.speech_active
-                if active and not self._prev_active and not self.player.tts_active:
-                    self._rtt.mark_onset()
+                if active and not self._prev_active:
+                    self._rtt.mark_first_onset()  # session first-speech (no guard)
+                    if not self.player.tts_active:
+                        self._rtt.mark_onset()
                 self._prev_active = active
                 self.player.delay_target_samples = self._rtt.target_samples()
                 speaking = self._source.speech_active or self.player.tts_active
@@ -317,7 +402,7 @@ class IncomingPipeline:
             # M/S passthrough never clicks on a capture/playback clock mismatch.
             self.player.configure_passthrough(self.capture.rate)
             self._source = _GatedSource(self.capture.rate, SpeechGate(**vad_cfg), send_fn,
-                                        smart=not stream_gated(cfg))
+                                        smart=not stream_gated(cfg), send_rate=send_rate)
 
     def _teardown_resources(self):
         """Release whatever resources were acquired. Safe to call with partial
@@ -373,7 +458,7 @@ class IncomingPipeline:
 
 
 class OutgoingPipeline:
-    def __init__(self, cfg: dict, api_key: str, on_text, on_status):
+    def __init__(self, cfg: dict, resolve, on_text, on_status):
         from .translator import LiveTranslator  # noqa: PLC0415
         from .vad import SpeechGate  # noqa: PLC0415
         vad_cfg = gate_params(cfg)
@@ -384,20 +469,16 @@ class OutgoingPipeline:
             cable_out, channels=1,
             tts_enhance=(_premium.enhance_tts if _premium is not None else None),
         )
-        self.translator = LiveTranslator(
-            api_key,
-            cfg["target_language_outgoing"],
-            on_audio=self.player.feed_tts_pcm16,
-            on_text=on_text,
-            on_status=on_status,
-            rotate_minutes=cfg["session_rotate_minutes"],
-            name=t("name_out"),
-            voice=cfg.get("gemini_voice", "Aoede"),
-            temperature=float(cfg.get("gemini_temperature", 0.3)),
+        self._engine, _key, _model = resolve(cfg["target_language_outgoing"])
+        self.translator = make_translator(
+            cfg, cfg["target_language_outgoing"], engine=self._engine, key=_key, model=_model,
+            on_audio=self.player.feed_tts_pcm16, on_text=on_text, on_status=on_status,
+            name=t("name_out"), noise_reduction="near_field",
         )
         self.input_level = 0.0
         self.capture = None
         self._source = None
+        send_rate = 24000 if self._engine == ENGINE_OPENAI else 16000
         # Capture opens the mic InputStream at construction. Guard the capture +
         # gate acquisition so a mid-init failure releases the mic stream and the
         # already-open Player/translator instead of leaking them when
@@ -406,7 +487,7 @@ class OutgoingPipeline:
             self.capture = Capture(mic_dev, self._on_mic)
             self._source = _GatedSource(
                 self.capture.rate, SpeechGate(**vad_cfg), self.translator.send_pcm16,
-                smart=not stream_gated(cfg),
+                smart=not stream_gated(cfg), send_rate=send_rate,
             )
         except Exception:
             self._teardown_resources()
@@ -474,7 +555,8 @@ class ModeController:
     def __init__(self, cfg: dict, api_key: str | None, on_text, on_status,
                  on_usage_reported=None, on_quota_exceeded=None):
         self.cfg = cfg
-        self.api_key = api_key
+        self.api_key = api_key       # legacy field; key resolution now via self.resolve
+        self.resolve = None          # callable(target)->(engine, key, model); set by the bridge
         self.on_text = on_text
         self.on_status = on_status
         self.on_usage_reported = on_usage_reported or (lambda: None)
@@ -483,6 +565,7 @@ class ModeController:
         # Live session, so the bridge wires this to its session teardown.
         self.on_quota_exceeded = on_quota_exceeded or (lambda: None)
         self._quota_exhausted = threading.Event()
+        self._capture_dead_notified = False
         self._pipelines: list = []
         self.mode: str | None = None
         self._session_id: str | None = None
@@ -552,16 +635,17 @@ class ModeController:
         save_config(self.cfg)
 
     def _build(self, mode: str) -> list:
+        resolve = self.resolve
         if mode == "video":
-            return [IncomingPipeline(self.cfg, self.api_key, mode, self.on_text, self.on_status)]
+            return [IncomingPipeline(self.cfg, resolve, mode, self.on_text, self.on_status)]
         if mode == "meeting":
-            pipes = [IncomingPipeline(self.cfg, self.api_key, "meeting",
+            pipes = [IncomingPipeline(self.cfg, resolve, "meeting",
                                       self.on_text, self.on_status)]
             try:
                 # Outbound direction requires a virtual microphone driver. If
                 # none is installed, the meeting gracefully falls back to
                 # listen-only.
-                pipes.append(OutgoingPipeline(self.cfg, self.api_key,
+                pipes.append(OutgoingPipeline(self.cfg, resolve,
                                               self.on_text, self.on_status))
                 self._outgoing_ok = True
             except Exception:
@@ -585,6 +669,12 @@ class ModeController:
         so a long mid-session outage can still over-accrue until that lands.
         """
         for p in self._pipelines:
+            # A capture backend that died mid-session (device unplug, exclusive-
+            # mode grab, sleep/resume) means no audio is flowing for this pipeline
+            # — it is not providing service, so don't accrue billing for it.
+            cap = getattr(p, "capture", None)
+            if cap is not None and getattr(cap, "failed", False):
+                continue
             tr = getattr(p, "translator", None)
             if tr is None:
                 continue
@@ -625,13 +715,30 @@ class ModeController:
         cadence (and thus skew the next interval's billable delta)."""
         while not self._heartbeat_stop.wait(self.HEARTBEAT_SECONDS):
             sid, delta, source = self._consume_minutes(accrue=self._is_session_live())
+            self._maybe_warn_capture_dead()
             if not sid:
                 continue
             if delta > 0:
                 voxis_client.report_usage_async(
-                    sid, delta, source,
+                    sid, delta, source, self.current_engine() or "gemini",
                     on_quota_exceeded=self._fire_quota_exceeded)
             self._dispatch_usage_reported()
+
+    def _maybe_warn_capture_dead(self):
+        """Once per session, if a capture backend died mid-session, surface it so a
+        green badge + silent transcript don't read as 'working'. Billing already
+        stops via _is_session_live; this is the user-facing half."""
+        if self._capture_dead_notified:
+            return
+        for p in self._pipelines:
+            cap = getattr(p, "capture", None)
+            if cap is not None and getattr(cap, "failed", False):
+                self._capture_dead_notified = True
+                try:
+                    self.on_status(t("st_capture_lost"))
+                except Exception:
+                    pass
+                return
 
     def _fire_quota_exceeded(self):
         """Server signaled the license is exhausted (402). Fire-once per session:
@@ -659,7 +766,7 @@ class ModeController:
 
     def start(self, mode: str):
         self.stop()
-        if not self.api_key:
+        if self.resolve is None:
             raise RuntimeError(t("st_no_key"))
         # Premium auto-routing: when a virtual cable is present, run the
         # music-preserving spatial (vbcable) path; otherwise driverless. The user
@@ -694,8 +801,9 @@ class ModeController:
                 self._session_start = time.monotonic()
                 self._last_report = self._session_start
                 self._session_mode = mode
-                # New session — re-arm the one-shot quota cutoff.
+                # New session — re-arm the one-shot quota cutoff + capture-death notice.
                 self._quota_exhausted.clear()
+                self._capture_dead_notified = False
                 # Never run two heartbeats at once: a prior thread that survived
                 # stop()'s bounded join would race this one on _last_report and
                 # double-bill. Refuse to start until it is truly gone.
@@ -760,9 +868,17 @@ class ModeController:
         """Estimated ear-voice span (seconds) from the incoming pipeline, or None
         until enough onsets have been measured."""
         for p in self._pipelines:
-            rtt = getattr(getattr(p, "_rtt", None), "rtt_seconds", None)
+            rtt = getattr(getattr(p, "_rtt", None), "first_audio_seconds", None)
             if rtt:
                 return round(rtt, 2)
+        return None
+
+    def current_engine(self):
+        """Engine of the active incoming pipeline (for the UI readout), or None."""
+        for p in self._pipelines:
+            e = getattr(p, "_engine", None)
+            if e:
+                return e
         return None
 
     def is_playing(self) -> bool:
@@ -786,6 +902,7 @@ class ModeController:
         # atomically while session state is still set. Captured before the
         # session_id is cleared so an immediate restart cannot lose it.
         sid, delta, source = self._consume_minutes(accrue=accrue)
+        tail_engine = self.current_engine() or "gemini"  # capture before pipelines clear
 
         for p in self._pipelines:
             try:
@@ -810,5 +927,5 @@ class ModeController:
         # observed session state regardless.
         if sid and delta > 0:
             max_tail = (self.HEARTBEAT_SECONDS + 2.0) / 60.0
-            voxis_client.report_usage_async(sid, min(delta, max_tail), source)
+            voxis_client.report_usage_async(sid, min(delta, max_tail), source, tail_engine)
             self._dispatch_usage_reported()

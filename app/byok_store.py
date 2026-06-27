@@ -155,46 +155,71 @@ def _write_slot(user_id: str, data: dict) -> None:
     _restrict_acl(path)
 
 
-def save_byok(user_id: str, gemini: str = "") -> None:
-    _write_slot(user_id, {"gemini": gemini})
+# Both vendor keys live in ONE slot per user_id. Always default-merge so a slot
+# written by an older single-key build still loads (a missing field -> "").
+_EMPTY = {"gemini": "", "openai": ""}
+
+
+def _normalize(d) -> dict:
+    if not isinstance(d, dict):
+        return dict(_EMPTY)
+    return {"gemini": d.get("gemini", "") or "", "openai": d.get("openai", "") or ""}
+
+
+def save_byok(user_id: str, gemini: str = "", openai: str = "") -> None:
+    _write_slot(user_id, {"gemini": gemini, "openai": openai})
 
 
 def load_byok(user_id: str) -> dict:
-    """Returns {gemini}; empty string if not set or decryption fails.
+    """Returns {gemini, openai}; empty strings if unset or decryption fails.
 
-    Legacy Fernet slots are decrypted with the old derivation and immediately
-    re-wrapped with DPAPI so each slot upgrades on first read."""
+    Always default-merges both fields so a slot from an older single-key build
+    still loads. Legacy Fernet slots are decrypted with the old derivation and
+    immediately re-wrapped with DPAPI (preserving openai) so each slot upgrades
+    on first read."""
     path = _slot_path(user_id)
     if not os.path.exists(path):
-        return {"gemini": ""}
+        return dict(_EMPTY)
     try:
         with open(path, "rb") as f:
             blob = f.read()
     except OSError:
-        return {"gemini": ""}
+        return dict(_EMPTY)
 
     if blob.startswith(_DPAPI_MAGIC):
         try:
             payload = _dpapi_unprotect(blob[len(_DPAPI_MAGIC):], _entropy(user_id))
-            return json.loads(payload)
+            return _normalize(json.loads(payload))
         except (OSError, ValueError, Exception):
-            return {"gemini": ""}
+            return dict(_EMPTY)
 
     data = _legacy_decrypt(user_id, blob)
     if data is None:
-        return {"gemini": ""}
+        return dict(_EMPTY)
+    norm = _normalize(data)
     try:
-        _write_slot(user_id, {"gemini": data.get("gemini", "")})
+        _write_slot(user_id, norm)
     except Exception:
         pass
-    return {"gemini": data.get("gemini", "")}
+    return norm
 
 
-def has_byok(user_id: str) -> bool:
-    return bool(load_byok(user_id).get("gemini"))
+def has_byok(user_id: str, engine: str = "gemini") -> bool:
+    return bool(load_byok(user_id).get(engine))
 
 
-def clear_byok(user_id: str) -> None:
-    path = _slot_path(user_id)
-    if os.path.exists(path):
-        os.remove(path)
+def clear_byok(user_id: str, engine: str | None = None) -> None:
+    """Clear one engine's key (engine given) or the whole slot (engine=None)."""
+    if engine is None:
+        path = _slot_path(user_id)
+        if os.path.exists(path):
+            os.remove(path)
+        return
+    cur = load_byok(user_id)
+    cur[engine] = ""
+    if any(cur.values()):
+        save_byok(user_id, gemini=cur.get("gemini", ""), openai=cur.get("openai", ""))
+    else:
+        path = _slot_path(user_id)
+        if os.path.exists(path):
+            os.remove(path)

@@ -4,7 +4,6 @@ The driverless path uses WASAPI loopback for capture and the Windows session
 volume API to duck other apps at their source. The VB-CABLE path intercepts
 the audio before it reaches the speakers so the engine can apply real DSP.
 """
-import queue
 import threading
 
 import numpy as np

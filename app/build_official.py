@@ -261,6 +261,13 @@ def main():
         print(f"Writing official flavor marker -> {marker.relative_to(target_dist_dir)}")
         marker.write_text("official\n", encoding="utf-8")
 
+        # Version stamp: lets build_msix.py verify the frozen bundle was produced
+        # from the current APP_VERSION before packaging, so it can never wrap a
+        # stale engine in a newer manifest (see build_msix.stage_bundle).
+        stamp = target_dist_dir / "_internal" / "BUILD_VERSION"
+        stamp.write_text(APP_VERSION + "\n", encoding="utf-8")
+        print(f"Writing build version stamp -> {stamp.relative_to(target_dist_dir)} ({APP_VERSION})")
+
         # Validate the bundled web UI is present where paths.web_dir() expects it.
         web_index_path = target_dist_dir / "_internal" / "web" / "index.html"
         print(f"Validating bundled web asset at: {web_index_path}")

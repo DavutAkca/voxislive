@@ -36,7 +36,33 @@ def _resolve_official_release() -> bool:
 
 IS_OFFICIAL_RELEASE: bool = _resolve_official_release()
 
+# The Gemini Live translate model. A preview model can be retired on a few months'
+# notice, so the name is a config key (not a hardcoded constant) and can be swapped
+# without a client release: edit config.json's "model", or set the VOXIS_MODEL env
+# var for an emergency ops override (see resolve_model).
+GEMINI_LIVE_MODEL = "gemini-3.5-live-translate-preview"
+
+# Second translation engine (OpenAI). Like the Gemini model, the OpenAI model
+# name is a config key so a retired preview can be swapped without a client
+# release. See PLAN/OPENAI_ENGINE_INTEGRATION.md.
+OPENAI_TRANSLATE_MODEL = "gpt-realtime-translate"
+ENGINE_GEMINI = "gemini"
+ENGINE_OPENAI = "openai"
+VALID_ENGINES = (ENGINE_GEMINI, ENGINE_OPENAI)
+DEFAULT_ENGINE = ENGINE_GEMINI
+
+# OpenAI gpt-realtime-translate validated OUTPUT (target) languages (13).
+OPENAI_OUTPUT_LANGS = ["en", "es", "pt", "fr", "de", "it", "ru", "ja", "ko", "zh", "hi", "id", "vi"]
+# Default per-language routing set: the validated 13 plus targets we A/B-confirmed
+# work well on OpenAI (Turkish/Arabic/Polish). Server-/config-overridable via
+# cfg["openai_langs"]; anything NOT in this set routes to Gemini (79-lang catch-all).
+DEFAULT_OPENAI_LANGS = OPENAI_OUTPUT_LANGS + ["tr", "ar", "pl"]
+
 DEFAULTS = {
+    "engine": DEFAULT_ENGINE,
+    "model": GEMINI_LIVE_MODEL,
+    "openai_model": OPENAI_TRANSLATE_MODEL,
+    "openai_langs": DEFAULT_OPENAI_LANGS,
     "target_language_incoming": "tr",
     "target_language_outgoing": "en",
     "devices": {
@@ -54,7 +80,6 @@ DEFAULTS = {
     "obs_subtitle_enabled": False,
     "branding_badge_enabled": True,
     "meeting_consent_ack": False,
-    "onboarding_ack": False,
     "hotkeys": {
         "video": "ctrl+alt+1",
         "meeting": "ctrl+alt+2",
@@ -63,7 +88,7 @@ DEFAULTS = {
     },
     "duck_gain": 0.30,
     "session_rotate_minutes": 13,
-    "quality_preset": "balanced",
+    "quality_preset": "max_quality",
     "active_profile": "custom",
     "gemini_voice": "Aoede",
     "gemini_temperature": 0.3,
@@ -125,6 +150,55 @@ def stream_gated(cfg: dict) -> bool:
     gaps are omitted, so fewer audio minutes are billed. This is the end-user
     'Tasarruf' (savings) option; the default smooth stream sends silence too."""
     return bool(_preset(cfg).get("gated", False))
+
+
+def resolve_engine(cfg: dict) -> str:
+    """Active translation engine. Precedence: VOXIS_ENGINE env (ops override) >
+    config.json "engine" > default. An unknown value falls back to the default
+    so a bad config can never select a non-existent backend."""
+    eng = (os.environ.get("VOXIS_ENGINE", "").strip().lower()
+           or cfg.get("engine") or DEFAULT_ENGINE)
+    return eng if eng in VALID_ENGINES else DEFAULT_ENGINE
+
+
+def resolve_model(cfg: dict, engine: str | None = None) -> str:
+    """Model name to connect with for the given engine (defaults to the active
+    engine). Each engine keeps its own env override + config key + built-in
+    default, so a retired preview can be swapped without shipping a new client.
+    The Gemini branch is byte-for-byte the original logic (VOXIS_MODEL parity)."""
+    engine = engine or resolve_engine(cfg)
+    if engine == ENGINE_OPENAI:
+        return (os.environ.get("VOXIS_OPENAI_MODEL", "").strip()
+                or cfg.get("openai_model") or OPENAI_TRANSLATE_MODEL)
+    return os.environ.get("VOXIS_MODEL", "").strip() or cfg.get("model") or GEMINI_LIVE_MODEL
+
+
+def _norm_lang(code: str) -> str:
+    """Normalize a BCP-47 target to OpenAI's base code for routing: pt-BR/pt-PT ->
+    pt, zh-Hans -> zh. Traditional Chinese (zh-hant) is kept distinct so it can be
+    pinned to Gemini."""
+    if not code:
+        return ""
+    c = code.strip().lower()
+    return "zh-hant" if c == "zh-hant" else c.split("-")[0]
+
+
+def openai_route_langs(cfg: dict) -> list:
+    """Target languages routed to OpenAI (lower-cased). Server-/config-overridable
+    via cfg['openai_langs']; defaults to the validated 13 + tr/ar/pl."""
+    v = cfg.get("openai_langs")
+    src = v if isinstance(v, list) and v else DEFAULT_OPENAI_LANGS
+    return [str(s).strip().lower() for s in src]
+
+
+def route_engine(cfg: dict, target: str) -> str:
+    """Pick the engine for a TARGET language: OpenAI for its (config-listed) outputs
+    (faster + cheaper), Gemini for everything else (the 79-language catch-all).
+    VOXIS_ENGINE env forces one engine (ops override)."""
+    forced = os.environ.get("VOXIS_ENGINE", "").strip().lower()
+    if forced in VALID_ENGINES:
+        return forced
+    return ENGINE_OPENAI if _norm_lang(target) in openai_route_langs(cfg) else ENGINE_GEMINI
 
 
 def apply_profile(cfg: dict, profile: str):

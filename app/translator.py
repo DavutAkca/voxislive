@@ -18,9 +18,12 @@ import traceback
 from google import genai
 from google.genai import types
 
+from .config import GEMINI_LIVE_MODEL
 from .i18n import t
 
-MODEL = "gemini-3.5-live-translate-preview"
+# Live session resumption + GoAway handling — enabled only if this google-genai
+# build exposes the type (older builds silently skip it; the path still works).
+_SUPPORTS_RESUMPTION = hasattr(types, "SessionResumptionConfig")
 
 # Bounded input buffer: 50 frames * 32 ms ≈ 1.6 s. Small enough that a network
 # stall cannot inflate latency with a long stale backlog; on overflow the
@@ -45,9 +48,8 @@ _MAX_TRANSIENT_FAILURES = 8
 COST_IN_PER_MIN = 0.0053
 COST_OUT_PER_MIN = 0.0315
 
-# Process-cumulative accounting across all sessions/instances. Per-session cost
-# is tracked separately on each LiveTranslator (see _session_usage) so a single
-# rotation or instance can be distinguished from these lifetime totals.
+# Process-cumulative accounting across all sessions/instances — lifetime totals
+# behind the cost estimate the UI surfaces via get_usage().
 _USAGE_LOCK = threading.Lock()
 _USAGE = {"in_sec": 0.0, "out_sec": 0.0, "dropped_frames": 0}
 
@@ -62,20 +64,6 @@ def get_usage() -> tuple[float, float, float]:
     with _USAGE_LOCK:
         i, o = _USAGE["in_sec"], _USAGE["out_sec"]
     return i, o, i / 60 * COST_IN_PER_MIN + o / 60 * COST_OUT_PER_MIN
-
-
-def get_telemetry() -> dict:
-    """Process-cumulative counters for diagnostics: input/output seconds, USD,
-    and frames dropped by the drop-oldest backpressure path."""
-    with _USAGE_LOCK:
-        i, o = _USAGE["in_sec"], _USAGE["out_sec"]
-        dropped = _USAGE["dropped_frames"]
-    return {
-        "in_sec": i,
-        "out_sec": o,
-        "usd": i / 60 * COST_IN_PER_MIN + o / 60 * COST_OUT_PER_MIN,
-        "dropped_frames": dropped,
-    }
 
 
 # Terminal-failure substrings: auth/permission/quota and 4xx client errors are
@@ -135,6 +123,7 @@ class LiveTranslator(threading.Thread):
         name: str = "translator",
         voice: str = "Aoede",
         temperature: float = 0.3,
+        model: str = GEMINI_LIVE_MODEL,
     ):
         super().__init__(daemon=True, name=name)
         self.api_key = api_key
@@ -144,6 +133,7 @@ class LiveTranslator(threading.Thread):
         self.on_status = on_status
         self.voice = voice
         self.temperature = temperature
+        self.model = model
         self.rotate_seconds = rotate_minutes * 60
         self._loop: asyncio.AbstractEventLoop | None = None
         self._queue: asyncio.Queue | None = None
@@ -152,27 +142,7 @@ class LiveTranslator(threading.Thread):
         # Frames carried over a rotation: re-injected into the next session so
         # the ~1-2 s of unsent source audio at cutover is not lost.
         self._carryover: list[bytes] = []
-        # Per-session accounting, distinct from the process-cumulative _USAGE.
-        self._session_lock = threading.Lock()
-        self._session_usage = {"in_sec": 0.0, "out_sec": 0.0, "dropped_frames": 0}
-
-    def is_ready(self) -> bool:
-        """True only while a session is currently live (cleared on rotate/error)."""
-        return self._ready.is_set()
-
-    def session_usage(self) -> dict:
-        """Snapshot of the CURRENT session's accounting, reset on each rotation."""
-        with self._session_lock:
-            return dict(self._session_usage)
-
-    def _add_session_usage(self, key: str, amount: float):
-        with self._session_lock:
-            self._session_usage[key] += amount
-
-    def _reset_session_usage(self):
-        with self._session_lock:
-            for k in self._session_usage:
-                self._session_usage[k] = 0.0 if k != "dropped_frames" else 0
+        self._resume_handle = None  # session-resumption token for seamless reconnect
 
     def send_pcm16(self, data: bytes):
         if self._loop and self._queue and not self._stopping.is_set():
@@ -195,7 +165,6 @@ class LiveTranslator(threading.Thread):
         try:
             self._queue.get_nowait()
             _add_usage("dropped_frames", 1)
-            self._add_session_usage("dropped_frames", 1)
         except asyncio.QueueEmpty:
             pass
         try:
@@ -262,9 +231,14 @@ class LiveTranslator(threading.Thread):
         last_error_text = None
         client = None
         while not self._stopping.is_set():
-            # is_ready() must mean "a session is currently live": clear on every
-            # iteration so the gap during reconnect/rotation is never reported ready.
+            # _ready (waited on by wait_ready) must mean "a session is currently
+            # live": clear on every iteration so the gap during reconnect/rotation
+            # is never reported ready.
             self._ready.clear()
+            # Resume the prior session so a rotation / GoAway / drop reconnects
+            # seamlessly instead of cold-starting (handle=None = fresh session).
+            if _SUPPORTS_RESUMPTION:
+                config["session_resumption"] = {"handle": self._resume_handle}
             try:
                 if client is None:
                     # Disable WebSocket permessage-deflate: PCM16 audio is
@@ -276,12 +250,11 @@ class LiveTranslator(threading.Thread):
                             async_client_args={"compression": None}
                         ),
                     )
-                async with client.aio.live.connect(model=MODEL, config=config) as session:
+                async with client.aio.live.connect(model=self.model, config=config) as session:
                     # Carry the unsent tail of the previous session into this one
                     # before the gate fills the queue with fresh audio, so the
                     # rotation cutover loses no source frames.
                     self._reinject_carryover()
-                    self._reset_session_usage()
                     self.on_status(t("st_connected", name=self.name, lang=self.target_lang))
                     self._ready.set()
                     backoff = 1.0
@@ -337,6 +310,9 @@ class LiveTranslator(threading.Thread):
                     traceback.print_exc()
                     break
                 transient_failures += 1
+                # A failed reconnect may be a stale/expired resume handle — drop it
+                # so the next attempt starts a fresh session.
+                self._resume_handle = None
                 if transient_failures >= _MAX_TRANSIENT_FAILURES:
                     self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
                     traceback.print_exc()
@@ -402,12 +378,18 @@ class LiveTranslator(threading.Thread):
             )
             secs = len(item) / 32000
             _add_usage("in_sec", secs)
-            self._add_session_usage("in_sec", secs)
 
     async def _receiver(self, session):
         async for resp in session.receive():
             if self._stopping.is_set():
                 return
+            # Track the resumption handle; on GoAway rotate now (carryover + the
+            # handle make the reconnect seamless) instead of waiting for the drop.
+            sru = getattr(resp, "session_resumption_update", None)
+            if sru is not None and getattr(sru, "resumable", False) and getattr(sru, "new_handle", None):
+                self._resume_handle = sru.new_handle
+            if getattr(resp, "go_away", None) is not None:
+                raise _Rotate()
             sc = resp.server_content
             if sc is None:
                 continue
@@ -417,7 +399,6 @@ class LiveTranslator(threading.Thread):
                         self.on_audio(part.inline_data.data)
                         secs = len(part.inline_data.data) / 48000
                         _add_usage("out_sec", secs)
-                        self._add_session_usage("out_sec", secs)
                     if getattr(part, "text", None):
                         self.on_text("out", part.text)
             it = getattr(sc, "input_transcription", None)

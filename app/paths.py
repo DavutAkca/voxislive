@@ -30,12 +30,6 @@ def _bundle_root() -> str:
     return getattr(sys, "_MEIPASS", None) or _repo_root()
 
 
-def bundle_root() -> str:
-    """Root of the bundled (read-only) payload — the PyInstaller _internal dir
-    when frozen, the repo root from source."""
-    return _bundle_root()
-
-
 def official_marker() -> str:
     """Path to the build-flavor marker. The official build ships this file inside
     the bundle; its presence in a frozen build selects the SaaS flavor. Absent in

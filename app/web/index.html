@@ -342,17 +342,50 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .scrim{position:fixed;inset:0;background:rgba(6,7,10,.55);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity var(--dslow);z-index:40}
 .scrim.open{opacity:1;pointer-events:auto}
 .drawer{
-  position:fixed;top:0;right:0;height:100%;width:408px;max-width:94vw;z-index:50;
-  background:var(--surface-3);border-left:1px solid var(--border);
+  position:fixed;inset:0;margin:auto;width:780px;height:564px;max-width:95vw;max-height:90vh;z-index:50;
+  background:var(--surface-3);border:1px solid var(--border);border-radius:18px;
   backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);
-  transform:translateX(100%);transition:transform var(--dslow) var(--ease-out);
-  display:flex;flex-direction:column;box-shadow:var(--shadow-float);
+  opacity:0;transform:scale(.97);pointer-events:none;
+  transition:opacity var(--dfast) var(--ease-out),transform var(--dfast) var(--ease-out);
+  display:flex;flex-direction:column;box-shadow:var(--shadow-float);overflow:hidden;
 }
-[data-theme="dark"] .drawer{background:rgba(20,21,28,.82)}
-.drawer.open{transform:none}
-.drawer header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:20px 22px 16px}
-.drawer header h2{font-size:17px;font-weight:700;letter-spacing:-.02em}
-.drawer .content{flex:1;overflow-y:auto;padding:4px 22px 20px}
+[data-theme="dark"] .drawer{background:rgba(20,21,28,.92)}
+.drawer.open{opacity:1;transform:scale(1);pointer-events:auto}
+.drawer header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+.drawer header h2{font-size:16px;font-weight:700;letter-spacing:-.02em}
+/* tabbed settings: left rail + right panes */
+.dbody{flex:1;display:flex;min-height:0}
+.dnav{flex:0 0 196px;border-right:1px solid var(--border);padding:14px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.dtab{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:10px;background:transparent;color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all var(--dfast) var(--ease)}
+.dtab:hover{background:var(--surface-2);color:var(--text)}
+.dtab.active{background:var(--accent-soft);color:var(--text);font-weight:600}
+.dtab svg{flex:none;width:16px;height:16px;opacity:.85}
+.dpanes{flex:1;overflow-y:auto;padding:20px 26px;min-width:0}
+.dpane[hidden]{display:none}
+.dpane>.dsection:first-child{padding-top:0}
+/* membership */
+.planbox{border:1px solid var(--border);border-radius:14px;padding:16px 18px;background:var(--surface-2);margin-bottom:18px}
+.planbox .pcur{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.planbox .ptier{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.planbox .ppill{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.planbox .pquotmeta{font-size:11.5px;color:var(--text-3);margin-top:3px}
+.tiergrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tiercard{border:1px solid var(--border);border-radius:13px;padding:15px 16px;background:var(--surface-1);display:flex;flex-direction:column;gap:7px}
+.tiercard.feat{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-soft)}
+.tiercard .tname{font-size:13px;font-weight:700}
+.tiercard .tprice{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.tiercard .tprice small{font-size:12px;font-weight:500;color:var(--text-3)}
+.tiercard .tmeta{font-size:11.5px;color:var(--text-3);line-height:1.5;flex:1}
+.tiercard .tcur{font-size:11px;font-weight:700;color:var(--green);text-align:center;padding:7px 0}
+/* about */
+.aboutwrap{text-align:center;padding:10px 0 4px}
+.aboutwrap .alogo{width:56px;height:56px;border-radius:16px;margin:0 auto 14px;display:grid;place-items:center;background:linear-gradient(150deg,var(--accent-hi),var(--accent-strong));box-shadow:0 8px 24px var(--accent-glow)}
+.aboutwrap .aname{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.aboutwrap .aver{font-family:var(--mono);font-size:12px;color:var(--text-3);margin-top:5px}
+.aboutlinks{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
+.aboutlinks a{font-size:12.5px;color:var(--accent);text-decoration:none;padding:6px 12px;border:1px solid var(--border);border-radius:9px;cursor:pointer;transition:all var(--dfast) var(--ease)}
+.aboutlinks a:hover{background:var(--surface-2)}
+.aboutfine{font-size:11px;color:var(--text-3);margin-top:20px;line-height:1.7}
 .dsection{padding:16px 0;border-top:1px solid var(--border)}
 .dsection:first-child{border-top:none;padding-top:6px}
 .dsection h3{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:14px}
@@ -387,15 +420,42 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
   background:linear-gradient(150deg,var(--accent-hi),var(--accent-strong));box-shadow:0 6px 20px var(--accent-glow),inset 0 1px 0 rgba(255,255,255,.35)}
 .auth-logo .wordmark-lg{font-size:23px;font-weight:700;letter-spacing:-.03em;
   background:linear-gradient(120deg,var(--text),var(--accent-hi));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.auth-tabs{display:flex;margin-bottom:24px;border:1px solid var(--border);border-radius:var(--r-ctl);padding:3px;background:var(--surface-2)}
-.auth-tab{flex:1;padding:8px 0;font-size:13px;font-weight:600;background:transparent;border:none;border-radius:6px;color:var(--text-2);cursor:pointer;transition:all var(--dfast) var(--ease)}
-.auth-tab.active{background:var(--surface-1);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.25),inset 0 1px 0 var(--inset-hi)}
 .auth-tabcontent .fieldlabel{margin:14px 0 6px}
 .auth-tabcontent .fieldlabel:first-of-type{margin-top:0}
 .auth-error{font-size:12px;color:var(--red);background:var(--red-soft);border:1px solid color-mix(in srgb,var(--red) 50%,transparent);border-radius:var(--r-ctl);padding:9px 12px;margin-top:12px;display:none}
 .auth-sub{font-size:12.5px;color:var(--text-2);text-align:center;margin-top:18px}
 .auth-sub a{color:var(--accent);text-decoration:none}
 .auth-sub a:hover{text-decoration:underline}
+/* Login-only card: sign-up happens on the website (opened in the system
+   browser); the alt-links row carries the create-account / forgot links. */
+.auth-altlinks{margin-top:16px;text-align:center;font-size:12.5px;color:var(--text-2);line-height:1.7}
+.auth-altlinks a{color:var(--accent);text-decoration:none;cursor:pointer}
+.auth-altlinks a:hover{text-decoration:underline}
+/* Login card polish — align inputs/button with the website's premium look (scoped) */
+.auth-card input{height:44px;padding:0 13px;border-radius:11px;font-size:14.5px}
+.auth-card input:focus{border-color:color-mix(in srgb,var(--accent) 55%,transparent);box-shadow:0 0 0 3px var(--accent-soft)}
+.auth-card .fieldlabel{font-size:12px;color:var(--text-2)}
+.auth-card .btn-primary{height:46px;border-radius:12px;font-size:15px;
+  background:linear-gradient(135deg,var(--accent-hi,var(--accent)),var(--accent-strong,var(--accent)));
+  box-shadow:0 12px 30px -8px var(--accent-glow)}
+.auth-card .btn-primary:hover{filter:brightness(1.06)}
+
+/* ============ FRAMELESS RESIZE GRIPS ============ */
+/* pywebview 6.2.1 has no native frameless resize; these thin strips capture the
+   mouse near the right/bottom edges + corner and drive win_resize via the bridge. */
+.rsz{position:fixed;z-index:2147483600;-webkit-app-region:no-drag}
+.rsz-r{top:56px;right:0;width:6px;height:calc(100% - 56px);cursor:ew-resize} /* inset below 56px topbar so it never steals the Close button / corner */
+.rsz-l{top:0;left:0;width:6px;height:100%;cursor:ew-resize}
+.rsz-b{left:0;bottom:0;height:6px;width:100%;cursor:ns-resize}
+.rsz-t{top:0;left:0;right:130px;height:6px;cursor:ns-resize} /* inset right to clear window controls */
+.rsz-br{right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize}
+.rsz-bl{left:0;bottom:0;width:15px;height:15px;cursor:nesw-resize}
+.rsz-tl{top:0;left:0;width:15px;height:15px;cursor:nwse-resize}
+body.win-maximized .rsz{display:none} /* no edge-resize while maximized */
+body.resizing,body.resizing *{user-select:none!important}
+/* error/warn transcript status lines (level carried in the status event) */
+.line.sys.err{color:var(--red)}
+.line.sys.warn{color:var(--amber)}
 
 /* Boot/loading state: shown until check_auth resolves so returning users
    never see a flash of the login form. */
@@ -451,12 +511,6 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
 .modal .mbody p{margin-bottom:12px}
 .modal .mbody p:last-child{margin-bottom:0}
 .modal .mbody strong{color:var(--text);font-weight:600}
-.modal .msteps{display:flex;flex-direction:column;gap:14px;margin:4px 0 6px}
-.modal .mstep{display:flex;gap:13px;align-items:flex-start}
-.modal .mstep .si{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;
-  background:var(--surface-2);border:1px solid var(--border);color:var(--accent)}
-.modal .mstep .st1{display:block;font-size:13px;font-weight:600;color:var(--text);letter-spacing:-.01em}
-.modal .mstep .st2{display:block;font-size:12px;color:var(--text-2);margin-top:3px;line-height:1.5}
 .modal .mnote{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:11px 13px;border-radius:var(--r-ctl);
   background:var(--amber-soft);border:1px solid color-mix(in srgb,var(--amber) 38%,transparent);
   font-size:12px;line-height:1.5;color:var(--amber)}
@@ -465,9 +519,6 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
 .modal .mfoot .spacer{flex:1}
 .modal .dontshow{display:inline-flex;align-items:center;gap:9px;font-size:12px;color:var(--text-2);cursor:pointer;user-select:none;margin-right:auto}
 .modal .ostep{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums}
-.modal .odots{display:inline-flex;gap:6px;align-items:center}
-.modal .odots .dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);transition:background var(--dfast) var(--ease),width var(--dfast) var(--ease)}
-.modal .odots .dot.on{background:var(--accent);width:16px;border-radius:3px}
 
 /* ---- onboarding: elevated product tour (scoped to #onboard-modal; consent modal untouched) ---- */
 #onboard-modal{width:480px}
@@ -548,6 +599,15 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
 
 <div class="bg-mesh"></div>
 
+<!-- Frameless resize grips (edges + corners; top-right omitted to keep window controls clickable) -->
+<div class="rsz rsz-r" data-rsz="r"></div>
+<div class="rsz rsz-l" data-rsz="l"></div>
+<div class="rsz rsz-b" data-rsz="b"></div>
+<div class="rsz rsz-t" data-rsz="t"></div>
+<div class="rsz rsz-br" data-rsz="br"></div>
+<div class="rsz rsz-bl" data-rsz="bl"></div>
+<div class="rsz rsz-tl" data-rsz="tl"></div>
+
 <!-- ============ AUTH OVERLAY ============ -->
 <div id="auth-overlay" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-dialog-label">
   <div class="auth-titlebar pywebview-drag-region">
@@ -562,30 +622,24 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
     <div class="spinner" aria-hidden="true"></div>
     <div class="boottxt" role="status" aria-live="polite" data-i18n="checking_session">Oturum denetleniyor…</div>
   </div>
+  <!-- Offline state: a valid-session user whose network is briefly down at launch -->
+  <div class="auth-boot" id="auth-offline" style="display:none">
+    <div class="logomark-lg"><svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 5.5v5M5 3v10M8 6.5v3M11 3v10M14 5.5v5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></div>
+    <div class="boottxt" id="auth-offline-txt" role="status" aria-live="polite">—</div>
+    <button class="btn btn-ghost" id="auth-retry" style="width:auto">—</button>
+  </div>
   <div class="auth-card" id="auth-card" style="display:none">
     <div class="auth-logo">
       <div class="logomark-lg"><svg width="21" height="21" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 5.5v5M5 3v10M8 6.5v3M11 3v10M14 5.5v5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></div>
       <span class="wordmark-lg" id="auth-dialog-label">Voxis</span>
     </div>
-    <div class="auth-tabs" role="tablist" aria-label="Voxis">
-      <button class="auth-tab active" data-tab="login" id="authtab-login" role="tab" aria-selected="true" aria-controls="tab-login" data-i18n="tab_login">Giriş Yap</button>
-      <button class="auth-tab" data-tab="register" id="authtab-register" role="tab" aria-selected="false" aria-controls="tab-register" data-i18n="tab_register">Kayıt Ol</button>
-    </div>
-    <div id="tab-login" class="auth-tabcontent" role="tabpanel" aria-labelledby="authtab-login">
+    <div id="tab-login" class="auth-tabcontent">
       <div class="fieldlabel" data-i18n="email">E-posta</div>
       <input type="email" id="login-email" placeholder="ornek@email.com" autocomplete="email">
       <div class="fieldlabel" data-i18n="password">Şifre</div>
       <input type="password" id="login-pw" placeholder="••••••••" autocomplete="current-password">
       <button class="btn btn-primary" id="login-btn" style="margin-top:18px" data-i18n="tab_login">Giriş Yap</button>
-    </div>
-    <div id="tab-register" class="auth-tabcontent" role="tabpanel" aria-labelledby="authtab-register" style="display:none">
-      <div class="fieldlabel" data-i18n="email">E-posta</div>
-      <input type="email" id="reg-email" placeholder="ornek@email.com" autocomplete="email">
-      <div class="fieldlabel" data-i18n="password">Şifre</div>
-      <input type="password" id="reg-pw" placeholder="En az 8 karakter" data-i18n-ph="ph_pw_min" autocomplete="new-password">
-      <div class="fieldlabel" data-i18n="password2">Şifre (tekrar)</div>
-      <input type="password" id="reg-pw2" placeholder="Şifreyi tekrar girin" data-i18n-ph="ph_pw_again" autocomplete="new-password">
-      <button class="btn btn-primary" id="reg-btn" style="margin-top:18px" data-i18n="tab_register">Kayıt Ol</button>
+      <div class="auth-altlinks" id="auth-altlinks"></div>
     </div>
     <div id="auth-error" class="auth-error" role="alert" aria-live="assertive"></div>
     <p class="auth-sub"><a href="#" id="terms-link">voxislive.com</a><span data-i18n="auth_sub"> · Lisans bilgisi için giriş gerekli.</span></p>
@@ -683,12 +737,6 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
       <div class="cardlabel" data-i18n="translation">Çeviri</div>
       <div class="fieldlabel" data-i18n="profile">Profil</div>
       <div class="selectwrap"><select id="profile"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div class="fieldlabel" data-i18n="quality">Kalite</div>
-      <div class="selectwrap"><select id="quality"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div id="gvoicewrap">
-        <div class="fieldlabel" data-i18n="voice">Çeviri sesi</div>
-        <div class="selectwrap"><select id="gvoice"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
-      </div>
       <div class="sliderrow">
         <div class="top"><span class="name" id="duck-label" data-i18n="duck_label">Orijinal ses (konuşmada)</span><span class="val" id="duckv">30%</span></div>
         <input type="range" id="duck" min="0" max="100" value="30" aria-labelledby="duck-label" aria-valuetext="30%">
@@ -753,15 +801,6 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
   </section>
 </main>
 
-<footer class="statusbar" id="statusbar">
-  <span class="hud"><b id="footstate" data-i18n="foot_ready">Hazır</b></span>
-  <span class="hud accent"><span data-i18n="foot_latency">gecikme</span> <b id="footlat">—</b></span>
-  <span class="hud"><span data-i18n="foot_session">oturum</span> <b id="foottime">00:00</b></span>
-  <span class="hud"><span data-i18n="foot_sample">örnek</span> <b>16 kHz · PCM16</b></span>
-  <span class="sp"></span>
-  <span class="hud" id="foot-model"><span data-i18n="foot_model">model</span> <b>gemini-3.5-live-translate-preview</b></span>
-</footer>
-
 <!-- ============ SETTINGS DRAWER ============ -->
 <div class="scrim" id="scrim"></div>
 <div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
@@ -769,57 +808,105 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
     <h2 id="drawer-title" data-i18n="settings">Ayarlar</h2>
     <button class="iconbtn" id="closedrawer" title="Kapat" data-i18n-title="title_close" aria-label="Kapat" data-i18n-aria="title_close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
   </header>
-  <div class="content">
-    <div class="dsection" id="byok-section">
-      <h3 data-i18n="conn">Bağlantı</h3>
-      <div class="fieldlabel"><span data-i18n="gemini_key">Gemini API anahtarı</span> <span id="byok-badge" data-i18n="byok_active" style="display:none;font-size:10px;font-weight:600;color:var(--green);background:var(--green-soft);padding:2px 7px;border-radius:99px;margin-left:6px">BYOK aktif</span></div>
-      <input type="password" id="gemkey" placeholder="AIza…" data-i18n-ph="ph_gemkey">
-      <div class="fieldhint"><span data-i18n="byok_hint">Bu derlemede çalıştırmak için kendi Gemini API anahtarınız gereklidir. </span><a href="#" id="showgem" data-i18n="show">Göster</a> · <a href="#" id="clearbtn" data-i18n="clear" style="color:var(--red)">Temizle</a></div>
-    </div>
-    <div class="dsection">
-      <h3 data-i18n="general">Genel</h3>
-      <div class="fieldlabel" data-i18n="ui_lang">Arayüz dili</div>
-      <div class="selectwrap">
-        <select id="uilang">
-          <option value="tr">Türkçe</option>
-          <option value="en">English</option>
-          <option value="de">Deutsch</option>
-          <option value="fr">Français</option>
-          <option value="es">Español</option>
-          <option value="pt">Português (BR)</option>
-          <option value="ja">日本語</option>
-          <option value="ko">한국어</option>
-          <option value="ru">Русский</option>
-          <option value="zh">中文（简体）</option>
-          <option value="pl">Polski</option>
-          <option value="it">Italiano</option>
-          <option value="id">Bahasa Indonesia</option>
-          <option value="nl">Nederlands</option>
-          <option value="vi">Tiếng Việt</option>
-          <option value="th">ภาษาไทย</option>
-        </select>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <div style="margin-top:14px"><label class="switch"><input type="checkbox" id="obs"><span class="track"></span><span data-i18n="obs_write">OBS altyazı dosyası yaz</span></label></div>
-      <div style="margin-top:14px"><label class="switch"><input type="checkbox" id="brandbadge"><span class="track"></span><span data-i18n="brand_badge">"Powered by Voxis" rozetini göster</span></label></div>
-    </div>
-    <div class="dsection">
-      <h3 data-i18n="shortcuts">Klavye kısayolları</h3>
-      <div class="hkrow"><span class="n" data-i18n="video_t1">Video &amp; Oyun</span><button class="k" data-hk="video">—</button></div>
-      <div class="hkrow"><span class="n" data-i18n="meeting_t1">Toplantı</span><button class="k" data-hk="meeting">—</button></div>
-      <div class="hkrow"><span class="n" data-i18n="stop">Durdur</span><button class="k" data-hk="stop">—</button></div>
-      <div class="hkrow"><span class="n" data-i18n="overlay">Ekran üstü yazı</span><button class="k" data-hk="overlay">—</button></div>
-      <div class="fieldhint" data-i18n="hk_hint">Değiştirmek için kutuya tıklayıp yeni kombinasyona basın.</div>
-    </div>
-    <div class="dsection">
-      <button class="btn btn-ghost" id="showtourbtn" style="width:auto" data-i18n="show_tour">Tanıtım turunu tekrar göster</button>
-      <button class="btn btn-ghost" id="storebtn" style="width:auto;display:none" data-i18n="store_view">Microsoft Store'da görüntüle</button>
+  <div class="dbody">
+    <nav class="dnav" role="tablist" aria-label="Voxis">
+      <button class="dtab active" data-pane="general" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 3.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 3.6h.09A1.65 1.65 0 0 0 9 2.09V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 14 3.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.4 8v.09c.27.49.7.88 1.21 1.09"/></svg>
+        <span data-i18n="general">Genel</span>
+      </button>
+      <button class="dtab" data-pane="shortcuts" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg>
+        <span data-i18n="shortcuts">Klavye kısayolları</span>
+      </button>
+      <button class="dtab" data-pane="membership" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.4 5 5.6.8-4 3.9 1 5.5L12 19.8 6.9 22.2l1-5.5-4-3.9 5.6-.8z"/></svg>
+        <span id="tab-lbl-membership" data-i18n="tab_membership">Üyelik</span>
+      </button>
+      <button class="dtab" data-pane="about" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span id="tab-lbl-about" data-i18n="tab_about">Hakkında</span>
+      </button>
+    </nav>
+    <div class="dpanes">
+      <section class="dpane" data-pane="general" role="tabpanel">
+        <div class="dsection" id="byok-section">
+          <h3 data-i18n="conn">Bağlantı</h3>
+          <div class="fieldlabel"><span data-i18n="gemini_key">Gemini API anahtarı</span> <span id="byok-badge" data-i18n="byok_active" style="display:none;font-size:10px;font-weight:600;color:var(--green);background:var(--green-soft);padding:2px 7px;border-radius:99px;margin-left:6px">BYOK aktif</span></div>
+          <input type="password" id="gemkey" placeholder="AIza…" data-i18n-ph="ph_gemkey">
+          <div class="fieldhint"><span data-i18n="byok_hint">Bu derlemede çalıştırmak için kendi Gemini API anahtarınız gereklidir. </span><a href="#" id="showgem" data-i18n="show">Göster</a> · <a href="#" id="clearbtn" data-i18n="clear" style="color:var(--red)">Temizle</a></div>
+          <div class="fieldlabel" style="margin-top:14px"><span data-i18n="openai_key">OpenAI API anahtarı</span> <span id="oai-badge" data-i18n="byok_active" style="display:none;font-size:10px;font-weight:600;color:var(--green);background:var(--green-soft);padding:2px 7px;border-radius:99px;margin-left:6px">BYOK aktif</span></div>
+          <input type="password" id="oaikey" placeholder="sk-…" data-i18n-ph="ph_oaikey">
+          <div class="fieldhint"><span data-i18n="byok_openai_hint">Opsiyonel — yalnızca OpenAI motorunu kullanmak için gerekli. </span><a href="#" id="showoai" data-i18n="show">Göster</a> · <a href="#" id="clearoai" data-i18n="clear" style="color:var(--red)">Temizle</a></div>
+        </div>
+        <div class="dsection">
+          <h3 data-i18n="general">Genel</h3>
+          <div class="fieldlabel" data-i18n="ui_lang">Arayüz dili</div>
+          <div class="selectwrap">
+            <select id="uilang">
+              <option value="tr">Türkçe</option>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+              <option value="fr">Français</option>
+              <option value="es">Español</option>
+              <option value="pt">Português (BR)</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="ru">Русский</option>
+              <option value="zh">中文（简体）</option>
+              <option value="pl">Polski</option>
+              <option value="it">Italiano</option>
+              <option value="id">Bahasa Indonesia</option>
+              <option value="nl">Nederlands</option>
+              <option value="vi">Tiếng Việt</option>
+              <option value="th">ภาษาไทย</option>
+            </select>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div style="margin-top:14px"><label class="switch"><input type="checkbox" id="obs"><span class="track"></span><span data-i18n="obs_write">OBS altyazı dosyası yaz</span></label></div>
+          <div style="margin-top:14px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 0"><label class="switch"><input type="checkbox" id="brandbadge"><span class="track"></span><span data-i18n="brand_badge">"Powered by Voxis" rozetini göster</span></label><a id="badge-upgrade" style="display:none;font-size:11.5px;color:var(--accent);cursor:pointer;margin-left:10px">Yükselt →</a></div>
+          <div style="margin-top:18px"><button class="btn btn-ghost" id="showtourbtn" style="width:auto" data-i18n="show_tour">Tanıtım turunu tekrar göster</button></div>
+        </div>
+      </section>
+      <section class="dpane" data-pane="shortcuts" role="tabpanel" hidden>
+        <div class="dsection">
+          <h3 data-i18n="shortcuts">Klavye kısayolları</h3>
+          <div class="hkrow"><span class="n" data-i18n="video_t1">Video &amp; Oyun</span><button class="k" data-hk="video">—</button></div>
+          <div class="hkrow"><span class="n" data-i18n="meeting_t1">Toplantı</span><button class="k" data-hk="meeting">—</button></div>
+          <div class="hkrow"><span class="n" data-i18n="stop">Durdur</span><button class="k" data-hk="stop">—</button></div>
+          <div class="hkrow"><span class="n" data-i18n="overlay">Ekran üstü yazı</span><button class="k" data-hk="overlay">—</button></div>
+          <div class="fieldhint" data-i18n="hk_hint">Değiştirmek için kutuya tıklayıp yeni kombinasyona basın.</div>
+        </div>
+      </section>
+      <section class="dpane" data-pane="membership" role="tabpanel" hidden>
+        <div id="membership-body"></div>
+        <div class="dsection" id="membership-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost" id="manageplanbtn" style="display:none;width:auto" data-i18n="manage_plan">Planı yönet</button>
+          <button class="btn btn-ghost" id="storebtn" style="width:auto;display:none" data-i18n="store_view">Microsoft Store'da görüntüle</button>
+          <button class="btn btn-danger" id="logoutbtn" style="width:auto" data-i18n="logout">Çıkış</button>
+        </div>
+      </section>
+      <section class="dpane" data-pane="about" role="tabpanel" hidden>
+        <div class="aboutwrap">
+          <div class="alogo"><svg width="26" height="26" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 5.5v5M5 3v10M8 6.5v3M11 3v10M14 5.5v5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></div>
+          <div class="aname">Voxis</div>
+          <div class="aver" id="about-ver">—</div>
+        </div>
+        <div class="aboutlinks">
+          <a href="#" id="al-site">voxislive.com</a>
+          <a href="#" id="al-pricing" data-i18n="al_pricing">—</a>
+          <a href="#" id="al-terms" data-i18n="al_terms">—</a>
+          <a href="#" id="al-privacy" data-i18n="al_privacy">—</a>
+          <a href="#" id="al-contact" data-i18n="al_contact">—</a>
+        </div>
+        <div class="aboutfine">
+          <span id="about-powered" data-i18n="about_powered">—</span><br>
+          <span id="about-copy">© Voxis</span>
+        </div>
+      </section>
     </div>
   </div>
   <footer>
     <button class="btn btn-primary" id="savesettings" style="flex:1" data-i18n="save">Kaydet</button>
-    <button class="btn btn-ghost" id="manageplanbtn" style="display:none;min-width:72px;width:auto" data-i18n="manage_plan">Planı yönet</button>
-    <button class="btn btn-danger" id="logoutbtn" style="min-width:72px;width:auto" data-i18n="logout">Çıkış</button>
     <span class="ver" id="ver">Voxis · voxislive.com</span>
   </footer>
 </div>
@@ -2331,6 +2418,10 @@ const I18N = {
     update_now:"อัปเดตตอนนี้", update_later:"ภายหลัง",
   },
 };
+const I18N_EXTRA = {"en":{"tab_membership":"Membership","tab_about":"About","al_pricing":"Pricing","al_terms":"Terms","al_privacy":"Privacy","al_contact":"Contact","about_powered":"Powered by Google Gemini.","mem_active_plan":"Active plan","mem_unlimited":"Unlimited minutes","mem_this_month":"This month: ","mem_your_plan":"Your plan","mem_upgrade":"Upgrade","mem_creator_meta":"700 min/mo · all languages · transcripts","mem_pro_meta":"1,500 min/mo · priority · meeting mode","mem_dev_byok":"Developer (BYOK)","mem_your_key":"Your key","mem_byok_note":"This build runs on your own Gemini key; no subscription. Manage it in the General tab.","badge_upgrade":"Upgrade to remove →","auth_no_account":"No account? ","auth_create":"Create account","auth_forgot":"Forgot password?","auth_offline":"Could not reach the server. Check your internet connection.","auth_retry":"Retry","store_view":"View in Microsoft Store","st_capture_lost":"Audio capture stopped (the device may have changed). Restart the session.","openai_key":"OpenAI API key","ph_oaikey":"sk-…","byok_openai_hint":"Optional — only needed to use the OpenAI engine. "},"tr":{"tab_membership":"Üyelik","tab_about":"Hakkında","al_pricing":"Fiyatlandırma","al_terms":"Koşullar","al_privacy":"Gizlilik","al_contact":"İletişim","about_powered":"Google Gemini ile desteklenir.","mem_active_plan":"Aktif plan","mem_unlimited":"Sınırsız dakika","mem_this_month":"Bu ay: ","mem_your_plan":"Mevcut planın","mem_upgrade":"Yükselt","mem_creator_meta":"700 dk/ay · tüm diller · transkript","mem_pro_meta":"1.500 dk/ay · öncelik · toplantı modu","mem_dev_byok":"Geliştirici (BYOK)","mem_your_key":"Kendi anahtarın","mem_byok_note":"Bu derleme kendi Gemini anahtarınla çalışır; abonelik yoktur. Anahtarı Genel sekmesinden yönet.","badge_upgrade":"Kaldırmak için yükselt →","auth_no_account":"Hesabın yok mu? ","auth_create":"Hesap oluştur","auth_forgot":"Şifreni mi unuttun?","auth_offline":"Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.","auth_retry":"Yeniden dene","store_view":"Microsoft Store'da görüntüle","st_capture_lost":"Ses yakalama durdu (cihaz değişmiş olabilir). Oturumu yeniden başlat.","openai_key":"OpenAI API anahtarı","ph_oaikey":"sk-…","byok_openai_hint":"Opsiyonel — yalnızca OpenAI motorunu kullanmak için gerekli. "},"de":{"tab_membership":"Mitgliedschaft","tab_about":"Über","al_pricing":"Preise","al_terms":"Nutzungsbedingungen","al_privacy":"Datenschutz","al_contact":"Kontakt","about_powered":"Powered by Google Gemini.","mem_active_plan":"Aktiver Plan","mem_unlimited":"Unbegrenzte Minuten","mem_this_month":"Diesen Monat: ","mem_your_plan":"Dein Plan","mem_upgrade":"Upgraden","mem_creator_meta":"700 Min./Monat · alle Sprachen · Transkripte","mem_pro_meta":"1.500 Min./Monat · Priorität · Meeting-Modus","mem_dev_byok":"Entwickler (BYOK)","mem_your_key":"Dein Schlüssel","mem_byok_note":"Diese Version läuft mit deinem eigenen Gemini-Schlüssel; kein Abo. Verwalte ihn im Tab „Allgemein\".","badge_upgrade":"Zum Entfernen upgraden →","auth_no_account":"Kein Konto? ","auth_create":"Konto erstellen","auth_forgot":"Passwort vergessen?","auth_offline":"Server nicht erreichbar. Überprüfe deine Internetverbindung.","auth_retry":"Erneut versuchen","store_view":"Im Microsoft Store ansehen","st_capture_lost":"Audioaufnahme gestoppt (das Gerät hat sich möglicherweise geändert). Starte die Sitzung neu.","openai_key":"OpenAI-API-Schlüssel","ph_oaikey":"sk-…","byok_openai_hint":"Optional – nur nötig, um die OpenAI-Engine zu nutzen. "},"fr":{"tab_membership":"Abonnement","tab_about":"À propos","al_pricing":"Tarifs","al_terms":"Conditions","al_privacy":"Confidentialité","al_contact":"Contact","about_powered":"Propulsé par Google Gemini.","mem_active_plan":"Forfait actif","mem_unlimited":"Minutes illimitées","mem_this_month":"Ce mois-ci : ","mem_your_plan":"Votre forfait","mem_upgrade":"Passer à un forfait supérieur","mem_creator_meta":"700 min/mois · toutes les langues · transcriptions","mem_pro_meta":"1 500 min/mois · prioritaire · mode réunion","mem_dev_byok":"Développeur (BYOK)","mem_your_key":"Votre clé","mem_byok_note":"Cette version fonctionne avec votre propre clé Gemini ; aucun abonnement. Gérez-la dans l'onglet Général.","badge_upgrade":"Passer à un forfait supérieur pour le retirer →","auth_no_account":"Pas de compte ? ","auth_create":"Créer un compte","auth_forgot":"Mot de passe oublié ?","auth_offline":"Impossible de joindre le serveur. Vérifiez votre connexion Internet.","auth_retry":"Réessayer","store_view":"Voir dans le Microsoft Store","st_capture_lost":"La capture audio s'est arrêtée (l'appareil a peut-être changé). Redémarrez la session.","openai_key":"Clé API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Facultatif — nécessaire uniquement pour utiliser le moteur OpenAI. "},"es":{"tab_membership":"Suscripción","tab_about":"Acerca de","al_pricing":"Precios","al_terms":"Términos","al_privacy":"Privacidad","al_contact":"Contacto","about_powered":"Con tecnología de Google Gemini.","mem_active_plan":"Plan activo","mem_unlimited":"Minutos ilimitados","mem_this_month":"Este mes: ","mem_your_plan":"Tu plan","mem_upgrade":"Mejorar","mem_creator_meta":"700 min/mes · todos los idiomas · transcripciones","mem_pro_meta":"1.500 min/mes · prioridad · modo reunión","mem_dev_byok":"Desarrollador (BYOK)","mem_your_key":"Tu clave","mem_byok_note":"Esta versión funciona con tu propia clave de Gemini; sin suscripción. Gestiónala en la pestaña General.","badge_upgrade":"Mejora para quitarlo →","auth_no_account":"¿No tienes cuenta? ","auth_create":"Crear cuenta","auth_forgot":"¿Olvidaste tu contraseña?","auth_offline":"No se pudo conectar con el servidor. Comprueba tu conexión a internet.","auth_retry":"Reintentar","store_view":"Ver en Microsoft Store","st_capture_lost":"Se detuvo la captura de audio (es posible que el dispositivo haya cambiado). Reinicia la sesión.","openai_key":"Clave de API de OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Opcional: solo se necesita para usar el motor de OpenAI. "},"pt":{"tab_membership":"Assinatura","tab_about":"Sobre","al_pricing":"Preços","al_terms":"Termos","al_privacy":"Privacidade","al_contact":"Contato","about_powered":"Com tecnologia Google Gemini.","mem_active_plan":"Plano ativo","mem_unlimited":"Minutos ilimitados","mem_this_month":"Este mês: ","mem_your_plan":"Seu plano","mem_upgrade":"Fazer upgrade","mem_creator_meta":"700 min/mês · todos os idiomas · transcrições","mem_pro_meta":"1.500 min/mês · prioridade · modo reunião","mem_dev_byok":"Desenvolvedor (BYOK)","mem_your_key":"Sua chave","mem_byok_note":"Esta versão usa sua própria chave Gemini; sem assinatura. Gerencie-a na aba Geral.","badge_upgrade":"Faça upgrade para remover →","auth_no_account":"Não tem conta? ","auth_create":"Criar conta","auth_forgot":"Esqueceu a senha?","auth_offline":"Não foi possível conectar ao servidor. Verifique sua conexão com a internet.","auth_retry":"Tentar novamente","store_view":"Ver na Microsoft Store","st_capture_lost":"A captura de áudio parou (o dispositivo pode ter mudado). Reinicie a sessão.","openai_key":"Chave de API da OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Opcional — necessário apenas para usar o motor da OpenAI. "},"ja":{"tab_membership":"メンバーシップ","tab_about":"概要","al_pricing":"料金","al_terms":"利用規約","al_privacy":"プライバシー","al_contact":"お問い合わせ","about_powered":"Powered by Google Gemini.","mem_active_plan":"現在のプラン","mem_unlimited":"無制限の利用時間","mem_this_month":"今月: ","mem_your_plan":"ご利用中のプラン","mem_upgrade":"アップグレード","mem_creator_meta":"月700分 · 全言語対応 · 文字起こし","mem_pro_meta":"月1,500分 · 優先処理 · 会議モード","mem_dev_byok":"開発者向け (BYOK)","mem_your_key":"自分のキー","mem_byok_note":"このビルドはご自身のGeminiキーで動作し、サブスクリプションは不要です。キーは「一般」タブで管理できます。","badge_upgrade":"アップグレードで非表示 →","auth_no_account":"アカウントをお持ちでないですか? ","auth_create":"アカウントを作成","auth_forgot":"パスワードをお忘れですか?","auth_offline":"サーバーに接続できませんでした。インターネット接続を確認してください。","auth_retry":"再試行","store_view":"Microsoft Store で表示","st_capture_lost":"音声のキャプチャが停止しました (デバイスが変更された可能性があります)。セッションを再開してください。","openai_key":"OpenAI APIキー","ph_oaikey":"sk-…","byok_openai_hint":"任意 — OpenAIエンジンを使う場合のみ必要です。"},"ko":{"tab_membership":"멤버십","tab_about":"정보","al_pricing":"요금제","al_terms":"약관","al_privacy":"개인정보","al_contact":"문의","about_powered":"Google Gemini 기반.","mem_active_plan":"사용 중인 플랜","mem_unlimited":"무제한 사용 시간","mem_this_month":"이번 달: ","mem_your_plan":"내 플랜","mem_upgrade":"업그레이드","mem_creator_meta":"월 700분 · 모든 언어 · 전사","mem_pro_meta":"월 1,500분 · 우선 처리 · 회의 모드","mem_dev_byok":"개발자 (BYOK)","mem_your_key":"내 키","mem_byok_note":"이 빌드는 본인의 Gemini 키로 실행되며 구독이 없습니다. 일반 탭에서 관리하세요.","badge_upgrade":"제거하려면 업그레이드 →","auth_no_account":"계정이 없으신가요? ","auth_create":"계정 만들기","auth_forgot":"비밀번호를 잊으셨나요?","auth_offline":"서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.","auth_retry":"다시 시도","store_view":"Microsoft Store에서 보기","st_capture_lost":"오디오 캡처가 중단되었습니다(장치가 변경되었을 수 있습니다). 세션을 다시 시작하세요.","openai_key":"OpenAI API 키","ph_oaikey":"sk-…","byok_openai_hint":"선택 사항 — OpenAI 엔진을 사용할 때만 필요합니다. "},"ru":{"tab_membership":"Подписка","tab_about":"О программе","al_pricing":"Цены","al_terms":"Условия","al_privacy":"Конфиденциальность","al_contact":"Контакты","about_powered":"Работает на Google Gemini.","mem_active_plan":"Активный план","mem_unlimited":"Безлимитные минуты","mem_this_month":"В этом месяце: ","mem_your_plan":"Ваш план","mem_upgrade":"Повысить","mem_creator_meta":"700 мин/мес · все языки · транскрипты","mem_pro_meta":"1 500 мин/мес · приоритет · режим встреч","mem_dev_byok":"Разработчик (BYOK)","mem_your_key":"Ваш ключ","mem_byok_note":"Эта сборка использует ваш собственный ключ Gemini; подписка не нужна. Управляйте им на вкладке «Общие».","badge_upgrade":"Повысить, чтобы убрать →","auth_no_account":"Нет аккаунта? ","auth_create":"Создать аккаунт","auth_forgot":"Забыли пароль?","auth_offline":"Не удалось подключиться к серверу. Проверьте интернет-соединение.","auth_retry":"Повторить","store_view":"Открыть в Microsoft Store","st_capture_lost":"Захват звука остановлен (возможно, изменилось устройство). Перезапустите сеанс.","openai_key":"Ключ API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Необязательно — нужен только для использования движка OpenAI. "},"zh":{"tab_membership":"会员","tab_about":"关于","al_pricing":"价格","al_terms":"条款","al_privacy":"隐私","al_contact":"联系我们","about_powered":"由 Google Gemini 提供支持。","mem_active_plan":"当前套餐","mem_unlimited":"无限分钟数","mem_this_month":"本月：","mem_your_plan":"你的套餐","mem_upgrade":"升级","mem_creator_meta":"700 分钟/月 · 全部语言 · 转写文稿","mem_pro_meta":"1,500 分钟/月 · 优先处理 · 会议模式","mem_dev_byok":"开发者 (BYOK)","mem_your_key":"你的密钥","mem_byok_note":"此版本使用你自己的 Gemini 密钥运行，无需订阅。可在“常规”选项卡中管理密钥。","badge_upgrade":"升级以移除 →","auth_no_account":"还没有账户？ ","auth_create":"创建账户","auth_forgot":"忘记密码？","auth_offline":"无法连接到服务器。请检查你的网络连接。","auth_retry":"重试","store_view":"在 Microsoft Store 中查看","st_capture_lost":"音频采集已停止（设备可能已更改）。请重新启动会话。","openai_key":"OpenAI API 密钥","ph_oaikey":"sk-…","byok_openai_hint":"可选 — 仅在使用 OpenAI 引擎时需要。"},"pl":{"tab_membership":"Subskrypcja","tab_about":"Informacje","al_pricing":"Cennik","al_terms":"Warunki","al_privacy":"Prywatność","al_contact":"Kontakt","about_powered":"Działa w oparciu o Google Gemini.","mem_active_plan":"Aktywny plan","mem_unlimited":"Nielimitowane minuty","mem_this_month":"W tym miesiącu: ","mem_your_plan":"Twój plan","mem_upgrade":"Ulepsz","mem_creator_meta":"700 min/mies. · wszystkie języki · transkrypcje","mem_pro_meta":"1500 min/mies. · priorytet · tryb spotkania","mem_dev_byok":"Deweloper (BYOK)","mem_your_key":"Twój klucz","mem_byok_note":"Ta wersja działa na Twoim własnym kluczu Gemini; bez subskrypcji. Zarządzaj nim w karcie Ogólne.","badge_upgrade":"Ulepsz, aby usunąć →","auth_no_account":"Nie masz konta? ","auth_create":"Utwórz konto","auth_forgot":"Nie pamiętasz hasła?","auth_offline":"Nie udało się połączyć z serwerem. Sprawdź połączenie z internetem.","auth_retry":"Ponów","store_view":"Zobacz w Microsoft Store","st_capture_lost":"Przechwytywanie dźwięku zostało zatrzymane (urządzenie mogło się zmienić). Uruchom sesję ponownie.","openai_key":"Klucz API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Opcjonalne — wymagane tylko do korzystania z silnika OpenAI. "},"it":{"tab_membership":"Abbonamento","tab_about":"Informazioni","al_pricing":"Prezzi","al_terms":"Termini","al_privacy":"Privacy","al_contact":"Contatti","about_powered":"Basato su Google Gemini.","mem_active_plan":"Piano attivo","mem_unlimited":"Minuti illimitati","mem_this_month":"Questo mese: ","mem_your_plan":"Il tuo piano","mem_upgrade":"Esegui l'upgrade","mem_creator_meta":"700 min/mese · tutte le lingue · trascrizioni","mem_pro_meta":"1.500 min/mese · priorità · modalità riunione","mem_dev_byok":"Sviluppatore (BYOK)","mem_your_key":"La tua chiave","mem_byok_note":"Questa build funziona con la tua chiave Gemini; nessun abbonamento. Gestiscila nella scheda Generale.","badge_upgrade":"Esegui l'upgrade per rimuovere →","auth_no_account":"Non hai un account? ","auth_create":"Crea account","auth_forgot":"Password dimenticata?","auth_offline":"Impossibile raggiungere il server. Controlla la connessione a Internet.","auth_retry":"Riprova","store_view":"Visualizza nel Microsoft Store","st_capture_lost":"Acquisizione audio interrotta (il dispositivo potrebbe essere cambiato). Riavvia la sessione.","openai_key":"Chiave API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Facoltativo — necessario solo per usare il motore OpenAI. "},"id":{"tab_membership":"Keanggotaan","tab_about":"Tentang","al_pricing":"Harga","al_terms":"Ketentuan","al_privacy":"Privasi","al_contact":"Kontak","about_powered":"Didukung oleh Google Gemini.","mem_active_plan":"Paket aktif","mem_unlimited":"Menit tanpa batas","mem_this_month":"Bulan ini: ","mem_your_plan":"Paket Anda","mem_upgrade":"Tingkatkan","mem_creator_meta":"700 mnt/bln · semua bahasa · transkrip","mem_pro_meta":"1.500 mnt/bln · prioritas · mode rapat","mem_dev_byok":"Pengembang (BYOK)","mem_your_key":"Kunci Anda","mem_byok_note":"Build ini berjalan dengan kunci Gemini Anda sendiri; tanpa langganan. Kelola di tab Umum.","badge_upgrade":"Tingkatkan untuk menghapus →","auth_no_account":"Belum punya akun? ","auth_create":"Buat akun","auth_forgot":"Lupa kata sandi?","auth_offline":"Tidak dapat menjangkau server. Periksa koneksi internet Anda.","auth_retry":"Coba lagi","store_view":"Lihat di Microsoft Store","st_capture_lost":"Perekaman audio berhenti (perangkat mungkin berubah). Mulai ulang sesi.","openai_key":"Kunci API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Opsional — hanya diperlukan untuk menggunakan mesin OpenAI. "},"nl":{"tab_membership":"Lidmaatschap","tab_about":"Over","al_pricing":"Prijzen","al_terms":"Voorwaarden","al_privacy":"Privacy","al_contact":"Contact","about_powered":"Mogelijk gemaakt door Google Gemini.","mem_active_plan":"Actief abonnement","mem_unlimited":"Onbeperkte minuten","mem_this_month":"Deze maand: ","mem_your_plan":"Jouw abonnement","mem_upgrade":"Upgraden","mem_creator_meta":"700 min/maand · alle talen · transcripties","mem_pro_meta":"1.500 min/maand · prioriteit · vergadermodus","mem_dev_byok":"Ontwikkelaar (BYOK)","mem_your_key":"Jouw sleutel","mem_byok_note":"Deze build werkt met je eigen Gemini-sleutel; geen abonnement. Beheer hem op het tabblad Algemeen.","badge_upgrade":"Upgraden om te verwijderen →","auth_no_account":"Nog geen account? ","auth_create":"Account aanmaken","auth_forgot":"Wachtwoord vergeten?","auth_offline":"Kan de server niet bereiken. Controleer je internetverbinding.","auth_retry":"Opnieuw proberen","store_view":"Bekijken in Microsoft Store","st_capture_lost":"Audio-opname gestopt (het apparaat is mogelijk gewijzigd). Start de sessie opnieuw.","openai_key":"OpenAI API-sleutel","ph_oaikey":"sk-…","byok_openai_hint":"Optioneel — alleen nodig om de OpenAI-engine te gebruiken. "},"vi":{"tab_membership":"Thành viên","tab_about":"Giới thiệu","al_pricing":"Bảng giá","al_terms":"Điều khoản","al_privacy":"Quyền riêng tư","al_contact":"Liên hệ","about_powered":"Được hỗ trợ bởi Google Gemini.","mem_active_plan":"Gói đang dùng","mem_unlimited":"Số phút không giới hạn","mem_this_month":"Tháng này: ","mem_your_plan":"Gói của bạn","mem_upgrade":"Nâng cấp","mem_creator_meta":"700 phút/tháng · mọi ngôn ngữ · bản ghi","mem_pro_meta":"1.500 phút/tháng · ưu tiên · chế độ họp","mem_dev_byok":"Nhà phát triển (BYOK)","mem_your_key":"Khóa của bạn","mem_byok_note":"Bản dựng này chạy bằng khóa Gemini của riêng bạn; không cần đăng ký. Quản lý khóa ở tab Chung.","badge_upgrade":"Nâng cấp để gỡ bỏ →","auth_no_account":"Chưa có tài khoản? ","auth_create":"Tạo tài khoản","auth_forgot":"Quên mật khẩu?","auth_offline":"Không thể kết nối máy chủ. Hãy kiểm tra kết nối internet của bạn.","auth_retry":"Thử lại","store_view":"Xem trong Microsoft Store","st_capture_lost":"Đã dừng thu âm thanh (thiết bị có thể đã thay đổi). Hãy khởi động lại phiên.","openai_key":"Khóa API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Tùy chọn — chỉ cần khi dùng công cụ OpenAI. "},"th":{"tab_membership":"สมาชิก","tab_about":"เกี่ยวกับ","al_pricing":"ราคา","al_terms":"ข้อกำหนด","al_privacy":"ความเป็นส่วนตัว","al_contact":"ติดต่อ","about_powered":"ขับเคลื่อนโดย Google Gemini","mem_active_plan":"แพ็กเกจที่ใช้งานอยู่","mem_unlimited":"นาทีไม่จำกัด","mem_this_month":"เดือนนี้: ","mem_your_plan":"แพ็กเกจของคุณ","mem_upgrade":"อัปเกรด","mem_creator_meta":"700 นาที/เดือน · ทุกภาษา · ถอดเสียงเป็นข้อความ","mem_pro_meta":"1,500 นาที/เดือน · ลำดับความสำคัญ · โหมดประชุม","mem_dev_byok":"นักพัฒนา (BYOK)","mem_your_key":"คีย์ของคุณ","mem_byok_note":"บิลด์นี้ทำงานด้วยคีย์ Gemini ของคุณเอง ไม่ต้องสมัครสมาชิก จัดการได้ในแท็บทั่วไป","badge_upgrade":"อัปเกรดเพื่อนำออก →","auth_no_account":"ยังไม่มีบัญชี? ","auth_create":"สร้างบัญชี","auth_forgot":"ลืมรหัสผ่าน?","auth_offline":"ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณ","auth_retry":"ลองอีกครั้ง","store_view":"ดูใน Microsoft Store","st_capture_lost":"การจับเสียงหยุดลง (อุปกรณ์อาจมีการเปลี่ยนแปลง) โปรดเริ่มเซสชันใหม่","openai_key":"คีย์ API ของ OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"ไม่บังคับ — จำเป็นเฉพาะเมื่อใช้เอนจิน OpenAI เท่านั้น "}};
+/* Settings/auth strings (1.0.18) merged into the 16 language blocks above so
+   they need no per-block edits; T()/applyI18n resolve them (en fallback if any). */
+Object.keys(I18N_EXTRA).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_EXTRA[l]; for(var k in s) I18N[l][k]=s[k]; });
 // Detect the boot language from the OS locale so the very first paint is not a
 // hardcoded Turkish flash: tr only when the locale starts with 'tr', else en.
 function detectLang(){
@@ -2360,6 +2451,12 @@ function applyI18n(lang){
   // Privacy modal's lead/detail are build-aware (set in JS, not via data-i18n on
   // a single fixed key), so re-render it on a live language switch while open.
   if(typeof renderPrivacy==='function' && $('#privacy-modal').classList.contains('open')) renderPrivacy();
+  // Settings Membership/About tab labels, links and the plan cards are set by id
+  // (not data-i18n), so re-localize them on a live language switch while open.
+  if($('#drawer').classList.contains('open')){
+    if(typeof localizeSettings==='function') localizeSettings();
+    if(typeof renderMembership==='function') renderMembership();
+  }
 }
 
 /* ---------- tema ---------- */
@@ -2416,24 +2513,23 @@ function updRange(el, vid){
 /* ── AUTH ──────────────────────────────────────────────────────────────── */
 // Boot vs card: the overlay shows a loading state until check_auth resolves so a
 // returning user never sees the login form flash by.
-function showAuthBoot(){ $('#auth-overlay').classList.remove('hidden'); $('#auth-boot').style.display=''; $('#auth-card').style.display='none'; }
+function showAuthBoot(){ $('#auth-overlay').classList.remove('hidden'); $('#auth-boot').style.display=''; $('#auth-offline').style.display='none'; $('#auth-card').style.display='none'; }
 function showLoginOverlay(tab){
   $('#auth-overlay').classList.remove('hidden');
-  $('#auth-boot').style.display='none'; $('#auth-card').style.display='';
-  switchAuthTab(tab || 'login');
+  $('#auth-boot').style.display='none'; $('#auth-offline').style.display='none'; $('#auth-card').style.display='';
+  $('#auth-error').style.display='none';
   openModal($('#auth-card'), null, null);
 }
-function hideLoginOverlay(){ $('#auth-overlay').classList.add('hidden'); if(activeModal===$('#auth-card')) closeModal(); }
-function switchAuthTab(tab){
-  ['login','register'].forEach(t=>{
-    document.getElementById('tab-'+t).style.display = t===tab ? '' : 'none';
-    const btn=document.querySelector('.auth-tab[data-tab="'+t+'"]');
-    btn.classList.toggle('active', t===tab);
-    btn.setAttribute('aria-selected', t===tab ? 'true' : 'false');
-  });
-  $('#auth-error').style.display = 'none';
+// Returning user with a valid session but a transient network drop at launch:
+// offer Retry instead of a (misleading) logged-out login form.
+function showAuthOffline(){
+  $('#auth-overlay').classList.remove('hidden');
+  $('#auth-boot').style.display='none'; $('#auth-card').style.display='none'; $('#auth-offline').style.display='';
+  $('#auth-offline-txt').textContent = T('auth_offline');
+  $('#auth-retry').textContent = T('auth_retry');
+  $('#auth-retry').onclick = ()=>{ bootAuth(); };
 }
-document.querySelectorAll('.auth-tab').forEach(btn=>{ btn.onclick = () => switchAuthTab(btn.dataset.tab); });
+function hideLoginOverlay(){ $('#auth-overlay').classList.add('hidden'); if(activeModal===$('#auth-card')) closeModal(); }
 function showErr(msg){ const e=$('#auth-error'); e.textContent=msg; e.style.display='block'; }
 function hideErr(){ $('#auth-error').style.display='none'; }
 
@@ -2450,28 +2546,53 @@ async function doLogin(){
   } catch(e){ showErr(T('err_conn')); }
   btn.disabled=false; btn.textContent=T('tab_login');
 }
-async function doRegister(){
-  const email = $('#reg-email').value.trim();
-  const pw    = $('#reg-pw').value;
-  const pw2   = $('#reg-pw2').value;
-  const btn   = $('#reg-btn');
-  if(!email||!pw){ showErr(T('err_need_credentials')); return; }
-  if(pw!==pw2){ showErr(T('err_pw_mismatch')); return; }
-  if(pw.length<8){ showErr(T('err_pw_short')); return; }
-  btn.disabled=true; btn.textContent=T('registering'); hideErr();
-  try{
-    const r = await api().voxis_register(email, pw);
-    if(r.ok){ QUOTA=r.quota; hideLoginOverlay(); await init(); renderQuotaBadge(QUOTA); applyQuotaGate(QUOTA); }
-    else { showErr(r.error || T('err_register_failed')); }
-  } catch(e){ showErr(T('err_conn')); }
-  btn.disabled=false; btn.textContent=T('tab_register');
-}
 $('#login-btn').onclick = doLogin;
-$('#reg-btn').onclick   = doRegister;
 $('#login-pw').onkeydown  = e => { if(e.key==='Enter') doLogin(); };
-$('#reg-pw2').onkeydown   = e => { if(e.key==='Enter') doRegister(); };
 $('#terms-link').onclick  = e => { e.preventDefault(); try{api().open_url('https://voxislive.com');}catch(_){} };
 $('#quota-upgrade-link').onclick = e => { e.preventDefault(); try{api().open_url('https://voxislive.com/pricing');}catch(_){} };
+
+// Login-only card: build the create-account / forgot links (sign-up & reset
+// run on the website, opened in the system browser). TR/EN per LANG.
+(function(){
+  var foot = $('#auth-altlinks'); if(!foot) return;
+  foot.innerHTML = T('auth_no_account')
+    + '<a href="#" id="signup-link">'+T('auth_create')+'</a>'
+    + ' &middot; <a href="#" id="forgot-link">'+T('auth_forgot')+'</a>';
+  var su = document.getElementById('signup-link'), fp = document.getElementById('forgot-link');
+  if(su) su.onclick = function(e){ e.preventDefault(); try{api().open_url('https://voxislive.com/signup');}catch(_){} };
+  if(fp) fp.onclick = function(e){ e.preventDefault(); try{api().open_url('https://voxislive.com/forgot-password');}catch(_){} };
+})();
+
+// Custom frameless resize: drag the right/bottom/corner grips → win_resize
+// bridge (pywebview 6.2.1 lacks native frameless resize). Anchored top-left.
+(function(){
+  var active=null, sx=0, sy=0, sw=0, sh=0, raf=0, pw=0, ph=0, pa='br';
+  function flush(){ raf=0; try{ api().win_resize(pw, ph, pa); }catch(e){} }
+  function onMove(e){
+    if(!active) return;
+    var dx=e.screenX-sx, dy=e.screenY-sy, w=sw, h=sh;
+    if(active.indexOf('r')>=0) w = sw + dx;
+    if(active.indexOf('l')>=0) w = sw - dx;
+    if(active.indexOf('b')>=0) h = sh + dy;
+    if(active.indexOf('t')>=0) h = sh - dy;
+    pw = Math.max(940, Math.round(w));
+    ph = Math.max(600, Math.round(h));
+    pa = active;
+    if(!raf) raf = requestAnimationFrame(flush);
+  }
+  function onUp(){ active=null; document.body.classList.remove('resizing'); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); }
+  document.querySelectorAll('.rsz').forEach(function(g){
+    g.addEventListener('mousedown', function(e){
+      e.preventDefault();
+      active = g.getAttribute('data-rsz');
+      sx = e.screenX; sy = e.screenY;
+      sw = window.innerWidth; sh = window.innerHeight;
+      document.body.classList.add('resizing');
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+  });
+})();
 
 /* ── QUOTA BAR ──────────────────────────────────────────────────────────── */
 function renderQuotaBadge(quota){ renderQuotaBar(quota); }
@@ -2540,8 +2661,6 @@ async function init(){
   opt($('#hear'), (STATE.langs||[]).map(langPair), cfg.target_language_incoming);
   opt($('#send'), (STATE.langs||[]).map(langPair), cfg.target_language_outgoing);
   opt($('#profile'), STATE.profiles||[],  cfg.active_profile);
-  opt($('#quality'), STATE.qualities||[], cfg.quality_preset);
-  opt($('#gvoice'),  STATE.gemini_voices||[], cfg.gemini_voice);
   duck.value = Math.round((cfg.duck_gain ?? 0.3)*100);  updRange(duck,'duckv');
   vol.value  = Math.round((cfg.tts_volume ?? 1)*100); updRange(vol,'volv');
   $('#subs').checked    = !!cfg.show_subtitles;
@@ -2554,6 +2673,9 @@ async function init(){
   $('#brandbadge').checked  = badgeRemovable ? (cfg.branding_badge_enabled !== false) : true;
   $('#brandbadge').disabled = !badgeRemovable;
   { const sw = $('#brandbadge').closest('.switch'); if(sw) sw.title = badgeRemovable ? '' : T('brand_badge_locked'); }
+  { const up = $('#badge-upgrade'); if(up){ up.style.display = (badgeRemovable || !STATE.official_release) ? 'none' : 'inline';
+      up.textContent = T('badge_upgrade');
+      up.onclick = ()=>{ try{api().open_url('https://voxislive.com/pricing');}catch(_){} }; } }
   $('#uilang').value    = cfg.ui_language || LANG;
   document.querySelectorAll('.k').forEach(k=>k.textContent=cfg.hotkeys[k.dataset.hk]||'—');
   // Official-release builds always run on the SaaS key — hide the BYOK input
@@ -2567,16 +2689,15 @@ async function init(){
     $('#manageplanbtn').style.display = '';
     // Store-delivered build: offer a shortcut to the listing (updates come via Store).
     { const sb=$('#storebtn'); if(sb) sb.style.display=''; }
-    // Model id is internal plumbing; customers don't need to see it.
-    const footModel = $('#foot-model');
-    if(footModel) footModel.style.display = 'none';
     // Bidirectional meeting billing only applies on the metered SaaS path.
     const meetingUsage = $('#meeting-usage-note');
     if(meetingUsage) meetingUsage.style.display = '';
   } else {
-    const byokBadge = $('#byok-badge');
-    if(STATE.byok_set){ byokBadge.style.display='inline'; } else { byokBadge.style.display='none'; }
+    const st = STATE.byok_status || {gemini: STATE.byok_set, openai: false};
+    $('#byok-badge').style.display = st.gemini ? 'inline' : 'none';
+    { const ob=$('#oai-badge'); if(ob) ob.style.display = st.openai ? 'inline' : 'none'; }
     $('#gemkey').value = '';
+    { const ok=$('#oaikey'); if(ok) ok.value = ''; }
     $('#logoutbtn').style.display = 'none';
     bindByokHandlers();
   }
@@ -2592,8 +2713,6 @@ vol.oninput =()=>{updRange(vol,'volv');  api().set_cfg('tts_volume',vol.value/10
 $('#hear').onchange   = e=>api().set_cfg('target_language_incoming', e.target.value);
 $('#send').onchange   = e=>api().set_cfg('target_language_outgoing', e.target.value);
 $('#profile').onchange= e=>api().set_profile(e.target.value).then(refreshFromCfg);
-$('#quality').onchange= e=>api().set_cfg('quality_preset', e.target.value);
-$('#gvoice').onchange = e=>api().set_cfg('gemini_voice', e.target.value);
 $('#out').onchange    = e=>api().set_device('output', e.target.value);
 $('#mic').onchange    = e=>api().set_device('mic', e.target.value);
 $('#subs').onchange   = e=>api().set_cfg('show_subtitles', e.target.checked);
@@ -2604,7 +2723,6 @@ $('#uilang').onchange = e=>{ applyI18n(e.target.value); try{api().set_cfg('ui_la
 
 async function refreshFromCfg(){
   const c = await api().get_cfg();
-  opt($('#quality'), STATE.qualities, c.quality_preset);
   duck.value = Math.round(c.duck_gain*100); updRange(duck,'duckv');
 }
 
@@ -2645,7 +2763,7 @@ function applyWinMaxUI(){
   btn.dataset.i18nTitle = winMaxed ? 'title_restore' : 'title_max';
   btn.dataset.i18nAria  = winMaxed ? 'title_restore' : 'title_max';
 }
-$('#win-max').onclick   = ()=>{ try{api().win_toggle_max();}catch(e){} winMaxed=!winMaxed; applyWinMaxUI(); };
+$('#win-max').onclick   = ()=>{ try{api().win_toggle_max();}catch(e){} winMaxed=!winMaxed; applyWinMaxUI(); document.body.classList.toggle('win-maximized', winMaxed); };
 $('#win-close').onclick = ()=>{ try{api().win_close();}catch(e){} };
 $('#auth-win-min').onclick   = ()=>{ try{api().win_minimize();}catch(e){} };
 $('#auth-win-close').onclick = ()=>{ try{api().win_close();}catch(e){} };
@@ -2675,8 +2793,69 @@ document.addEventListener('keydown', e=>{
   else trapTab(e);
 });
 
-function openDrawer(){ $('#scrim').classList.add('open'); $('#drawer').classList.add('open'); openModal($('#drawer'), closeDrawer, $('#gear')); }
+function openDrawer(){ $('#scrim').classList.add('open'); $('#drawer').classList.add('open'); localizeSettings(); renderMembership(); switchSettingsTab('general'); openModal($('#drawer'), closeDrawer, $('#gear')); }
 function closeDrawer(){ $('#scrim').classList.remove('open'); $('#drawer').classList.remove('open'); closeModal(); }
+// Settings tabs (Genel / Kısayollar / Üyelik / Hakkında)
+function switchSettingsTab(pane){
+  document.querySelectorAll('#drawer .dtab').forEach(b=>{
+    const on = b.dataset.pane===pane;
+    b.classList.toggle('active', on); b.setAttribute('aria-selected', on?'true':'false');
+  });
+  document.querySelectorAll('#drawer .dpane').forEach(p=>{ p.hidden = (p.dataset.pane!==pane); });
+}
+document.querySelectorAll('#drawer .dtab').forEach(b=>{
+  b.onclick = ()=>{ switchSettingsTab(b.dataset.pane); if(b.dataset.pane==='membership') renderMembership(); };
+});
+// New-string localization (TR/EN; EN fallback for other UI languages) + About fields.
+function localizeSettings(){
+  const set=(id,t)=>{ const el=document.getElementById(id); if(el) el.textContent=t; };
+  const ver = (STATE && STATE.version) ? ('v'+STATE.version) : '';
+  const chMap = {store:'Microsoft Store', desktop:'Desktop', extension:'Extension'};
+  const ch = (STATE && STATE.channel) ? (chMap[STATE.channel]||STATE.channel) : '';
+  set('about-ver', [ver, ch].filter(Boolean).join(' · '));
+  set('about-copy', '© '+(new Date().getFullYear())+' Voxis · voxislive.com');
+}
+// About links → system browser.
+(function(){
+  const L={'al-site':'https://voxislive.com','al-pricing':'https://voxislive.com/pricing','al-terms':'https://voxislive.com/terms','al-privacy':'https://voxislive.com/privacy','al-contact':'https://voxislive.com/contact'};
+  Object.keys(L).forEach(id=>{ const el=document.getElementById(id); if(el) el.onclick=(e)=>{ e.preventDefault(); try{api().open_url(L[id]);}catch(_){} }; });
+})();
+// Membership pane: current plan + quota + upgrade tiers (official build) or BYOK note (dev build).
+function renderMembership(){
+  const box = $('#membership-body'); if(!box) return;
+  const official = !!(STATE && STATE.official_release);
+  if(!official){
+    box.innerHTML = '<div class="planbox"><div class="pcur"><span class="ptier">'+T('mem_dev_byok')+'</span><span class="ppill">'+T('mem_your_key')+'</span></div>'
+      + '<div class="pquotmeta">'+T('mem_byok_note')+'</div></div>';
+    return;
+  }
+  const q = QUOTA || {};
+  const tier = String(q.tier || q.plan || (q.unlimited?'pro':'free')).toLowerCase();
+  const tierName = ({free:'Free', creator:'Creator', pro:'Pro', enterprise:'Enterprise'})[tier] || (tier.charAt(0).toUpperCase()+tier.slice(1));
+  let quotaLine;
+  if(q.unlimited){ quotaLine = T('mem_unlimited'); }
+  else {
+    const allowed=q.allowed_minutes||0, used=q.used_minutes||0, rem=(q.remaining!=null?q.remaining:Math.max(0,allowed-used));
+    quotaLine = T('mem_this_month')+Math.round(rem)+'/'+Math.round(allowed)+T('min_left');
+  }
+  const card=(key,name,price,meta,feat)=>{
+    const isCur = (tier===key) || (tier==='enterprise'&&key==='pro');
+    return '<div class="tiercard'+(feat?' feat':'')+'">'
+      + '<div class="tname">'+name+'</div><div class="tprice">'+price+'</div>'
+      + '<div class="tmeta">'+meta+'</div>'
+      + (isCur ? '<div class="tcur">'+T('mem_your_plan')+'</div>'
+               : '<button class="btn btn-primary tup" style="width:100%">'+T('mem_upgrade')+'</button>')
+      + '</div>';
+  };
+  box.innerHTML =
+    '<div class="planbox"><div class="pcur"><span class="ptier">'+tierName+'</span><span class="ppill">'+T('mem_active_plan')+'</span></div>'
+    + '<div class="pquotmeta">'+quotaLine+'</div></div>'
+    + '<div class="tiergrid">'
+    + card('creator','Creator','$19<small>/mo</small>', T('mem_creator_meta'), false)
+    + card('pro','Pro','$39<small>/mo</small>', T('mem_pro_meta'), true)
+    + '</div>';
+  box.querySelectorAll('.tup').forEach(b=>{ b.onclick=()=>{ try{api().open_url('https://voxislive.com/pricing');}catch(_){} }; });
+}
 $('#gear').onclick = openDrawer;
 $('#closedrawer').onclick = closeDrawer;
 // Backdrop click dismisses whichever modal currently owns the scrim.
@@ -2878,6 +3057,11 @@ $('#showgem').onclick = e=>{
   const g=$('#gemkey'); const show=g.type==='password';
   g.type=show?'text':'password'; e.target.textContent=show?T('hide'):T('show');
 };
+if($('#showoai')) $('#showoai').onclick = e=>{
+  e.preventDefault();
+  const g=$('#oaikey'); if(!g) return; const show=g.type==='password';
+  g.type=show?'text':'password'; e.target.textContent=show?T('hide'):T('show');
+};
 // BYOK clear/save handlers are bound only on developer builds; the official
 // build hides the section entirely, so they are never wired (mirrors the Python
 // double-gate on save_keys/clear_byok).
@@ -2887,18 +3071,28 @@ function bindByokHandlers(){
   $('#clearbtn').onclick = async e=>{
     e.preventDefault();
     if(!confirm(T('confirm_clear_byok'))) return;
-    await api().clear_byok();
+    await api().clear_byok('gemini');
     $('#byok-badge').style.display='none';
     $('#gemkey').value='';
+  };
+  if($('#clearoai')) $('#clearoai').onclick = async e=>{
+    e.preventDefault();
+    if(!confirm(T('confirm_clear_byok'))) return;
+    await api().clear_byok('openai');
+    { const ob=$('#oai-badge'); if(ob) ob.style.display='none'; }
+    { const ok=$('#oaikey'); if(ok) ok.value=''; }
   };
 }
 $('#savesettings').onclick = async()=>{
   if(!STATE.official_release){
     const gem = $('#gemkey').value.trim();
-    if(gem){
-      const ok = await api().save_keys(gem);
-      if(ok){ $('#byok-badge').style.display='inline'; $('#gemkey').value=''; }
-      else { alert(T('alert_key_failed')); return; }
+    const oai = ($('#oaikey') ? $('#oaikey').value.trim() : '');
+    if(gem || oai){
+      const ok = await api().save_keys(gem, oai);
+      if(ok){
+        if(gem){ $('#byok-badge').style.display='inline'; $('#gemkey').value=''; }
+        if(oai){ const ob=$('#oai-badge'); if(ob) ob.style.display='inline'; const k=$('#oaikey'); if(k) k.value=''; }
+      } else { alert(T('alert_key_failed')); return; }
     }
   }
   await api().set_cfg('ui_language', $('#uilang').value);
@@ -2975,9 +3169,11 @@ function onSrc(text){
   cap.appendChild(who); cap.appendChild(document.createTextNode(text));
   scrollEnd();
 }
-function addSys(text){
+function addSys(text, level){
   removeEmpty();
-  const sc=$('#scroll'); const d=document.createElement('div'); d.className='line sys'; d.textContent=text;
+  const sc=$('#scroll'); const d=document.createElement('div');
+  d.className='line sys' + (level==='error' ? ' err' : level==='warn' ? ' warn' : '');
+  d.textContent=text;
   sc.appendChild(d); scrollEnd(); trimScroll();
   if(curBubble) curBubble.classList.remove('active');
   curTurn=null; curBubble=null;
@@ -3017,20 +3213,18 @@ function setPillState(p){
   else if(p.mode){ st = p.playing ? 'translating' : 'listening'; }
   $('#pill').dataset.state = st;
 }
-let sessStart=null;
-function fmtTime(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-function updateFooter(p){
-  if(p.mode){ if(!sessStart) sessStart=performance.now(); $('#foottime').textContent=fmtTime(Math.floor((performance.now()-sessStart)/1000)); }
-  else { sessStart=null; $('#foottime').textContent='00:00'; }
-  $('#footlat').textContent = p.latency ? ('~'+p.latency.toFixed(1)+'s') : '—';
-}
 
 /* ---------- poll ---------- */
 async function poll(){
   try{
     const p = await api().poll();
+    // Reconcile the maximize button glyph/label with the REAL window state
+    // (OS double-click / Win+Up / restore-on-launch don't go through the button).
+    if(typeof p.maximized==='boolean' && winMaxed!==p.maximized){
+      winMaxed=p.maximized; applyWinMaxUI(); document.body.classList.toggle('win-maximized', winMaxed);
+    }
     p.events.forEach(ev=>{
-      if(ev[0]==='status'){ addSys(ev[1]); $('#footstate').textContent=ev[1]; }
+      if(ev[0]==='status'){ addSys(ev[1], ev[2] && ev[2].level); }
       else if(ev[0]==='trans'){ onTrans(ev[1], ev[2]); }
       else if(ev[0]==='src'){ onSrc(ev[1]); }
       else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
@@ -3048,7 +3242,6 @@ async function poll(){
     // Reduced-motion users get no rAF loop; still surface the input-level readout
     // each poll (the per-frame oscillation is what we skip, not the dB value).
     if(RM){ $('#meterdb').textContent = liveSession ? dbText(targetLevel) : '−∞ dB'; }
-    updateFooter(p);
     $('#sesstxt').textContent = p.session;
     $('#sess').classList.toggle('on', liveSession);
     $('#streamhint').innerHTML = liveSession ? ('<span class="lv">●</span> '+T('live') + (p.latency ? (' · '+p.latency.toFixed(1)+T('behind_suffix')) : '')) : '';
@@ -3074,6 +3267,7 @@ async function bootAuth(){
   try{
     const auth = await api().check_auth();
     if(auth.authenticated){ QUOTA=auth.quota; hideLoginOverlay(); await init(); renderQuotaBadge(QUOTA); applyQuotaGate(QUOTA); }
+    else if(auth.offline){ showAuthOffline(); }
     else { showLoginOverlay('login'); }
   } catch(e){ showLoginOverlay('login'); }
 }
