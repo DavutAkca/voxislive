@@ -52,6 +52,23 @@ _MAX_TRANSIENT_FAILURES = 8
 # OpenAI realtime cap is ~60 min; plan a rotation well before it. Far less churn
 # than Gemini's 13-min cycle.
 _HARD_ROTATE_SECONDS = 58 * 60
+# A session the server accepts then closes in under this many seconds (no error,
+# no planned rotation) is treated as a covert transient failure, so an
+# account/region/endpoint reject can't spin a no-backoff reconnect loop forever.
+_MIN_SESSION_SECONDS = 5.0
+
+# Usage is recorded into LiveTranslator's process-wide accumulator so the in-app
+# minutes/cost readout (webui get_usage) aggregates both engines into one total.
+# Imported lazily on first frame to keep google.genai off the OpenAI cold path.
+_USAGE_ADD = None
+
+
+def _record_usage(key: str, amount: float):
+    global _USAGE_ADD
+    if _USAGE_ADD is None:
+        from .translator import _add_usage
+        _USAGE_ADD = _add_usage
+    _USAGE_ADD(key, amount)
 
 # Terminal (non-retryable with the same key) OpenAI failure markers + 4xx codes.
 # 429 excluded: a bare rate-limit is transient (retry w/ backoff, bounded by
@@ -210,6 +227,9 @@ class OpenAITranslator(threading.Thread):
         last_error_text = None
         while not self._stopping.is_set():
             self._ready.clear()
+            # Marks when the current session became live; stays None until ready so
+            # the error/exit paths can tell a connect failure from a dropped session.
+            started = None
             try:
                 ws = await self._connect()
                 try:
@@ -219,8 +239,11 @@ class OpenAITranslator(threading.Thread):
                     self._reinject_carryover()
                     self.on_status(t("st_connected", name=self.name, lang=self.target_lang))
                     backoff = 1.0
-                    transient_failures = 0
                     last_error_text = None
+                    # transient_failures is cleared only once the session proves
+                    # healthy (lived past _MIN_SESSION_SECONDS or rotated), not on the
+                    # bare connect — otherwise an accept-then-immediately-close server
+                    # would reset the cap every iteration and never stop reconnecting.
                     started = time.monotonic()
                     sender = asyncio.create_task(self._sender(ws, started))
                     receiver = asyncio.create_task(self._receiver(ws))
@@ -249,8 +272,27 @@ class OpenAITranslator(threading.Thread):
                         await ws.close()
                     except Exception:
                         pass
-                if not self._stopping.is_set():
-                    self.on_status(t("st_renewing", name=self.name))
+                # The session ended without raising. A planned rotation or a session
+                # that stayed alive past the minimum lifetime is a healthy end: clear
+                # the transient machinery and reconnect cleanly. A session the server
+                # accepted then closed almost immediately (no error, no rotation) is a
+                # covert failure — back off and bound it like any transient drop so
+                # the client never spins reconnecting a dead endpoint forever.
+                if rotating or (started is not None
+                                and time.monotonic() - started >= _MIN_SESSION_SECONDS):
+                    transient_failures = 0
+                    if not self._stopping.is_set():
+                        self.on_status(t("st_renewing", name=self.name))
+                elif not self._stopping.is_set():
+                    transient_failures += 1
+                    if transient_failures >= _MAX_TRANSIENT_FAILURES:
+                        self.on_status(t("st_conn_err", name=self.name, s=0,
+                                         e="server closed session immediately"))
+                        break
+                    self.on_status(t("st_conn_err", name=self.name, s=backoff,
+                                     e="server closed session immediately"))
+                    await asyncio.sleep(backoff)
+                    backoff = min(backoff * 1.6, 6)
             except _Rotate:
                 self._ready.clear()
                 continue
@@ -264,6 +306,11 @@ class OpenAITranslator(threading.Thread):
                     self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
                     traceback.print_exc()
                     break
+                # A session that ran past the minimum lifetime proves the path works;
+                # a later drop starts a fresh failure streak (preserves the "a
+                # successful connection clears the failure count" resilience).
+                if started is not None and time.monotonic() - started >= _MIN_SESSION_SECONDS:
+                    transient_failures = 0
                 transient_failures += 1
                 if transient_failures >= _MAX_TRANSIENT_FAILURES:
                     self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
@@ -317,6 +364,8 @@ class OpenAITranslator(threading.Thread):
                 "type": "session.input_audio_buffer.append",
                 "audio": base64.b64encode(item).decode("ascii"),
             }))
+            # 24 kHz mono PCM16 → 24000*2 = 48000 bytes/sec sent.
+            _record_usage("in_sec", len(item) / 48000)
 
     async def _receiver(self, ws):
         async for raw in ws:
@@ -330,7 +379,10 @@ class OpenAITranslator(threading.Thread):
             if etype == "session.output_audio.delta":
                 b64 = ev.get("delta") or ev.get("audio")
                 if b64:
-                    self.on_audio(base64.b64decode(b64))
+                    pcm = base64.b64decode(b64)
+                    self.on_audio(pcm)
+                    # 24 kHz mono PCM16 → 48000 bytes/sec received.
+                    _record_usage("out_sec", len(pcm) / 48000)
             elif etype == "session.output_transcript.delta":
                 txt = ev.get("delta") or ev.get("text")
                 if txt:

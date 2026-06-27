@@ -269,6 +269,15 @@ class ProcessExcludeLoopback:
         # this gate the loop guard below is immediately false and the processor
         # would exit before any audio ever arrives — leaving the engine deaf.
         self._go.wait()
+        # Count consecutive consumer faults. A single bad frame is swallowed
+        # (transient), but a persistent fault (ducker COM failure, resampler
+        # error, downstream send) would otherwise be silently swallowed every
+        # frame forever — capture stays "healthy", billing keeps running, yet no
+        # audio reaches the translator. After a small run of back-to-back
+        # failures, record it via the same _err the capture thread uses for
+        # fatal faults so `failed` / _maybe_warn_capture_dead surfaces it and
+        # billing stops. Reset on any success so it never trips on noise.
+        fails = 0
         while self._run or self._queue:
             if not self._queue:
                 self._has_data.wait(0.05)
@@ -280,7 +289,15 @@ class ProcessExcludeLoopback:
                 continue
             try:
                 self._on_chunk(x)
-            except Exception:
+                fails = 0
+            except Exception as e:
+                fails += 1
+                # Rate-limited logging: first failure, then every ~200th, so a
+                # persistent fault is visible without flooding the log per frame.
+                if fails == 1 or fails % 200 == 0:
+                    print(f"[ploopback] consumer fault #{fails}: {e!r}")
+                if fails >= 50 and self._err is None:
+                    self._err = e
                 continue
 
     def start(self):

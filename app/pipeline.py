@@ -736,8 +736,15 @@ class ModeController:
             if not sid:
                 continue
             if delta > 0:
+                # Same client clamp the stop() tail applies: one interval can never
+                # legitimately exceed a heartbeat (+ bounded slack). On sleep/resume
+                # the monotonic clock jumps while capture may not flag failed, which
+                # would otherwise bill the whole wall-clock gap as one delta. Cap only
+                # the REPORTED value — the watermark already advanced past the excess
+                # in _consume_minutes, so the surplus is dropped, not deferred.
+                max_beat = (self.HEARTBEAT_SECONDS + 2.0) / 60.0
                 voxis_client.report_usage_async(
-                    sid, delta, source, self.current_engine() or "gemini",
+                    sid, min(delta, max_beat), source, self.current_engine() or "gemini",
                     on_quota_exceeded=self._fire_quota_exceeded)
             self._dispatch_usage_reported()
 
