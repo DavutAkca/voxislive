@@ -2768,7 +2768,18 @@ $('#auth-win-close').onclick = ()=>{ try{api().win_close();}catch(e){} };
 
 /* ---------- modal focus management (drawer, consent, onboarding, auth) ----- */
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+// Modal STACK: a nested modal (e.g. topbar History/Privacy opened over the
+// Settings drawer) must not blow away the parent's focus-trap/Escape on close.
+// The top entry owns the trap, Escape and scrim; activeModal/modalOnEsc/
+// modalReturnFocus mirror that top so existing references keep working.
 let activeModal=null, modalReturnFocus=null, modalOnEsc=null;
+const modalStack=[];
+function syncModalTop(){
+  const top=modalStack[modalStack.length-1]||null;
+  activeModal      = top ? top.el : null;
+  modalOnEsc       = top ? top.onEsc : null;
+  modalReturnFocus = top ? top.returnFocus : null;
+}
 function trapTab(e){
   if(e.key!=='Tab' || !activeModal) return;
   const f=[...activeModal.querySelectorAll(FOCUSABLE)].filter(el=>el.offsetParent!==null || el===document.activeElement);
@@ -2778,12 +2789,14 @@ function trapTab(e){
   else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
 }
 function openModal(el, onEsc, returnTo){
-  activeModal=el; modalOnEsc=onEsc||null; modalReturnFocus=returnTo||document.activeElement;
+  modalStack.push({el, onEsc:onEsc||null, returnFocus:returnTo||document.activeElement});
+  syncModalTop();
   const first=el.querySelector(FOCUSABLE); if(first) try{ first.focus(); }catch(_){}
 }
 function closeModal(){
-  const ret=modalReturnFocus;
-  activeModal=null; modalOnEsc=null; modalReturnFocus=null;
+  const top=modalStack.pop();
+  syncModalTop();                       // restore the parent modal's trap/Esc, if any
+  const ret=top ? top.returnFocus : null;
   if(ret) try{ ret.focus(); }catch(_){}
 }
 document.addEventListener('keydown', e=>{
@@ -2994,9 +3007,29 @@ function fmtOffset(s){ s=Math.max(0,Math.floor(s||0)); return String(Math.floor(
 function escHtml(s){ return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function highlight(s, q){
   if(!q) return escHtml(s);
-  const lo=(s||'').toLowerCase(); let out='', i=0;
-  while(true){ const j=lo.indexOf(q,i); if(j<0){ out+=escHtml(s.slice(i)); break; }
-    out+=escHtml(s.slice(i,j))+'<mark>'+escHtml(s.slice(j,j+q.length))+'</mark>'; i=j+q.length; }
+  s=s||''; const lo=s.toLowerCase();
+  // Fast path: most scripts case-fold without changing code-unit count, so
+  // lowercase offsets map 1:1 onto the original string.
+  if(lo.length===s.length){ let out='', i=0;
+    while(true){ const j=lo.indexOf(q,i); if(j<0){ out+=escHtml(s.slice(i)); break; }
+      out+=escHtml(s.slice(i,j))+'<mark>'+escHtml(s.slice(j,j+q.length))+'</mark>'; i=j+q.length; }
+    return out;
+  }
+  // Slow path: a length-changing fold (Turkish 'İ'→'i̇', German 'ß'→'ss')
+  // shifts lowercase offsets, so fold per-character and map each folded code
+  // unit back to its original index to keep <mark> on the right characters.
+  const map=[]; let folded='';
+  for(let k=0;k<s.length;k++){ const f=s[k].toLowerCase(); for(let m=0;m<f.length;m++){ folded+=f[m]; map.push(k); } }
+  let out='', i=0;                       // i indexes the ORIGINAL string
+  while(true){
+    let fi=0; while(fi<map.length && map[fi]<i) fi++;   // folded offset for original i
+    const j=folded.indexOf(q,fi);
+    if(j<0){ out+=escHtml(s.slice(i)); break; }
+    const startOrig=map[j];
+    const endOrig=map[j+q.length-1]+1;   // exclusive original end of the match
+    out+=escHtml(s.slice(i,startOrig))+'<mark>'+escHtml(s.slice(startOrig,endOrig))+'</mark>';
+    i=endOrig;
+  }
   return out;
 }
 function renderHistoryTurns(){

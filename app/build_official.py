@@ -73,7 +73,9 @@ def assert_clean_official_flag(file_path: pathlib.Path):
     if not m:
         raise ValueError(f"Could not locate IS_OFFICIAL_RELEASE in {file_path}")
 
-    rhs = m.group(1).strip()
+    # Strip a trailing comment before comparing: the greedy (.+) capture also
+    # swallows any "  # ..." note, so 'True  # default' must not slip past the guard.
+    rhs = m.group(1).split("#", 1)[0].strip()
     # The committed value must be a resolver call (or False), never a hard True.
     if rhs == "True":
         raise RuntimeError(

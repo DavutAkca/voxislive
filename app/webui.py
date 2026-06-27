@@ -533,9 +533,39 @@ class Bridge:
         }.get(anchor, N | W)
 
     # ── Window geometry persistence (size/position/maximized) ────────────────
+    @staticmethod
+    def _work_area_size():
+        """Primary-monitor work-area size (px), best-effort. Used to reject an
+        OS-driven maximize (Win+Up / title-bar double-click) that fires `resized`
+        before `maximized` — without ordering guarantees the full work-area size
+        would otherwise be stored as the RESTORE geometry, sticking the window at
+        screen size after un-maximize. Returns None on any failure."""
+        try:
+            import ctypes
+            from ctypes import wintypes
+            rect = wintypes.RECT()
+            # SPI_GETWORKAREA = 0x0030
+            if ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0):
+                return rect.right - rect.left, rect.bottom - rect.top
+        except Exception:
+            pass
+        try:
+            import ctypes
+            # SM_CXMAXIMIZED = 61, SM_CYMAXIMIZED = 62
+            return (ctypes.windll.user32.GetSystemMetrics(61),
+                    ctypes.windll.user32.GetSystemMetrics(62))
+        except Exception:
+            return None
+
     def _on_win_resized(self, *a):
         if len(a) >= 2 and not self._maximized:
-            self._win_geom["w"], self._win_geom["h"] = int(a[0]), int(a[1])
+            w, h = int(a[0]), int(a[1])
+            # Skip a resize matching the work area: an OS maximize whose `resized`
+            # arrives before `maximized` must not pollute the restore geometry.
+            wa = self._work_area_size()
+            if wa is not None and abs(w - wa[0]) <= 4 and abs(h - wa[1]) <= 4:
+                return
+            self._win_geom["w"], self._win_geom["h"] = w, h
 
     def _on_win_moved(self, *a):
         if len(a) >= 2 and not self._maximized:

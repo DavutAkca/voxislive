@@ -44,6 +44,12 @@ _ROTATE_DRAIN_SECONDS = 1.5
 # outage surfaces a single actionable status instead of spinning forever.
 _MAX_TRANSIENT_FAILURES = 8
 
+# A session the server accepts then closes in under this many seconds (no
+# exception, no planned rotation) is treated as a covert transient failure —
+# otherwise an account/region/endpoint reject would spin a no-backoff reconnect
+# loop at full speed. A real session always lives far longer than this.
+_MIN_SESSION_SECONDS = 5.0
+
 # Live API audio pricing, USD per minute (input + output).
 COST_IN_PER_MIN = 0.0053
 COST_OUT_PER_MIN = 0.0315
@@ -239,6 +245,9 @@ class LiveTranslator(threading.Thread):
             # live": clear on every iteration so the gap during reconnect/rotation
             # is never reported ready.
             self._ready.clear()
+            # Marks when the current session became live; stays None until ready so
+            # the error/exit paths can tell a connect failure from a dropped session.
+            started = None
             # Resume the prior session so a rotation / GoAway / drop reconnects
             # seamlessly instead of cold-starting (handle=None = fresh session).
             if _SUPPORTS_RESUMPTION:
@@ -262,8 +271,11 @@ class LiveTranslator(threading.Thread):
                     self.on_status(t("st_connected", name=self.name, lang=self.target_lang))
                     self._ready.set()
                     backoff = 1.0
-                    transient_failures = 0
                     last_error_text = None
+                    # transient_failures is cleared only once the session proves
+                    # healthy (lived past _MIN_SESSION_SECONDS or rotated), not on the
+                    # bare connect — otherwise an accept-then-immediately-close server
+                    # would reset the cap every iteration and never stop reconnecting.
                     started = time.monotonic()
                     sender = asyncio.create_task(self._sender(session, started))
                     receiver = asyncio.create_task(self._receiver(session))
@@ -295,8 +307,28 @@ class LiveTranslator(threading.Thread):
                         exc = task.exception()
                         if exc and not isinstance(exc, _Rotate):
                             raise exc
-                if not self._stopping.is_set():
-                    self.on_status(t("st_renewing", name=self.name))
+                # The session ended without raising. A planned rotation or a session
+                # that stayed alive past the minimum lifetime is a healthy end: clear
+                # the transient machinery and reconnect cleanly. A session the server
+                # accepted then closed almost immediately (no exception, no rotation)
+                # is a covert failure — back off and bound it like any transient drop
+                # so the client never spins reconnecting a dead endpoint forever.
+                if rotating or (started is not None
+                                and time.monotonic() - started >= _MIN_SESSION_SECONDS):
+                    transient_failures = 0
+                    if not self._stopping.is_set():
+                        self.on_status(t("st_renewing", name=self.name))
+                elif not self._stopping.is_set():
+                    self._resume_handle = None
+                    transient_failures += 1
+                    if transient_failures >= _MAX_TRANSIENT_FAILURES:
+                        self.on_status(t("st_conn_err", name=self.name, s=0,
+                                         e="server closed session immediately"))
+                        break
+                    self.on_status(t("st_conn_err", name=self.name, s=backoff,
+                                     e="server closed session immediately"))
+                    await asyncio.sleep(backoff)
+                    backoff = min(backoff * 1.6, 6)
             except _Rotate:
                 # Defensive: a _Rotate must not be treated as a transient error.
                 self._ready.clear()
@@ -313,6 +345,11 @@ class LiveTranslator(threading.Thread):
                     self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
                     traceback.print_exc()
                     break
+                # A session that ran past the minimum lifetime proves the path works;
+                # a later drop starts a fresh failure streak (preserves the original
+                # "a successful connection clears the failure count" resilience).
+                if started is not None and time.monotonic() - started >= _MIN_SESSION_SECONDS:
+                    transient_failures = 0
                 transient_failures += 1
                 # A failed reconnect may be a stale/expired resume handle — drop it
                 # so the next attempt starts a fresh session.
