@@ -99,17 +99,27 @@ def list_records(directory: str) -> list[dict]:
             rec = load_record(path)
         except (OSError, ValueError):
             continue
+        # Tolerate a corrupted/hand-edited record: a non-list `turns` or a
+        # null/non-numeric `started` must skip-or-coerce this one record, not
+        # abort the whole History listing with a TypeError.
         turns = rec.get("turns", [])
+        if not isinstance(turns, list):
+            turns = []
+        try:
+            started = float(rec.get("started") or 0.0)
+        except (TypeError, ValueError):
+            started = 0.0
+        first = turns[0] if turns and isinstance(turns[0], dict) else {}
         out.append({
             "file": name,
-            "started": rec.get("started", 0.0),
+            "started": started,
             "started_iso": rec.get("started_iso", ""),
             "mode": rec.get("mode", ""),
             "target_in": rec.get("target_in", ""),
             "target_out": rec.get("target_out", ""),
             "turns": len(turns),
             # Short preview from the first translated line.
-            "preview": (turns[0].get("text", "") if turns else "")[:80],
+            "preview": (first.get("text", "") or "")[:80],
         })
     out.sort(key=lambda r: r.get("started", 0.0), reverse=True)
     return out
@@ -121,6 +131,11 @@ def _cue_bounds(turns, idx):
     if idx + 1 < len(turns):
         nxt = float(turns[idx + 1].get("t", start + MIN_CUE_S))
         end = max(start + MIN_CUE_S, min(nxt, start + MAX_CUE_S))
+        # Never overlap the following cue: when two turns start closer than
+        # MIN_CUE_S, the floor above would push end past nxt. Clamp so cues stay
+        # non-overlapping/monotonic (a short cue is better than a stacked one).
+        if nxt > start:
+            end = min(end, nxt)
     else:
         end = start + MIN_CUE_S
     return start, end

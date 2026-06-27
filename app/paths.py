@@ -127,14 +127,24 @@ def install_secret(name: str = "install.secret", nbytes: int = 32) -> bytes:
     except OSError:
         pass
     data = os.urandom(nbytes)
+    # Atomic write: a crash mid-write must never leave a short file, which the
+    # read above would then discard and regenerate — minting a DIFFERENT secret
+    # that orphans every prior DPAPI-wrapped blob derived from it. Write to a temp
+    # and os.replace so the persisted secret is always whole.
+    tmp = path + ".tmp"
     try:
         # 0o600 is honored on POSIX; on Windows the ACL is tightened by callers
         # that store sensitive material (e.g. app/byok_store).
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         try:
             os.write(fd, data)
+            os.fsync(fd)
         finally:
             os.close(fd)
+        os.replace(tmp, path)
     except OSError:
-        pass
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
     return data
