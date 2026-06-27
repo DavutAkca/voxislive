@@ -435,22 +435,14 @@ def get_session_key(target=None, caps=None) -> tuple[Optional[str], Optional[str
     return None, None, None, None, _core_error(resp)
 
 
-def report_usage(session_id: str, delta_minutes: float, source: str, engine: str = "gemini") -> str:
-    """Reports session usage to auth-core. Fire-and-forget.
+def _post_usage(session_id: str, delta_minutes: float, source: str, engine: str) -> str:
+    """One POST /usage/report attempt. Returns "ok" | "quota" | "reauth" | "fail".
 
-    Returns one of:
-      * "ok"    — accepted (HTTP 204), quota still positive.
-      * "quota" — accepted but the license is now exhausted (HTTP 402). The
-                  caller should stop the running session: the server is not in
-                  the audio path, so the mid-session cutoff happens client-side.
-      * "fail"  — not reported (disabled build, no token, transport error, or any
-                  other non-204/402 status). Best-effort; never raises.
+    "reauth" is an internal signal for a 401: the server's token cache (5-min TTL)
+    expired mid-session, not a real sign-out — /usage/report only reads the cache
+    (tc.Get); only /auth/verify repopulates it (tc.Set). The caller re-verifies and
+    retries rather than discarding the token.
     """
-    if not IS_OFFICIAL_RELEASE:
-        return "fail"
-    token = _valid_jwt()
-    if not token or delta_minutes <= 0:
-        return "fail"
     try:
         resp = requests.post(
             f"{_BASE_URL}/usage/report",
@@ -465,14 +457,50 @@ def report_usage(session_id: str, delta_minutes: float, source: str, engine: str
             timeout=_TIMEOUT,
         )
         if resp.status_code == 401:
-            clear_jwt()
-            return "fail"
+            return "reauth"
         if resp.status_code == 402:
             return "quota"
         return "ok" if resp.status_code == 204 else "fail"
     except requests.RequestException as exc:
         _log_detail("report_usage", exc)
         return "fail"
+
+
+def report_usage(session_id: str, delta_minutes: float, source: str, engine: str = "gemini") -> str:
+    """Reports session usage to auth-core. Fire-and-forget.
+
+    Returns one of:
+      * "ok"    — accepted (HTTP 204), quota still positive.
+      * "quota" — accepted but the license is now exhausted (HTTP 402). The
+                  caller should stop the running session: the server is not in
+                  the audio path, so the mid-session cutoff happens client-side.
+      * "fail"  — not reported (disabled build, no token, transport error, or any
+                  other non-204/402 status). Best-effort; never raises.
+
+    A 401 is NOT treated as a sign-out: it almost always means the server's
+    5-minute token cache expired mid-session (only /auth/verify refreshes it, and
+    the client verifies just once at session start). We re-verify to repopulate
+    that cache and retry the report once; the JWT is cleared only if the re-verify
+    itself returns a genuine 401 (verify_session handles that). Without this, every
+    session longer than the cache TTL silently stopped billing and signed the user
+    out.
+    """
+    if not IS_OFFICIAL_RELEASE:
+        return "fail"
+    token = _valid_jwt()
+    if not token or delta_minutes <= 0:
+        return "fail"
+    status = _post_usage(session_id, delta_minutes, source, engine)
+    if status == "reauth":
+        info, _ = verify_session()
+        if info is None:
+            # verify_session already cleared the JWT on a real 401; any other
+            # failure (network, 402) just means this report is best-effort lost.
+            return "fail"
+        status = _post_usage(session_id, delta_minutes, source, engine)
+        if status == "reauth":
+            return "fail"
+    return status
 
 
 def report_usage_async(session_id: str, delta_minutes: float, source: str,

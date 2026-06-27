@@ -115,6 +115,7 @@ class Bridge:
             cfg, None, self._on_text, self._on_status,
             on_usage_reported=self._on_usage_reported,
             on_quota_exceeded=self._on_quota_exceeded,
+            on_session_failed=self._on_session_failed,
         )
 
         self._lines, self._cur_line = [], ""
@@ -146,12 +147,25 @@ class Bridge:
         # controller. _lifecycle holds the lock for the duration of one
         # transition; _restart_token debounces set_cfg-driven restarts.
         self._lifecycle = threading.Lock()
+        # Serializes the shared transcript/overlay/OBS buffers that the audio
+        # receiver thread(s) mutate via _on_text. Meeting mode runs two such
+        # threads, so the read-modify-write must not interleave. RLock because
+        # _on_text re-enters through _obs_write on the same thread.
+        self._text_lock = threading.RLock()
         self._restart_token = 0
         self._last_obs_write = None
         self._hotkey_cancel = False
 
     # ---------- callbacks from audio threads ----------
     def _on_text(self, direction, text):
+        # Meeting mode runs two translator receiver threads into this one method;
+        # serialize so their read-modify-write on the shared transcript / overlay /
+        # OBS state cannot interleave (which previously mispaired source vs
+        # translation in exports and let both threads truncate the OBS file).
+        with self._text_lock:
+            self._on_text_locked(direction, text)
+
+    def _on_text_locked(self, direction, text):
         now = time.time()
         if direction == "in":
             # Input transcription (what the speaker said). Accumulate per utterance
@@ -228,6 +242,15 @@ class Bridge:
         thread under the session lock, so calling it here is safe."""
         self._emit_status(t("st_quota_exceeded"), "warn")
         self._events.put(("quota_refresh", None))
+        self.stop()
+
+    def _on_session_failed(self):
+        """A translator thread died mid-session (terminal error / retries
+        exhausted). Billing already stopped via _is_session_live; tear the session
+        down so capture, ducking and the endpoint redirection are released and the
+        badge isn't a false green. Mirrors _on_quota_exceeded; stop() is
+        self-dispatching so calling it from the heartbeat thread is safe."""
+        self._emit_status(t("st_capture_lost"), "error")
         self.stop()
 
     def _obs_write(self, text):
@@ -810,30 +833,36 @@ class Bridge:
             self._badge = (t("badge_idle"), "#8593a6", "")
             # New session starts fresh: clear the per-session timeline + buffers
             # so the next run does not append onto the stopped session's turns.
-            self._turns = []
-            self._session_start = 0.0
-            self._turn_start = 0.0
-            self._session_file = None
-            self._lines, self._cur_line = [], ""
-            self._cur_src, self._last_src = "", ""
+            # Guarded by _text_lock against any still-draining _on_text call.
+            with self._text_lock:
+                self._turns = []
+                self._session_start = 0.0
+                self._turn_start = 0.0
+                self._session_file = None
+                self._lines, self._cur_line = [], ""
+                self._cur_src, self._last_src = "", ""
 
     def _flush_turns(self):
         """Fold the in-progress turn into the structured log so a session that is
-        stopped mid-utterance still records its last line. Idempotent."""
-        tail = self._cur_line.strip()
-        if not tail:
-            return
-        if self._turns and self._turns[-1].get("text") == tail:
-            return
-        if not self._session_start:
-            self._session_start = time.time()
-        start = self._turn_start or self._session_start
-        self._turns.append({
-            "t": max(0.0, start - self._session_start),
-            "dir": "out",
-            "src": (self._last_src or self._cur_src).strip(),
-            "text": tail,
-        })
+        stopped mid-utterance still records its last line. Idempotent.
+
+        Runs at stop() before the translators are joined, so it can race a live
+        _on_text — take the same lock to keep the shared buffers consistent."""
+        with self._text_lock:
+            tail = self._cur_line.strip()
+            if not tail:
+                return
+            if self._turns and self._turns[-1].get("text") == tail:
+                return
+            if not self._session_start:
+                self._session_start = time.time()
+            start = self._turn_start or self._session_start
+            self._turns.append({
+                "t": max(0.0, start - self._session_start),
+                "dir": "out",
+                "src": (self._last_src or self._cur_src).strip(),
+                "text": tail,
+            })
 
     def _build_record(self):
         return transcript_store.build_record(
@@ -1132,7 +1161,14 @@ class Bridge:
                 # blocked by the meeting-consent backstop (it would otherwise tear
                 # the session down on any config edit when the user declined
                 # "don't show again").
-                self._start(mode, consented=True)
+                #
+                # Go through _start_thread (not _start directly): endpoint switching
+                # CoInitializes this throwaway Timer thread, and _start_thread's
+                # finally: shutdown_com() releases the apartment + clears the tid on
+                # the same thread. Calling _start directly leaked the apartment and
+                # left the tid in win_audio's bookkeeping, faulting a later reused
+                # tid with CO_E_NOTINITIALIZED.
+                self._start_thread(mode, True)
 
         threading.Timer(0.4, run).start()
 
