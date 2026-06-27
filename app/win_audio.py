@@ -105,6 +105,11 @@ def list_endpoints() -> list[tuple[str, str]]:
 
 
 def find_endpoint_id(name_substr: str) -> str:
+    # Reject an empty/blank query: "" is a substring of every name, so it would
+    # silently resolve to the first active endpoint (an arbitrary device) instead
+    # of signalling that the caller's config field is unset.
+    if not name_substr or not name_substr.strip():
+        raise ValueError("Audio endpoint name is empty")
     for dev_id, name in list_endpoints():
         if name_substr.lower() in name.lower():
             return dev_id

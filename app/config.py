@@ -325,6 +325,11 @@ def load_config() -> dict:
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 raw = json.load(f)
+            if not isinstance(raw, dict):
+                # Valid JSON but not an object (e.g. "[]"/"null" from a corrupt or
+                # hand-edited file): _merge would raise AttributeError. Treat it as
+                # corrupt and fall back to DEFAULTS like a parse failure.
+                raise ValueError("config root is not a JSON object")
         except (OSError, ValueError) as exc:
             _log_failure("load_config read/parse failed", exc)
             return _migrate(dict(DEFAULTS))
@@ -346,5 +351,12 @@ def load_config() -> dict:
 
 
 def save_config(cfg: dict):
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+    # Atomic write: a crash / power loss mid-dump must not leave a truncated
+    # config.json (which load_config would then discard, silently resetting all
+    # user settings). Write a sibling temp file, fsync, then atomically replace.
+    tmp = CONFIG_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, CONFIG_PATH)

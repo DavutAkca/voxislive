@@ -604,7 +604,12 @@ class ModeController:
             if "output" not in saved:
                 out_id, out_name = win_audio.get_default("output")
                 if "CABLE" in out_name or "VB-Audio" in out_name:
-                    out_id = win_audio.find_endpoint_id(self.cfg["devices"]["headphones_output"])
+                    # Only resolve when a real device name is configured; an empty
+                    # headphones_output must not be matched to an arbitrary endpoint
+                    # (find_endpoint_id now rejects blanks), so keep the current id.
+                    hp = (self.cfg.get("devices", {}).get("headphones_output") or "").strip()
+                    if hp:
+                        out_id = win_audio.find_endpoint_id(hp)
                 saved["output"] = out_id
             win_audio.set_default(
                 win_audio.find_endpoint_id("CABLE Input (VB-Audio Virtual Cable)"))

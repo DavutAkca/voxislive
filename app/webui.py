@@ -1290,8 +1290,16 @@ def run(cfg):
         _set_taskbar_icon(icon, t("app_title"))
     # Restore saved window geometry (size/position), clamped to the minimum.
     geo = cfg.get("window") if isinstance(cfg.get("window"), dict) else {}
-    win_w = max(int(geo.get("w", 1180) or 1180), 940)
-    win_h = max(int(geo.get("h", 760) or 760), 600)
+
+    def _geo_num(v, default):
+        # A hand-edited / corrupt config with a non-numeric w/h must not crash the
+        # launch — fall back to the default like the x/y restore below already does.
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return default
+    win_w = max(_geo_num(geo.get("w"), 1180), 940)
+    win_h = max(_geo_num(geo.get("h"), 760), 600)
     geo_kwargs = {}
     if isinstance(geo.get("x"), int) and isinstance(geo.get("y"), int):
         # Only restore the saved position if it still lands on a connected

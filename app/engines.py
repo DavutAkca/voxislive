@@ -40,7 +40,10 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
         tr = OpenAITranslator(
             key, target_lang,
             on_audio=on_audio, on_text=on_text, on_status=on_status,
-            rotate_minutes=cfg.get("session_rotate_minutes", 13), name=name,
+            # OpenAI realtime caps at ~60 min, so rotate near 55 (its own default)
+            # instead of Gemini's 13-min cadence — 4x less reconnect churn. Separate
+            # key so the Gemini interval stays independent.
+            rotate_minutes=cfg.get("openai_rotate_minutes", 55), name=name,
             model=model, noise_reduction=noise_reduction)
         tr.engine = engine
         return tr

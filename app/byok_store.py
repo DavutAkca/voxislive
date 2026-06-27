@@ -150,9 +150,16 @@ def _write_slot(user_id: str, data: dict) -> None:
     payload = json.dumps(data).encode()
     blob = _DPAPI_MAGIC + _dpapi_protect(payload, _entropy(user_id))
     path = _slot_path(user_id)
-    with open(path, "wb") as f:
+    # Atomic write: a crash mid-write must not leave a truncated/zero slot, which
+    # would fail to decrypt on next read and silently lose the stored key. Restrict
+    # the temp before the rename so the final file is never world-readable.
+    tmp = path + ".tmp"
+    with open(tmp, "wb") as f:
         f.write(blob)
-    _restrict_acl(path)
+        f.flush()
+        os.fsync(f.fileno())
+    _restrict_acl(tmp)
+    os.replace(tmp, path)
 
 
 # Both vendor keys live in ONE slot per user_id. Always default-merge so a slot
