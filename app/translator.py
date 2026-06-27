@@ -76,7 +76,11 @@ def get_usage() -> tuple[float, float, float]:
 # embeds unrelated numbers (byte counts, ports, request ids) that would otherwise
 # be misread as a status code and stop the loop on a transient drop. The phrase
 # markers are specific enough to match against the message text directly.
-_TERMINAL_CODES = {401, 403, 404, 429}
+# 429 is NOT terminal: a bare rate-limit is transient and recovers with backoff.
+# Genuine quota exhaustion (which also returns 429) is still caught below via the
+# "quota"/"resource_exhausted"/"billing" phrase markers, so only a true transient
+# rate-limit reconnects instead of killing the session.
+_TERMINAL_CODES = {401, 403, 404}
 _TERMINAL_PHRASES = (
     "invalid api key",
     "api key not valid",

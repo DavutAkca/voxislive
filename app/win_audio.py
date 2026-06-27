@@ -171,8 +171,21 @@ def set_default(device_id: str):
 
 
 def restore(saved: dict):
-    """Restores devices previously snapshotted in _pending_default_restore."""
-    if saved.get("output"):
-        set_default(saved["output"])
-    if saved.get("input"):
-        set_default(saved["input"])
+    """Restores devices previously snapshotted in _pending_default_restore.
+
+    Each data flow is restored independently: if one fails (e.g. the saved output
+    endpoint was unplugged mid-session) the other is still attempted, so a single
+    transient error can never leave the system default microphone stranded on the
+    virtual cable. Any failure is re-raised after both are tried so the caller
+    keeps the recovery snapshot and retries on the next stop/launch."""
+    errors: list[str] = []
+    for role in ("output", "input"):
+        dev = saved.get(role)
+        if not dev:
+            continue
+        try:
+            set_default(dev)
+        except Exception as exc:
+            errors.append(f"{role}: {exc}")
+    if errors:
+        raise RuntimeError("; ".join(errors))

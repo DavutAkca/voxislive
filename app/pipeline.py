@@ -553,7 +553,8 @@ class ModeController:
     HEARTBEAT_SECONDS: float = 6.0
 
     def __init__(self, cfg: dict, api_key: str | None, on_text, on_status,
-                 on_usage_reported=None, on_quota_exceeded=None):
+                 on_usage_reported=None, on_quota_exceeded=None,
+                 on_session_failed=None):
         self.cfg = cfg
         self.api_key = api_key       # legacy field; key resolution now via self.resolve
         self.resolve = None          # callable(target)->(engine, key, model); set by the bridge
@@ -564,7 +565,13 @@ class ModeController:
         # exhausted via a 402 on /usage/report. The server cannot stop a running
         # Live session, so the bridge wires this to its session teardown.
         self.on_quota_exceeded = on_quota_exceeded or (lambda: None)
+        # Fired (at most once per session) when a translator thread dies
+        # unexpectedly mid-session. Billing already stops via _is_session_live,
+        # but capture/ducking/endpoint redirection stay live — the bridge wires
+        # this to tear the session down.
+        self.on_session_failed = on_session_failed or (lambda: None)
         self._quota_exhausted = threading.Event()
+        self._session_failed = threading.Event()
         self._capture_dead_notified = False
         self._pipelines: list = []
         self.mode: str | None = None
@@ -628,9 +635,13 @@ class ModeController:
             return
         try:
             win_audio.restore(saved)
-            self.on_status(t("st_restored"))
         except Exception as e:
+            # Restore failed (transient COM/device error). KEEP the snapshot so the
+            # next stop() or app launch retries — clearing it here would strand the
+            # default endpoint on the virtual cable with no record to recover from.
             self.on_status(t("st_restore_fail", e=e))
+            return
+        self.on_status(t("st_restored"))
         self.cfg["_pending_default_restore"] = None
         save_config(self.cfg)
 
@@ -716,6 +727,7 @@ class ModeController:
         while not self._heartbeat_stop.wait(self.HEARTBEAT_SECONDS):
             sid, delta, source = self._consume_minutes(accrue=self._is_session_live())
             self._maybe_warn_capture_dead()
+            self._maybe_handle_translator_dead()
             if not sid:
                 continue
             if delta > 0:
@@ -739,6 +751,39 @@ class ModeController:
                 except Exception:
                     pass
                 return
+
+    def _maybe_handle_translator_dead(self):
+        """Tear the session down (once) if a translator thread died mid-session.
+
+        A translator that completed warmup (_ready set) and is no longer alive,
+        while not intentionally stopping (_stopping), has crashed out of its run
+        loop — capture, ducking and the endpoint redirection are still live and
+        the badge is a false green, but no translation is happening. We only fire
+        when the whole session is no longer live (_is_session_live False), so a
+        meeting whose outgoing leg died but incoming still works keeps running.
+        A transient reconnect keeps the thread alive, so it is not flagged.
+
+        bridge.stop() dispatches teardown to its own thread, so calling
+        on_session_failed inline from the heartbeat thread cannot self-join."""
+        if self._session_failed.is_set() or not self.mode:
+            return
+        any_dead = False
+        for p in self._pipelines:
+            tr = getattr(p, "translator", None)
+            if tr is None:
+                continue
+            stopping = getattr(tr, "_stopping", None)
+            if stopping is not None and stopping.is_set():
+                continue
+            ready = getattr(tr, "_ready", None)
+            if (ready is None or ready.is_set()) and not tr.is_alive():
+                any_dead = True
+        if any_dead and not self._is_session_live():
+            self._session_failed.set()
+            try:
+                self.on_session_failed()
+            except Exception:
+                pass
 
     def _fire_quota_exceeded(self):
         """Server signaled the license is exhausted (402). Fire-once per session:
@@ -801,8 +846,10 @@ class ModeController:
                 self._session_start = time.monotonic()
                 self._last_report = self._session_start
                 self._session_mode = mode
-                # New session — re-arm the one-shot quota cutoff + capture-death notice.
+                # New session — re-arm the one-shot quota cutoff + capture-death
+                # notice + translator-death teardown.
                 self._quota_exhausted.clear()
+                self._session_failed.clear()
                 self._capture_dead_notified = False
                 # Never run two heartbeats at once: a prior thread that survived
                 # stop()'s bounded join would race this one on _last_report and

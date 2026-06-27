@@ -54,7 +54,9 @@ _MAX_TRANSIENT_FAILURES = 8
 _HARD_ROTATE_SECONDS = 58 * 60
 
 # Terminal (non-retryable with the same key) OpenAI failure markers + 4xx codes.
-_TERMINAL_CODES = {401, 403, 404, 429}
+# 429 excluded: a bare rate-limit is transient (retry w/ backoff, bounded by
+# _MAX_TRANSIENT_FAILURES); genuine quota is still caught by "insufficient_quota".
+_TERMINAL_CODES = {401, 403, 404}
 _TERMINAL_PHRASES = (
     "account_deactivated",
     "insufficient_quota",
