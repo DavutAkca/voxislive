@@ -404,6 +404,25 @@ class IncomingPipeline:
             self._source = _GatedSource(self.capture.rate, SpeechGate(**vad_cfg), send_fn,
                                         smart=not stream_gated(cfg), send_rate=send_rate)
 
+        # One-shot capture diagnostic (rendered in the transcript, so a field
+        # report — "translation stops after the first line" — can be mapped to the
+        # path that produced it without a repro). The two paths that can starve the
+        # model on continuous speech are the classic-loopback echo-suppress
+        # (suppress=True zeroes input while TTS plays) and original=mute_during_speech.
+        on_status(
+            "capture: backend=%s mode=%s suppress=%s smart=%s original=%s duck=%.2f engine=%s rate=%d"
+            % (
+                type(self.capture).__name__,
+                "vbcable" if not self.driverless else "driverless",
+                self._source._suppress_when is not None,
+                self._source._smart,
+                cfg.get("original_audio"),
+                float(cfg.get("duck_gain", 0.0)),
+                self._engine,
+                send_rate,
+            )
+        )
+
     def _teardown_resources(self):
         """Release whatever resources were acquired. Safe to call with partial
         init: each handle is closed independently and best-effort. Includes the
