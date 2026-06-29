@@ -343,14 +343,35 @@ class IncomingPipeline:
                     self._sducker.target = self._duck_gain if speaking else 1.0
 
             suppress = None
-            try:
-                # Preferred path on Win10 2004+: process-exclude loopback. Our
-                # own TTS is excluded at the hardware level so the translator
-                # keeps receiving input even while playback is active.
-                from .process_loopback import ProcessExcludeLoopback
-                self.capture = ProcessExcludeLoopback(on_loop, rate=send_rate)
-            except Exception as e:
-                on_status(f"Process-exclude loopback unavailable ({e}) — classic mode.")
+            # Preferred path on Win10 2004+: process-exclude loopback. Our own TTS
+            # is excluded at the hardware level so the translator keeps receiving
+            # input even while playback is active. Activation can fail TRANSIENTLY
+            # (COM race / the 5 s activation timeout when the audio service is busy
+            # at startup); that failure would drop the session onto the classic
+            # loopback path, whose echo-suppress zeroes the input while TTS plays —
+            # on continuous speech that silences everything after the first
+            # utterance. Retry a few times before accepting the degraded fallback so
+            # a transient hiccup doesn't break the whole session. A genuinely
+            # unsupported OS fails fast (immediate HRESULT, no 5 s wait), so the
+            # retries cost little there.
+            from .process_loopback import ProcessExcludeLoopback
+            self.capture = None
+            pe_err = None
+            for attempt in range(3):
+                try:
+                    self.capture = ProcessExcludeLoopback(on_loop, rate=send_rate)
+                    pe_err = None
+                    break
+                except Exception as e:
+                    pe_err = e
+                    self.capture = None
+                    if attempt < 2:
+                        time.sleep(0.6)
+            if self.capture is None:
+                # Genuinely unavailable after retries — fall back, but surface a
+                # clear, actionable warning (impact + remedy) instead of a silent
+                # half-working session. The error rides along for field diagnosis.
+                on_status(t("st_classic_capture_warning", e=pe_err))
                 from .audio_io import LoopbackCapture
                 self.capture = LoopbackCapture(on_loop, prefer_name=out_name,
                                                on_status=on_status)
