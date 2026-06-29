@@ -523,4 +523,44 @@ def report_usage_async(session_id: str, delta_minutes: float, source: str,
     ).start()
 
 
+def send_report(payload: dict) -> dict:
+    """Submit a user-initiated problem report to POST /report.
+
+    Returns a result dict:
+      * {"ok": True, "ticket": str, "deduped": bool}     - stored (201)
+      * {"ok": False, "retryable": True}                 - network/5xx; caller may queue
+      * {"ok": False, "retryable": False, "error": str}  - rejected (400/413/429/disabled)
+
+    Anonymous is allowed; a valid JWT, when present, only attributes the report to
+    a user. Hard-gated off on the OSS/BYOK build (no network off-box), mirroring
+    report_usage so the "sends no usage data" claim holds.
+    """
+    if not IS_OFFICIAL_RELEASE:
+        return {"ok": False, "retryable": False, "error": "disabled"}
+    headers = {"Content-Type": "application/json"}
+    token = _valid_jwt()
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    try:
+        resp = requests.post(
+            f"{_BASE_URL}/report",
+            headers=headers,
+            json=payload,
+            timeout=_TIMEOUT,
+        )
+    except requests.RequestException as exc:
+        _log_detail("send_report", exc)
+        return {"ok": False, "retryable": True}
+    if resp.status_code == 201:
+        try:
+            data = resp.json()
+        except ValueError:
+            data = {}
+        return {"ok": True, "ticket": data.get("ticket", ""), "deduped": bool(data.get("deduped"))}
+    if resp.status_code in (400, 413, 429):
+        return {"ok": False, "retryable": False, "error": "http_%d" % resp.status_code}
+    # 5xx or any other unexpected status: transient, let the caller queue + retry.
+    return {"ok": False, "retryable": True}
+
+
 _load_stored_jwt()

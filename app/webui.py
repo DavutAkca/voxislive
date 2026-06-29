@@ -155,6 +155,11 @@ class Bridge:
         self._restart_token = 0
         self._last_obs_write = None
         self._hotkey_cancel = False
+        # Rolling tail of recent status lines (raw, incl. the "capture: backend=..."
+        # diagnostic) + the last coarse error code — assembled into a problem
+        # report's diagnostics. Bounded so it can never grow unbounded.
+        self._status_log: list[str] = []
+        self._last_error_code = ""
 
     # ---------- callbacks from audio threads ----------
     def _on_text(self, direction, text):
@@ -222,6 +227,12 @@ class Bridge:
         existing JS poll handler keeps working; the structured fields ride
         alongside for callers that read them."""
         self._events.put(("status", msg, {"level": level, "msg": msg}))
+        # Keep a bounded tail for the problem-report diagnostics (raw text; it is
+        # scrubbed again at report-assembly time).
+        if isinstance(msg, str) and msg:
+            self._status_log.append(msg)
+            if len(self._status_log) > 40:
+                del self._status_log[:-40]
         if level == "error":
             self._badge = (t("badge_error"), "#fb7185", "err")
 
@@ -240,6 +251,7 @@ class Bridge:
         status line, push a quota refresh, and stop the session. Runs on a
         usage-report worker thread; self.stop() dispatches teardown to its own
         thread under the session lock, so calling it here is safe."""
+        self._last_error_code = "st_quota_exceeded"
         self._emit_status(t("st_quota_exceeded"), "warn")
         self._events.put(("quota_refresh", None))
         self.stop()
@@ -250,6 +262,7 @@ class Bridge:
         down so capture, ducking and the endpoint redirection are released and the
         badge isn't a false green. Mirrors _on_quota_exceeded; stop() is
         self-dispatching so calling it from the heartbeat thread is safe."""
+        self._last_error_code = "st_capture_lost"
         self._emit_status(t("st_capture_lost"), "error")
         self.stop()
 
@@ -472,6 +485,200 @@ class Bridge:
         from . import byok_store
         byok_store.clear_byok(uid, engine)
         return True
+
+    # ---------- problem reporting ----------
+    # User-initiated only: nothing here transmits without an explicit Send click
+    # (the offline queue flushes a payload the user already consented to). The
+    # whole feature is official-build-only — the OSS/BYOK build hard-gates the
+    # network call in voxis_client.send_report, mirroring report_usage.
+    def _build_diagnostics(self) -> dict:
+        """Fixed allowlist of non-identifying technical context. Never dumps
+        config.json or env — only these keys, scrubbed again before send."""
+        import platform
+        from .paths import client_channel
+        cfg = self.cfg
+        try:
+            from .config import resolve_model
+            model = resolve_model(cfg)
+        except Exception:
+            model = cfg.get("model", "")
+        backend = "vbcable" if cfg.get("capture_backend", "driverless") == "vbcable" else "driverless"
+        return {
+            "app_version": APP_VERSION,
+            "channel": client_channel(),
+            "official": IS_OFFICIAL_RELEASE,
+            "os": "%s %s" % (platform.system(), platform.release()),
+            "os_build": platform.version(),
+            "arch": platform.machine(),
+            "mode": getattr(self.controller, "mode", None) or "idle",
+            "quality": cfg.get("quality_preset", ""),
+            "model": model,
+            "capture_backend": backend,
+            "lang_target_incoming": cfg.get("target_language_incoming", ""),
+            "lang_target_outgoing": cfg.get("target_language_outgoing", ""),
+            "error_reason": self._last_error_code or "",
+            "recent_status": list(self._status_log[-15:]),
+        }
+
+    def _collect_transcript(self) -> str:
+        """Render the current session's paired turns as plain text. Only ever
+        called when the user ticks the opt-in checkbox."""
+        with self._text_lock:
+            turns = list(self._turns)
+        lines = []
+        for tn in turns:
+            src = (tn.get("src") or "").strip()
+            txt = (tn.get("text") or "").strip()
+            if src and txt:
+                lines.append(src + "  ->  " + txt)
+            elif txt:
+                lines.append(txt)
+        return ("\n".join(lines))[:200000]
+
+    def _collect_log_tail(self, max_bytes: int = 32768) -> str:
+        """Tail of the app's own log (voxis.log — network/config errors). Scrubbed
+        before it can leave the device. Auto-included so even a one-line or empty
+        report still carries the diagnostic the engine recorded."""
+        from . import report_scrub
+        path = user_path("voxis.log")
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                data = f.read()
+        except OSError:
+            return ""
+        if len(data) > max_bytes:
+            data = data[-max_bytes:]
+        return report_scrub.scrub_text(data)
+
+    def _build_report_payload(self, form: dict) -> dict:
+        """Assemble + scrub (scrub-v1) the report payload from the modal form.
+        Secrets/PII are redacted here so they never leave the device."""
+        from . import report_scrub
+        from .paths import client_channel
+        import uuid
+        form = form or {}
+        include_tx = bool(form.get("include_transcript"))
+        message = (form.get("message") or "").strip()[:4000]
+        repro = (form.get("repro") or "").strip()[:2000]
+        # The reply email is purpose-bound (user typed it for a reply) — kept
+        # as-is, not scrubbed; everything else is redacted.
+        email = (form.get("email") or "").strip()[:200]
+        payload = {
+            "category": form.get("category") or "other",
+            "severity": form.get("severity") or "normal",
+            "message": report_scrub.scrub_text(message),
+            "repro": report_scrub.scrub_text(repro),
+            "email": email,
+            "transcript_included": include_tx,
+            "transcript": report_scrub.scrub_text(self._collect_transcript()) if include_tx else "",
+            "diagnostics": report_scrub.scrub_value(self._build_diagnostics()),
+            "log": self._collect_log_tail(),
+            "correlation": uuid.uuid4().hex,
+            "channel": client_channel(),
+            "scrub_schema": report_scrub.SCRUB_SCHEMA,
+        }
+        return payload
+
+    def preview_report(self, form: dict) -> dict:
+        """Return the exact scrubbed payload that Send would transmit, for the
+        modal's 'preview data to be sent' expander (transparency affordance)."""
+        if not IS_OFFICIAL_RELEASE:
+            return {}
+        try:
+            return self._build_report_payload(form)
+        except Exception:
+            self._log_report_error("preview")
+            return {}
+
+    def send_report(self, form: dict) -> dict:
+        """JS -> Python: submit a problem report. Official-build only.
+
+        Returns {ok, ticket?, deduped?} on success, {ok:False, queued:True} when
+        the network is down (saved for explicit flush), or {ok:False, error}."""
+        if not IS_OFFICIAL_RELEASE:
+            return {"ok": False, "error": "disabled"}
+        try:
+            # Message is optional: the scrubbed app log + diagnostics are attached
+            # automatically, so a one-click report still carries what we need.
+            form = form or {}
+            payload = self._build_report_payload(form)
+        except Exception:
+            self._log_report_error("build")
+            return {"ok": False, "error": "internal"}
+        from . import voxis_client
+        res = voxis_client.send_report(payload)
+        if res.get("ok"):
+            return {"ok": True, "ticket": res.get("ticket", ""), "deduped": bool(res.get("deduped"))}
+        if res.get("retryable"):
+            self._queue_report(payload)
+            return {"ok": False, "queued": True}
+        return {"ok": False, "error": res.get("error", "failed")}
+
+    def _report_queue_path(self) -> str:
+        return user_path("reports_pending.json")
+
+    def _queue_report(self, payload: dict) -> None:
+        """Persist a report that couldn't be sent (network/5xx) for an explicit
+        flush on next app start / next modal open. Capped + deduped by
+        correlation so a retry can never double-file. Never transmits."""
+        import json
+        path = self._report_queue_path()
+        try:
+            queued = []
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    queued = json.load(f) or []
+            corr = payload.get("correlation")
+            queued = [q for q in queued if q.get("correlation") != corr]
+            queued.append(payload)
+            queued = queued[-10:]  # cap
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(queued, f)
+        except Exception:
+            self._log_report_error("queue")
+
+    def flush_reports(self) -> int:
+        """Send any queued reports. Called on startup and when the report modal
+        opens — both are explicit user contexts (app launch / opening the form),
+        never a silent background flush. Returns the count successfully sent."""
+        if not IS_OFFICIAL_RELEASE:
+            return 0
+        import json
+        path = self._report_queue_path()
+        if not os.path.exists(path):
+            return 0
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                queued = json.load(f) or []
+        except Exception:
+            return 0
+        if not queued:
+            return 0
+        from . import voxis_client
+        remaining, sent = [], 0
+        for payload in queued:
+            res = voxis_client.send_report(payload)
+            if res.get("ok"):
+                sent += 1
+            elif res.get("retryable"):
+                remaining.append(payload)  # keep transient failures for next time
+            # non-retryable (400/disabled): drop — re-queueing would never succeed.
+        try:
+            if remaining:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(remaining, f)
+            else:
+                os.remove(path)
+        except Exception:
+            pass
+        return sent
+
+    def _log_report_error(self, where: str) -> None:
+        try:
+            from . import voxis_client
+            voxis_client._log_detail("report:" + where, RuntimeError("report assembly/dispatch failed"))
+        except Exception:
+            pass
 
     def check_auth(self) -> dict:
         """Page-load auth check. Returns {authenticated, quota}. Non-blocking —
@@ -1315,6 +1522,10 @@ def run(cfg):
     # doesn't block the window from appearing.
     threading.Thread(target=_autofill_meeting_devices, args=(cfg,),
                      daemon=True).start()
+    # Flush any problem reports queued from a previous offline send. App start is
+    # an explicit user context (not a silent background flush) and the payloads
+    # already carry the user's original consent. Best-effort, off the UI thread.
+    threading.Thread(target=bridge.flush_reports, daemon=True).start()
     icon = icon_path()
     if os.path.exists(icon):
         _set_taskbar_icon(icon, t("app_title"))
