@@ -111,6 +111,11 @@ class Bridge:
         i18n.set_language(cfg.get("ui_language", "tr"))
 
         self._events: queue.Queue = queue.Queue()
+        # Serialize config writes: pywebview runs each JS api call on its own
+        # thread, so a slider drag can overlap several _save_cfg calls. Without
+        # this they raced on the on-disk file (see save_config) and one would
+        # spuriously fail with a "cannot write to disk" error.
+        self._save_lock = threading.Lock()
         self.controller = ModeController(
             cfg, None, self._on_text, self._on_status,
             on_usage_reported=self._on_usage_reported,
@@ -367,9 +372,11 @@ class Bridge:
 
     def _save_cfg(self) -> bool:
         """Persist config, surfacing (not swallowing) a write failure so the UI
-        can warn instead of silently losing the setting."""
+        can warn instead of silently losing the setting. Held under a lock so
+        concurrent bridge threads (e.g. a slider drag) can't race on the file."""
         try:
-            save_config(self.cfg)
+            with self._save_lock:
+                save_config(self.cfg)
             return True
         except OSError:
             _log.exception("config save failed")

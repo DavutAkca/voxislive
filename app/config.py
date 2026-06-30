@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import shutil
+import tempfile
 
 from .paths import bundled_default_config, is_frozen, official_marker, user_path
 
@@ -354,9 +355,25 @@ def save_config(cfg: dict):
     # Atomic write: a crash / power loss mid-dump must not leave a truncated
     # config.json (which load_config would then discard, silently resetting all
     # user settings). Write a sibling temp file, fsync, then atomically replace.
-    tmp = CONFIG_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, ensure_ascii=False, indent=2)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, CONFIG_PATH)
+    #
+    # The temp file gets a UNIQUE name (mkstemp) rather than a fixed
+    # "config.json.tmp": rapid slider drags fan out concurrent save threads
+    # (pywebview dispatches each JS api call on its own thread), and a shared
+    # temp name made them collide on Windows — one thread's open/replace hit the
+    # other's open handle (WinError 32 / Errno 13), surfacing a bogus
+    # "cannot write to disk" error. A per-call temp name removes the collision.
+    d = os.path.dirname(CONFIG_PATH) or "."
+    fd, tmp = tempfile.mkstemp(prefix="config.", suffix=".tmp", dir=d)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, CONFIG_PATH)
+    except BaseException:
+        # Don't leave the unique temp behind if the write/replace failed.
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise

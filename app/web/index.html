@@ -2793,8 +2793,14 @@ async function init(){
 
 /* ---------- kontroller ---------- */
 const duck=$('#duck'), vol=$('#vol');
-duck.oninput=()=>{updRange(duck,'duckv');api().set_cfg('duck_gain',duck.value/100)};
-vol.oninput =()=>{updRange(vol,'volv');  api().set_cfg('tts_volume',vol.value/100)};
+// Coalesce config writes while a slider is being dragged: the % label tracks
+// the thumb with zero lag, but set_cfg (which persists to disk) only fires once
+// the user pauses. Without this, a single drag fired dozens of disk writes.
+function debounce(fn, ms){ let h; return (...a)=>{ clearTimeout(h); h=setTimeout(()=>fn(...a), ms); }; }
+const saveDuck = debounce(v=>api().set_cfg('duck_gain', v), 180);
+const saveVol  = debounce(v=>api().set_cfg('tts_volume', v), 180);
+duck.oninput=()=>{updRange(duck,'duckv'); saveDuck(duck.value/100)};
+vol.oninput =()=>{updRange(vol,'volv');   saveVol(vol.value/100)};
 $('#hear').onchange   = e=>api().set_cfg('target_language_incoming', e.target.value);
 $('#send').onchange   = e=>api().set_cfg('target_language_outgoing', e.target.value);
 $('#profile').onchange= e=>api().set_profile(e.target.value).then(refreshFromCfg);
