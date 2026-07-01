@@ -538,31 +538,45 @@ body.resizing,body.resizing *{user-select:none!important}
 .modal .dontshow{display:inline-flex;align-items:center;gap:9px;font-size:12px;color:var(--text-2);cursor:pointer;user-select:none;margin-right:auto}
 .modal .ostep{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums}
 
-/* ---- onboarding: elevated product tour (scoped to #onboard-modal; consent modal untouched) ---- */
-#onboard-modal{width:480px}
-.otopbar{position:absolute;left:0;top:0;width:100%;height:3px;background:var(--border);
-  border-radius:var(--r-card) var(--r-card) 0 0;overflow:hidden}
-.otopbar i{display:block;height:100%;width:25%;border-radius:inherit;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 65%,#a78bfa),var(--accent));
-  box-shadow:0 0 12px -1px var(--accent);transition:width var(--dur) var(--ease-out)}
-#onboard-modal .mhead{padding-top:28px;align-items:center}
-#onboard-modal .micon{width:46px;height:46px;border-radius:13px;
-  background:linear-gradient(145deg,var(--accent-soft),color-mix(in srgb,var(--accent-soft) 32%,transparent));
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 26%,transparent),
-             0 10px 26px -12px color-mix(in srgb,var(--accent) 70%,transparent)}
-#onboard-modal .micon svg{width:22px;height:22px}
-.otitlewrap{display:flex;flex-direction:column;gap:3px;min-width:0}
-.oeyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
-#onboard-modal .mhead h2{font-size:19px;line-height:1.2}
-#onboard-modal .mbody{font-size:13.5px;line-height:1.65;min-height:58px;padding-top:16px}
-#onboard-modal #onboard-text.oanim{animation:ostepin .28s var(--ease-out)}
+/* ---- first-run spotlight tour: dims the app, cuts a lit hole around the
+       target element, and floats a callout beside it ---- */
+#tour{position:fixed;inset:0;z-index:200}          /* captures clicks over the dim */
+#tour[hidden]{display:none}
+#tour-spot{position:fixed;left:0;top:0;width:0;height:0;border-radius:14px;
+  box-shadow:0 0 0 9999px rgba(8,10,18,.72),
+             0 0 0 2px var(--accent),
+             0 0 26px 5px color-mix(in srgb,var(--accent) 55%,transparent);
+  transition:left .36s var(--spring),top .36s var(--spring),
+             width .36s var(--spring),height .36s var(--spring),opacity .2s var(--ease-out);
+  pointer-events:none}
+#tour-spot.center{opacity:0}                        /* welcome/closing steps: full dim, no ring */
+#tour-pop{position:fixed;left:50%;top:50%;width:324px;max-width:calc(100vw - 32px);
+  background:var(--surface-3);border:1px solid var(--border-strong);border-radius:var(--r-card);
+  box-shadow:var(--shadow-float);padding:18px 20px 15px;
+  transition:left .36s var(--spring),top .36s var(--spring);animation:ostepin .3s var(--ease-out)}
+[data-theme="dark"] #tour-pop{background:rgba(20,21,28,.98)}
+#tour-pop .tour-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+#tour-pop h2{font-size:17px;font-weight:700;letter-spacing:-.02em;margin:7px 0 8px;line-height:1.22}
+#tour-pop .tour-text{font-size:13px;line-height:1.62;color:var(--text-2)}
+#tour-pop .tour-note{display:flex;gap:9px;align-items:flex-start;margin-top:12px;padding:10px 12px;border-radius:var(--r-ctl);
+  background:var(--amber-soft);border:1px solid color-mix(in srgb,var(--amber) 38%,transparent);
+  font-size:11.5px;line-height:1.5;color:var(--amber)}
+#tour-pop .tour-note svg{flex:none;margin-top:1px;color:var(--amber)}
+#tour-pop .tour-foot{display:flex;align-items:center;gap:8px;margin-top:16px}
+#tour-pop .tour-foot .spacer{flex:1}
+#tour-pop .tour-step{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums;font-weight:600}
 @keyframes ostepin{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
-#onboard-modal .ostep{font-weight:600;color:var(--text-2);letter-spacing:.02em}
 
 /* ============ MEETING TILE CAVEAT (proactive, not post-failure) ============ */
 .tilecaveat{display:flex;gap:8px;align-items:flex-start;margin:-2px 0 8px;padding:9px 11px;border-radius:var(--r-inner);
   background:var(--surface-2);border:1px solid var(--border);font-size:11.5px;line-height:1.5;color:var(--text-2)}
 .tilecaveat svg{flex:none;margin-top:1px;color:var(--text-3)}
+
+/* ---- VB-CABLE explainer: numbered setup steps ---- */
+.cablesteps{list-style:none;margin:14px 0 4px;padding:0;display:flex;flex-direction:column;gap:11px}
+.cablesteps li{display:flex;gap:11px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--text-2)}
+.cablesteps .cn{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;
+  background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
 
 /* ============ QUOTA-BLOCKED SCENARIO TILES ============ */
 .quota-gate.flash{animation:gateflash 1.1s var(--ease)}
@@ -729,12 +743,6 @@ body.resizing,body.resizing *{user-select:none!important}
       <div class="tilecaveat" id="meeting-caveat">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
         <span data-i18n="meeting_caveat">Toplantı modu, çevirinizi karşıya iletmek için bir sanal mikrofon gerektirir. Sanal mikrofon yoksa yalnızca dinleme aktif olur.</span>
-      </div>
-      <!-- Bidirectional translation runs two Live sessions, so metered minutes
-           accrue at ~1.5x. Only meaningful on the SaaS build; hidden on BYOK. -->
-      <div class="tilecaveat" id="meeting-usage-note" style="display:none">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        <span data-i18n="meeting_usage_note">Toplantı modu iki yönlü çeviri yaptığı için süreyi ~1,5× hızında kullanır.</span>
       </div>
       <button class="btn btn-danger" id="stopbtn" disabled>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
@@ -1008,29 +1016,26 @@ body.resizing,body.resizing *{user-select:none!important}
   </div>
 </div>
 
-<!-- ============ FIRST-RUN ONBOARDING (4-step tour) ============ -->
-<div class="modal" id="onboard-modal" role="dialog" aria-modal="true" aria-labelledby="onboard-title">
-  <span class="otopbar" aria-hidden="true"><i id="onboard-bar"></i></span>
-  <div class="mhead">
-    <span class="micon" id="onboard-icon"></span>
-    <span class="otitlewrap">
-      <span class="oeyebrow" id="onboard-eyebrow">—</span>
-      <h2 id="onboard-title">Voxis</h2>
-    </span>
-  </div>
-  <div class="mbody">
-    <p id="onboard-text" data-i18n="onboard_welcome">—</p>
-    <!-- Step 3 carries the shared cable-requirement note. -->
-    <div class="mnote" id="onboard-cable-note" style="display:none">
+<!-- ============ FIRST-RUN SPOTLIGHT TOUR ============ -->
+<!-- Dims the whole app and cuts a lit hole around the element each step points
+     at; #tour captures clicks so the UI underneath can't be triggered mid-tour. -->
+<div id="tour" hidden>
+  <div id="tour-spot" aria-hidden="true"></div>
+  <div id="tour-pop" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+    <span class="tour-eyebrow" id="tour-eyebrow" data-i18n="onboard_eyebrow">Hızlı tanıtım</span>
+    <h2 id="tour-title">Voxis</h2>
+    <p class="tour-text" id="tour-text">—</p>
+    <div class="tour-note" id="tour-note" style="display:none">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <span data-i18n="cable_required">—</span>
+      <span id="tour-note-txt" data-i18n="cable_required">—</span>
     </div>
-  </div>
-  <div class="mfoot">
-    <span class="ostep" id="onboard-step"></span>
-    <span class="spacer"></span>
-    <button class="btn btn-ghost" id="onboard-back" style="width:auto" data-i18n="onboard_back">Geri</button>
-    <button class="btn btn-primary" id="onboard-next" style="width:auto" data-i18n="onboard_next">İleri</button>
+    <div class="tour-foot">
+      <span class="tour-step" id="tour-step"></span>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost" id="tour-skip" style="width:auto" data-i18n="tour_skip">Geç</button>
+      <button class="btn btn-ghost" id="tour-back" style="width:auto" data-i18n="onboard_back">Geri</button>
+      <button class="btn btn-primary" id="tour-next" style="width:auto" data-i18n="onboard_next">İleri</button>
+    </div>
   </div>
 </div>
 
@@ -1069,7 +1074,16 @@ body.resizing,body.resizing *{user-select:none!important}
     <h2 id="cable-title" data-i18n="cable_title">Sanal mikrofon gerekli</h2>
   </div>
   <div class="mbody" id="cable-body">
-    <p data-i18n="cable_required">—</p>
+    <p id="cable-lead" data-i18n="cable_lead">—</p>
+    <ol class="cablesteps">
+      <li><span class="cn">1</span><span data-i18n="cable_step1">—</span></li>
+      <li><span class="cn">2</span><span data-i18n="cable_step2">—</span></li>
+      <li><span class="cn">3</span><span data-i18n="cable_step3">—</span></li>
+    </ol>
+    <div class="mnote" id="cable-manual-note" style="display:none">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <span data-i18n="cable_manual">—</span>
+    </div>
   </div>
   <div class="mfoot">
     <span class="spacer"></span>
@@ -1186,7 +1200,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Akışı temizle", copy_turn:"Çeviriyi kopyala",
     meeting_caveat:"Toplantı modu, çevirinizi karşıya iletmek için bir sanal mikrofon gerektirir. Sanal mikrofon yoksa yalnızca dinleme aktif olur.",
-    meeting_usage_note:"Toplantı modu iki yönlü çeviri yaptığı için süreyi ~1,5× hızında kullanır.",
     consent_title:"Toplantı modu — onay",
     consent_p1:"Toplantı modunda Voxis hem karşı tarafı dinler hem de konuşmanızı sanal mikrofon üzerinden karşıya iletir.",
     consent_p2:"Sesin kaydedilmesi veya çevirisi, bulunduğunuz yerde tüm katılımcıların rızasını gerektirebilir. Başlatmadan önce yürürlükteki yasalara ve toplantı kurallarına uyduğunuzdan emin olun.",
@@ -1201,9 +1214,23 @@ const I18N = {
     onboard_settings_d:"Soldaki kalite seçenekleri: Akıcı (dengeli — en iyi senkron/kalite) ile Tasarruf (yalnızca konuşma gönderir, daha az dakika harcar). Ayrıca transkript kaydını ve ekran üstü yazıyı buradan açabilirsiniz.",
     onboard_next:"İleri", onboard_back:"Geri", onboard_get_started:"Başlayalım",
     onboard_step_fmt:"{n} / {total}. adım", onboard_eyebrow:"Hızlı tanıtım",
+    tour_skip:"Geç",
+    tour_lang_t:"Dilleri seçin",
+    tour_lang_d:"Solda duymak istediğiniz dili, sağda karşı tarafa gönderilecek dili seçin. Video modunda yalnızca soldaki (duyduğunuz dil) önemlidir.",
+    tour_profile_t:"Ses profili",
+    tour_profile_d:"Orijinal sesin ve çevirinin ne kadar yüksek çalacağını hazır bir profilden seçin. Alttaki kaydıraçlarla orijinal ses ve çeviri seviyesini ince ayarlayabilirsiniz.",
+    tour_audio_t:"Oynatma cihazı",
+    tour_audio_d:"Çevrilen sesin nereden çalınacağını buradan seçin. Çevirinin geri dönüp tekrar çevrilmemesi için kulaklık kullanmanız önerilir.",
+    tour_ready_t:"Hazırsınız",
+    tour_ready_d:"Hepsi bu. Çeviriye başlamak için yukarıdan Video & Oyun ya da Toplantı'ya tıklayın. Bu turu istediğiniz zaman Ayarlar → Hakkında'dan tekrar açabilirsiniz.",
     cable_required:"Çift yönlü toplantı — çevrilmiş sesinizi görüşmeye iletme — VB-CABLE adlı isteğe bağlı, üçüncü taraf bir sanal mikrofon kullanır. Zorunlu değildir: kurulu değilse toplantı modu yalnızca dinleme olarak çalışır. Çift yönü etkinleştirmek için VB-CABLE'ı kendiniz kurup Voxis'i yeniden açın.",
     cable_title:"Çift yönlü toplantı (isteğe bağlı)",
     cable_install:"VB-CABLE kur", cable_cancel:"Vazgeç",
+    cable_lead:"Toplantı modu, çevrilmiş sesinizi görüşmeye geri gönderebilir; böylece karşı taraf sizi kendi dilinde duyar. Bunun için VB-CABLE adlı ücretsiz bir sanal mikrofon gerekir. İsteğe bağlıdır — kurmazsanız Toplantı yalnızca dinleme olarak çalışır (siz karşı tarafı çevrilmiş duyarsınız).",
+    cable_step1:"VB-CABLE'ı kurun (ücretsiz, ~1 dakika).",
+    cable_step2:"Voxis'i yeniden başlatın; sanal mikrofonu otomatik algılar.",
+    cable_step3:"Toplantı uygulamanızda (Zoom · Teams · Meet) mikrofon olarak “CABLE Output”u seçin. Gerisini Voxis halleder.",
+    cable_manual:"Bu sürüm sizin için sürücü kuramaz. VB-CABLE'ı vb-audio.com adresinden ücretsiz indirip kurun, ardından Voxis'i yeniden başlatın.",
     show_tour:"Tanıtım turunu tekrar göster",
     update_now:"Şimdi güncelle", update_later:"Sonra", store_view:"Microsoft Store'da görüntüle",
   },
@@ -1272,7 +1299,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Clear stream", copy_turn:"Copy translation",
     meeting_caveat:"Meeting mode needs a virtual microphone to send your translation to the other side. Without one, only listening is active.",
-    meeting_usage_note:"Meeting mode translates both directions, so it uses your minutes at ~1.5× the rate.",
     consent_title:"Meeting mode — consent",
     consent_p1:"In meeting mode Voxis both listens to the other party and sends your speech to them through a virtual microphone.",
     consent_p2:"Recording or translating audio may require the consent of all participants where you are. Make sure you comply with applicable laws and meeting rules before starting.",
@@ -1291,6 +1317,20 @@ const I18N = {
     cable_title:"Two-way meeting (optional)",
     cable_install:"Install VB-CABLE", cable_cancel:"Cancel",
     show_tour:"Show the tour again",
+    tour_skip:"Skip",
+    tour_lang_t:"Choose languages",
+    tour_lang_d:"Pick the language you want to hear on the left, and the language sent to the other side on the right. In Video mode only the left one (what you hear) matters.",
+    tour_profile_t:"Sound profile",
+    tour_profile_d:"Pick a profile for how loud the original audio and the translation play. Fine-tune the original and translation levels with the sliders below.",
+    tour_audio_t:"Playback device",
+    tour_audio_d:"Choose where the translated audio plays. Headphones are recommended so the translation doesn't loop back in and get re-translated.",
+    tour_ready_t:"You're ready",
+    tour_ready_d:"That's it. Click Video & Game or Meeting above to start translating. You can replay this tour anytime from Settings → About.",
+    cable_lead:"Meeting mode can send your translated voice back into the call, so the other person hears you in their language. That needs a free virtual microphone called VB-CABLE. It's optional — without it, Meeting still works in listen-only (you hear them translated).",
+    cable_step1:"Install VB-CABLE (free, about 1 minute).",
+    cable_step2:"Restart Voxis — it detects the virtual microphone automatically.",
+    cable_step3:"In your meeting app (Zoom · Teams · Meet), pick “CABLE Output” as the microphone. Voxis handles the rest.",
+    cable_manual:"This version can't install drivers for you. Download VB-CABLE free from vb-audio.com, install it, then restart Voxis.",
     update_now:"Update now", update_later:"Later", store_view:"View in Microsoft Store",
   },
   de: {
@@ -1358,7 +1398,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Stream leeren", copy_turn:"Übersetzung kopieren",
     meeting_caveat:"Der Meeting-Modus benötigt ein virtuelles Mikrofon, um deine Übersetzung an die andere Seite zu senden. Ohne eines ist nur das Zuhören aktiv.",
-    meeting_usage_note:"Der Meeting-Modus übersetzt in beide Richtungen und verbraucht deine Minuten daher mit etwa 1,5×.",
     consent_title:"Meeting-Modus — Einwilligung",
     consent_p1:"Im Meeting-Modus hört Voxis sowohl der anderen Partei zu als auch sendet deine Sprache über ein virtuelles Mikrofon an sie.",
     consent_p2:"Das Aufzeichnen oder Übersetzen von Audio kann die Einwilligung aller Teilnehmer erfordern. Stelle sicher, dass du die geltenden Gesetze und Meeting-Regeln einhältst.",
@@ -1444,7 +1483,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Vider le flux", copy_turn:"Copier la traduction",
     meeting_caveat:"Le mode réunion nécessite un microphone virtuel pour envoyer votre traduction à l'autre côté. Sans cela, seule l'écoute est active.",
-    meeting_usage_note:"Le mode réunion traduit dans les deux sens, il consomme donc vos minutes à environ 1,5×.",
     consent_title:"Mode réunion — consentement",
     consent_p1:"En mode réunion, Voxis écoute l'autre partie et envoie votre parole via un microphone virtuel.",
     consent_p2:"Enregistrer ou traduire de l'audio peut nécessiter le consentement de tous les participants. Assurez-vous de respecter les lois applicables et les règles de réunion.",
@@ -1530,7 +1568,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Limpiar flujo", copy_turn:"Copiar traducción",
     meeting_caveat:"El modo reunión necesita un micrófono virtual para enviar tu traducción al otro lado. Sin él, solo está activa la escucha.",
-    meeting_usage_note:"El modo reunión traduce en ambos sentidos, por lo que consume tus minutos a aproximadamente 1,5×.",
     consent_title:"Modo reunión — consentimiento",
     consent_p1:"En el modo reunión, Voxis escucha a la otra parte y envía tu voz a través de un micrófono virtual.",
     consent_p2:"Grabar o traducir audio puede requerir el consentimiento de todos los participantes. Asegúrate de cumplir con las leyes aplicables y las normas de la reunión.",
@@ -1616,7 +1653,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Limpar fluxo", copy_turn:"Copiar tradução",
     meeting_caveat:"O modo reunião precisa de um microfone virtual para enviar sua tradução ao outro lado. Sem um, apenas a escuta está ativa.",
-    meeting_usage_note:"O modo reunião traduz nos dois sentidos, por isso consome seus minutos a cerca de 1,5×.",
     consent_title:"Modo reunião — consentimento",
     consent_p1:"No modo reunião, o Voxis escuta a outra parte e envia sua fala através de um microfone virtual.",
     consent_p2:"Gravar ou traduzir áudio pode exigir o consentimento de todos os participantes. Certifique-se de cumprir as leis aplicáveis e as regras da reunião.",
@@ -1702,7 +1738,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"ストリームをクリア", copy_turn:"翻訳をコピー",
     meeting_caveat:"ミーティングモードでは、翻訳を相手に送るために仮想マイクが必要です。仮想マイクがない場合はリスニングのみが有効になります。",
-    meeting_usage_note:"ミーティングモードは双方向に翻訳するため、利用時間を約1.5倍の速さで消費します。",
     consent_title:"ミーティングモード — 同意",
     consent_p1:"ミーティングモードでは、VoxisはAIが相手の音声を聞き、仮想マイクを通じてあなたの音声を相手に送信します。",
     consent_p2:"音声の録音または翻訳には、参加者全員の同意が必要な場合があります。開始前に適用される法律と会議ルールを確認してください。",
@@ -1788,7 +1823,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"스트림 지우기", copy_turn:"번역 복사",
     meeting_caveat:"미팅 모드에서는 번역을 상대방에게 전달하기 위해 가상 마이크가 필요합니다. 없으면 듣기만 활성화됩니다.",
-    meeting_usage_note:"미팅 모드는 양방향으로 번역하므로 사용 시간을 약 1.5배 속도로 사용합니다.",
     consent_title:"미팅 모드 — 동의",
     consent_p1:"미팅 모드에서 Voxis는 상대방의 음성을 듣고 가상 마이크를 통해 당신의 음성을 상대방에게 전달합니다.",
     consent_p2:"오디오 녹음 또는 번역은 모든 참가자의 동의가 필요할 수 있습니다. 시작 전에 관련 법률과 회의 규칙을 준수하는지 확인하세요.",
@@ -1874,7 +1908,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Очистить поток", copy_turn:"Скопировать перевод",
     meeting_caveat:"Режим встречи требует виртуальный микрофон для передачи перевода собеседнику. Без него активно только прослушивание.",
-    meeting_usage_note:"Режим встречи переводит в обе стороны, поэтому расходует ваши минуты примерно в 1,5× быстрее.",
     consent_title:"Режим встречи — согласие",
     consent_p1:"В режиме встречи Voxis слушает другую сторону и передаёт вашу речь через виртуальный микрофон.",
     consent_p2:"Запись или перевод аудио может требовать согласия всех участников. Убедитесь в соблюдении применимых законов и правил встречи.",
@@ -1960,7 +1993,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"清除流", copy_turn:"复制翻译",
     meeting_caveat:"会议模式需要虚拟麦克风将您的翻译发送给对方。没有虚拟麦克风，只有收听功能处于活动状态。",
-    meeting_usage_note:"会议模式进行双向翻译，因此会以约 1.5 倍的速度消耗您的时长。",
     consent_title:"会议模式 — 同意",
     consent_p1:"在会议模式下，Voxis 同时收听对方并通过虚拟麦克风将您的语音发送给对方。",
     consent_p2:"录制或翻译音频可能需要所有参与者的同意。开始前请确保您遵守适用的法律和会议规则。",
@@ -2046,7 +2078,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Wyczyść strumień", copy_turn:"Kopiuj tłumaczenie",
     meeting_caveat:"Tryb spotkania wymaga wirtualnego mikrofonu, aby wysłać tłumaczenie do drugiej strony. Bez niego aktywne jest tylko słuchanie.",
-    meeting_usage_note:"Tryb spotkania tłumaczy w obu kierunkach, więc zużywa Twoje minuty około 1,5× szybciej.",
     consent_title:"Tryb spotkania — zgoda",
     consent_p1:"W trybie spotkania Voxis słucha drugiej strony i przesyła Twoją mowę przez wirtualny mikrofon.",
     consent_p2:"Nagrywanie lub tłumaczenie dźwięku może wymagać zgody wszystkich uczestników. Upewnij się, że przestrzegasz obowiązujących przepisów i zasad spotkania.",
@@ -2132,7 +2163,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Svuota flusso", copy_turn:"Copia traduzione",
     meeting_caveat:"La modalità riunione necessita di un microfono virtuale per inviare la traduzione all'altro lato. Senza di esso, è attivo solo l'ascolto.",
-    meeting_usage_note:"La modalità riunione traduce in entrambe le direzioni, quindi consuma i tuoi minuti a circa 1,5×.",
     consent_title:"Modalità riunione — consenso",
     consent_p1:"In modalità riunione Voxis ascolta l'altra parte e invia la tua voce attraverso un microfono virtuale.",
     consent_p2:"Registrare o tradurre audio potrebbe richiedere il consenso di tutti i partecipanti. Assicurati di rispettare le leggi vigenti e le regole della riunione.",
@@ -2218,7 +2248,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Hapus aliran", copy_turn:"Salin terjemahan",
     meeting_caveat:"Mode rapat memerlukan mikrofon virtual untuk mengirim terjemahan ke pihak lain. Tanpa itu, hanya mendengarkan yang aktif.",
-    meeting_usage_note:"Mode rapat menerjemahkan dua arah, jadi menggunakan menit Anda sekitar 1,5× lebih cepat.",
     consent_title:"Mode rapat — persetujuan",
     consent_p1:"Dalam mode rapat, Voxis mendengarkan pihak lain dan mengirim ucapan Anda melalui mikrofon virtual.",
     consent_p2:"Merekam atau menerjemahkan audio mungkin memerlukan persetujuan semua peserta. Pastikan Anda mematuhi hukum yang berlaku dan aturan rapat.",
@@ -2304,7 +2333,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Stroom wissen", copy_turn:"Vertaling kopiëren",
     meeting_caveat:"Vergadermodus heeft een virtuele microfoon nodig om je vertaling naar de andere kant te sturen. Zonder is alleen luisteren actief.",
-    meeting_usage_note:"Vergadermodus vertaalt in beide richtingen en verbruikt je minuten daarom met ongeveer 1,5×.",
     consent_title:"Vergadermodus — toestemming",
     consent_p1:"In vergadermodus luistert Voxis naar de andere partij en stuurt je spraak via een virtuele microfoon naar hen.",
     consent_p2:"Het opnemen of vertalen van audio kan de toestemming van alle deelnemers vereisen. Zorg dat je voldoet aan de geldende wet- en regelgeving.",
@@ -2390,7 +2418,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"Xóa luồng", copy_turn:"Sao chép bản dịch",
     meeting_caveat:"Chế độ họp cần micrô ảo để gửi bản dịch của bạn sang phía bên kia. Nếu không có, chỉ chức năng nghe mới hoạt động.",
-    meeting_usage_note:"Chế độ họp dịch hai chiều nên sử dụng số phút của bạn nhanh gấp khoảng 1,5×.",
     consent_title:"Chế độ họp — sự đồng ý",
     consent_p1:"Trong chế độ họp, Voxis vừa nghe bên kia vừa gửi giọng nói của bạn qua micrô ảo.",
     consent_p2:"Việc ghi âm hoặc dịch âm thanh có thể yêu cầu sự đồng ý của tất cả người tham gia. Đảm bảo bạn tuân thủ các luật hiện hành và quy tắc cuộc họp.",
@@ -2476,7 +2503,6 @@ const I18N = {
     ph_gemkey:"AIza…",
     clear_stream:"ล้างสตรีม", copy_turn:"คัดลอกการแปล",
     meeting_caveat:"โหมดประชุมต้องการไมโครโฟนเสมือนเพื่อส่งการแปลไปยังอีกฝั่ง หากไม่มี จะเปิดใช้งานเฉพาะการฟัง",
-    meeting_usage_note:"โหมดประชุมแปลทั้งสองทิศทาง จึงใช้เวลาของคุณเร็วขึ้นประมาณ 1.5 เท่า",
     consent_title:"โหมดประชุม — ความยินยอม",
     consent_p1:"ในโหมดประชุม Voxis จะฟังอีกฝ่ายและส่งเสียงพูดของคุณผ่านไมโครโฟนเสมือน",
     consent_p2:"การบันทึกหรือแปลเสียงอาจต้องได้รับความยินยอมจากผู้เข้าร่วมทุกคน ตรวจสอบให้แน่ใจว่าคุณปฏิบัติตามกฎหมายและกฎการประชุมที่บังคับใช้",
@@ -2525,9 +2551,9 @@ function applyI18n(lang){
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = T(el.dataset.i18nPh); });
   document.querySelectorAll('[data-i18n-title]').forEach(el=>{ el.title = T(el.dataset.i18nTitle); });
   document.querySelectorAll('[data-i18n-aria]').forEach(el=>{ el.setAttribute('aria-label', T(el.dataset.i18nAria)); });
-  // The onboarding tour text is driven by step state, not a fixed data-i18n
+  // The spotlight tour text is driven by step state, not a fixed data-i18n
   // value; re-render it so a live language switch keeps the current step.
-  if(typeof renderOnboard==='function' && $('#onboard-modal').classList.contains('open')) renderOnboard();
+  if(typeof renderTour==='function' && !$('#tour').hidden) renderTour();
   // Privacy modal's lead/detail are build-aware (set in JS, not via data-i18n on
   // a single fixed key), so re-render it on a live language switch while open.
   if(typeof renderPrivacy==='function' && $('#privacy-modal').classList.contains('open')) renderPrivacy();
@@ -2774,9 +2800,6 @@ async function init(){
     // the top bar (primary, always visible) and the About tab (secondary).
     { const rb=$('#reportbtn'); if(rb) rb.style.display=''; }
     { const rbt=$('#reportbtn-top'); if(rbt) rbt.style.display=''; }
-    // Bidirectional meeting billing only applies on the metered SaaS path.
-    const meetingUsage = $('#meeting-usage-note');
-    if(meetingUsage) meetingUsage.style.display = '';
   } else {
     const st = STATE.byok_status || {gemini: STATE.byok_set, openai: false};
     $('#byok-badge').style.display = st.gemini ? 'inline' : 'none';
@@ -2979,54 +3002,91 @@ $('#consent-accept').onclick = async()=>{
   // declined "don't show again" (so meeting_consent_ack was not persisted).
   api().start('meeting', true);
 };
-/* ---------- onboarding tour (4-step wizard) ---------- */
-// Icons reuse the same line-art language as the rest of the UI; step text comes
-// from i18n. titleKey/textKey index the I18N dict; cable=true shows the shared
-// VB-CABLE note on the Meeting step.
-const ONBOARD_ICONS = [
-  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5v5M7 3v10M12 6.5v3M17 3v10M22 5.5v5"/></svg>',
-  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M10 8.5l5 2.75-5 2.75z" fill="currentColor" stroke="none"/></svg>',
-  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 1 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>',
-  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-];
-const ONBOARD_STEPS = [
-  {titleKey:'onboard_title',      textKey:'onboard_welcome'},
-  {titleKey:'video_t1',           textKey:'onboard_video'},
-  {titleKey:'meeting_t1',         textKey:'onboard_meeting', cable:true},
-  {titleKey:'onboard_latency_t',  textKey:'onboard_latency_d'},
-  {titleKey:'onboard_settings_t', textKey:'onboard_settings_d'},
+// Each step points the spotlight at a real element (sel); sel:null = a centered
+// welcome/closing step (full dim, no ring). cable:true adds the VB-CABLE note.
+const TOUR_STEPS = [
+  {sel:null,         titleKey:'onboard_title',  textKey:'onboard_welcome'},
+  {sel:'#m-video',   titleKey:'video_t1',       textKey:'onboard_video'},
+  {sel:'#m-meeting', titleKey:'meeting_t1',     textKey:'onboard_meeting', cable:true},
+  {sel:'.langgroup', titleKey:'tour_lang_t',    textKey:'tour_lang_d'},
+  {sel:'#profile',   titleKey:'tour_profile_t', textKey:'tour_profile_d'},
+  {sel:'#out',       titleKey:'tour_audio_t',   textKey:'tour_audio_d'},
+  {sel:null,         titleKey:'tour_ready_t',   textKey:'tour_ready_d'},
 ];
 let onboardStep=0;
-function renderOnboard(){
-  const total=ONBOARD_STEPS.length, s=ONBOARD_STEPS[onboardStep];
-  $('#onboard-icon').innerHTML = ONBOARD_ICONS[onboardStep] || ONBOARD_ICONS[0];
-  $('#onboard-title').textContent = T(s.titleKey);
-  $('#onboard-text').textContent  = T(s.textKey);
-  $('#onboard-cable-note').style.display = s.cable ? '' : 'none';
-  $('#onboard-step').textContent = T('onboard_step_fmt').replace('{n}', onboardStep+1).replace('{total}', total);
-  $('#onboard-eyebrow').textContent = T('onboard_eyebrow');
-  $('#onboard-bar').style.width = ((onboardStep+1)/total*100)+'%';
-  // Restart the step-in animation on each render so navigation feels alive.
-  const txt=$('#onboard-text'); txt.classList.remove('oanim'); void txt.offsetWidth; txt.classList.add('oanim');
-  const back=$('#onboard-back'); back.style.visibility = onboardStep===0 ? 'hidden' : 'visible';
-  const next=$('#onboard-next'); const last=onboardStep===total-1;
-  next.textContent = last ? T('onboard_get_started') : T('onboard_next');
+// Size/place the lit hole around the target and float the callout beside it.
+function positionTour(){
+  const s=TOUR_STEPS[onboardStep], spot=$('#tour-spot'), pop=$('#tour-pop');
+  const vw=window.innerWidth, vh=window.innerHeight, m=16;
+  const el = s.sel ? document.querySelector(s.sel) : null;
+  const r = el ? el.getBoundingClientRect() : null;
+  // No target, or the target is hidden/zero-size (e.g. a locked tile pre-login):
+  // fall back to a centered, fully-dimmed step instead of a stray hole.
+  if(!r || (r.width<2 && r.height<2)){
+    spot.classList.add('center');
+    spot.style.width='0px'; spot.style.height='0px';
+    spot.style.left=(vw/2)+'px'; spot.style.top=(vh/2)+'px';
+    pop.style.left=Math.round((vw-pop.offsetWidth)/2)+'px';
+    pop.style.top =Math.round((vh-pop.offsetHeight)/2)+'px';
+    return;
+  }
+  spot.classList.remove('center');
+  const pad=8;
+  const sx=Math.max(0,r.left-pad), sy=Math.max(0,r.top-pad);
+  spot.style.left=sx+'px'; spot.style.top=sy+'px';
+  spot.style.width=(Math.min(vw,r.right+pad)-sx)+'px';
+  spot.style.height=(Math.min(vh,r.bottom+pad)-sy)+'px';
+  const pw=pop.offsetWidth, ph=pop.offsetHeight, gap=16;
+  let left, side=true;
+  if(r.right+gap+pw <= vw-m) left=r.right+gap;              // prefer right of target
+  else if(r.left-gap-pw >= m) left=r.left-gap-pw;           // else left
+  else { left=Math.min(Math.max(m,r.left),vw-pw-m); side=false; } // else stack
+  let top;
+  if(side) top=Math.min(Math.max(m,r.top),vh-ph-m);         // align to target vertically
+  else top=(r.bottom+gap+ph <= vh-m) ? r.bottom+gap : Math.max(m,r.top-gap-ph); // below else above
+  pop.style.left=Math.round(left)+'px'; pop.style.top=Math.round(top)+'px';
 }
+function renderTour(){
+  const total=TOUR_STEPS.length, s=TOUR_STEPS[onboardStep];
+  $('#tour-title').textContent = T(s.titleKey);
+  $('#tour-text').textContent  = T(s.textKey);
+  $('#tour-note').style.display = s.cable ? 'flex' : 'none';
+  if(s.cable) $('#tour-note-txt').textContent = T('cable_required');
+  $('#tour-eyebrow').textContent = T('onboard_eyebrow');
+  $('#tour-step').textContent = T('onboard_step_fmt').replace('{n}', onboardStep+1).replace('{total}', total);
+  $('#tour-back').style.visibility = onboardStep===0 ? 'hidden' : 'visible';
+  $('#tour-next').textContent = onboardStep===total-1 ? T('onboard_get_started') : T('onboard_next');
+  const el = s.sel ? document.querySelector(s.sel) : null;
+  if(el && el.scrollIntoView) try{ el.scrollIntoView({block:'nearest'}); }catch(_){}
+  // Two frames so the callout has measured its final size before we place it.
+  requestAnimationFrame(()=>requestAnimationFrame(positionTour));
+}
+// openOnboard/finishOnboard names are kept so the first-run gate and the
+// "show tour again" button keep working unchanged.
 function openOnboard(){
-  onboardStep=0; renderOnboard();
-  $('#scrim').classList.add('open'); $('#onboard-modal').classList.add('open');
-  openModal($('#onboard-modal'), finishOnboard, $('#gear'));
+  onboardStep=0;
+  $('#tour').hidden=false;
+  renderTour();
+  try{ $('#tour-next').focus(); }catch(_){}
 }
 function finishOnboard(){
-  $('#onboard-modal').classList.remove('open');
-  if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open');
-  closeModal();
+  $('#tour').hidden=true;
   STATE.onboarding_done=true;
   try{ api().mark_onboarding_done(); }catch(_){}
+  try{ $('#gear').focus(); }catch(_){}
 }
-$('#onboard-back').onclick = ()=>{ if(onboardStep>0){ onboardStep--; renderOnboard(); } };
-$('#onboard-next').onclick = ()=>{ if(onboardStep<ONBOARD_STEPS.length-1){ onboardStep++; renderOnboard(); } else { finishOnboard(); } };
+$('#tour-back').onclick = ()=>{ if(onboardStep>0){ onboardStep--; renderTour(); } };
+$('#tour-next').onclick = ()=>{ if(onboardStep<TOUR_STEPS.length-1){ onboardStep++; renderTour(); } else { finishOnboard(); } };
+$('#tour-skip').onclick = ()=>finishOnboard();
+// Keyboard: Esc skips, arrows navigate. Enter is left to the focused button so
+// it isn't handled twice.
+document.addEventListener('keydown', e=>{
+  if($('#tour').hidden) return;
+  if(e.key==='Escape') finishOnboard();
+  else if(e.key==='ArrowRight') $('#tour-next').click();
+  else if(e.key==='ArrowLeft') $('#tour-back').click();
+});
+window.addEventListener('resize', ()=>{ if(!$('#tour').hidden) positionTour(); });
 
 /* ---------- meeting cable-required modal ---------- */
 function openCable(){
@@ -3034,6 +3094,8 @@ function openCable(){
   // facilitating acquisition of a non-Microsoft driver, so hide the in-app
   // download/install button there. The OSS build keeps the convenience link.
   const inst=$('#cable-install'); if(inst) inst.style.display = STATE.official_release ? 'none' : '';
+  // With no in-app install button on the Store build, show the manual how-to.
+  const man=$('#cable-manual-note'); if(man) man.style.display = STATE.official_release ? 'flex' : 'none';
   $('#scrim').classList.add('open'); $('#cable-modal').classList.add('open'); openModal($('#cable-modal'), closeCable, $('#m-meeting'));
 }
 function closeCable(){ $('#cable-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
