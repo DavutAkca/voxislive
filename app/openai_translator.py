@@ -57,6 +57,11 @@ _HARD_ROTATE_SECONDS = 58 * 60
 # account/region/endpoint reject can't spin a no-backoff reconnect loop forever.
 _MIN_SESSION_SECONDS = 5.0
 
+# Stall watchdog (mirrors LiveTranslator): this many seconds of SENT audio with
+# zero server events means the websocket is silently dead — force a planned
+# rotation. Measured in sent-audio seconds so quiet periods can never trip it.
+_STALL_ROTATE_SECONDS = 20.0
+
 # Usage is recorded into LiveTranslator's process-wide accumulator so the in-app
 # minutes/cost readout (webui get_usage) aggregates both engines into one total.
 # Imported lazily on first frame to keep google.genai off the OpenAI cold path.
@@ -139,6 +144,8 @@ class OpenAITranslator(threading.Thread):
         self._stopping = threading.Event()
         self._ready = threading.Event()
         self._carryover: list[bytes] = []
+        # Stall watchdog accumulator (loop-thread only, no locking needed).
+        self._sent_since_recv = 0.0
 
     # ---- public contract (identical to LiveTranslator) ------------------
     def send_pcm16(self, data: bytes):
@@ -154,9 +161,12 @@ class OpenAITranslator(threading.Thread):
             return
         except asyncio.QueueFull:
             pass
-        # Backpressure: drop the OLDEST frame to keep the freshest audio.
+        # Backpressure: drop the OLDEST frame to keep the freshest audio. Count
+        # the loss (same telemetry as the Gemini path) so sustained drops are
+        # visible instead of silently degrading translation quality.
         try:
             self._queue.get_nowait()
+            _record_usage("dropped_frames", 1)
         except asyncio.QueueEmpty:
             pass
         try:
@@ -245,6 +255,7 @@ class OpenAITranslator(threading.Thread):
                     # bare connect — otherwise an accept-then-immediately-close server
                     # would reset the cap every iteration and never stop reconnecting.
                     started = time.monotonic()
+                    self._sent_since_recv = 0.0
                     sender = asyncio.create_task(self._sender(ws, started))
                     receiver = asyncio.create_task(self._receiver(ws))
                     done, pending = await asyncio.wait(
@@ -352,6 +363,14 @@ class OpenAITranslator(threading.Thread):
             elapsed = time.monotonic() - started
             if elapsed > self.rotate_seconds or elapsed > _HARD_ROTATE_SECONDS:
                 raise _Rotate()
+            # Stall watchdog: sent audio piling up with zero server events means
+            # a silently dead socket — rotate instead of streaming into a black
+            # hole (a hung TCP connection may never raise in the receiver).
+            if self._sent_since_recv >= _STALL_ROTATE_SECONDS:
+                self._sent_since_recv = 0.0
+                self.on_status("translator: no server events for %ds of sent "
+                               "audio — reconnecting" % int(_STALL_ROTATE_SECONDS))
+                raise _Rotate()
             try:
                 item = await asyncio.wait_for(self._queue.get(), timeout=0.5)
             except asyncio.TimeoutError:
@@ -365,12 +384,16 @@ class OpenAITranslator(threading.Thread):
                 "audio": base64.b64encode(item).decode("ascii"),
             }))
             # 24 kHz mono PCM16 → 24000*2 = 48000 bytes/sec sent.
-            _record_usage("in_sec", len(item) / 48000)
+            secs = len(item) / 48000
+            _record_usage("in_sec", secs)
+            self._sent_since_recv += secs
 
     async def _receiver(self, ws):
         async for raw in ws:
             if self._stopping.is_set():
                 return
+            # Any server event proves liveness — reset the stall watchdog.
+            self._sent_since_recv = 0.0
             try:
                 ev = json.loads(raw)
             except (ValueError, TypeError):

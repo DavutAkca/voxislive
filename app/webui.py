@@ -110,7 +110,11 @@ class Bridge:
         self._last_quota: dict | None = None
         i18n.set_language(cfg.get("ui_language", "tr"))
 
-        self._events: queue.Queue = queue.Queue()
+        # Bounded like every other queue in the engine: if the webview stops
+        # polling (hung/backgrounded window) events must not accumulate without
+        # limit. _put_event drops the OLDEST on overflow — the UI shows a live
+        # stream, so the freshest events always win.
+        self._events: queue.Queue = queue.Queue(maxsize=400)
         # Serialize config writes: pywebview runs each JS api call on its own
         # thread, so a slider drag can overlap several _save_cfg calls. Without
         # this they raced on the on-disk file (see save_config) and one would
@@ -167,6 +171,21 @@ class Bridge:
         self._last_error_code = ""
 
     # ---------- callbacks from audio threads ----------
+    def _put_event(self, ev):
+        """Enqueue a UI event, dropping the oldest on overflow (never blocks —
+        callers are audio/heartbeat threads that must not stall)."""
+        try:
+            self._events.put_nowait(ev)
+        except queue.Full:
+            try:
+                self._events.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self._events.put_nowait(ev)
+            except queue.Full:
+                pass
+
     def _on_text(self, direction, text):
         # Meeting mode runs two translator receiver threads into this one method;
         # serialize so their read-modify-write on the shared transcript / overlay /
@@ -202,7 +221,7 @@ class Bridge:
             # source utterance (correct by ordering despite the few-second lag).
             src = (self._last_src or self._cur_src).strip()
             if src:
-                self._events.put(("src", src))
+                self._put_event(("src", src))
             # Record the finalized turn with its start offset and paired source.
             if finished:
                 self._turns.append({
@@ -221,7 +240,7 @@ class Bridge:
         self._overlay_text = self._cur_line.strip()
         self._overlay_until = now + FADE_MS
         self._obs_write(self._cur_line.strip())
-        self._events.put(("trans", text, newline))
+        self._put_event(("trans", text, newline))
 
     def _emit_status(self, msg, level="info"):
         """Push a status line to the UI.
@@ -231,7 +250,7 @@ class Bridge:
         The legacy positional payload (the message string) is preserved so the
         existing JS poll handler keeps working; the structured fields ride
         alongside for callers that read them."""
-        self._events.put(("status", msg, {"level": level, "msg": msg}))
+        self._put_event(("status", msg, {"level": level, "msg": msg}))
         # Keep a bounded tail for the problem-report diagnostics (raw text; it is
         # scrubbed again at report-assembly time).
         if isinstance(msg, str) and msg:
@@ -248,7 +267,7 @@ class Bridge:
         self._emit_status(msg, "info")
 
     def _on_usage_reported(self):
-        self._events.put(("quota_refresh", None))
+        self._put_event(("quota_refresh", None))
 
     def _on_quota_exceeded(self):
         """Server reported the license is exhausted (402 on /usage/report). The
@@ -258,7 +277,7 @@ class Bridge:
         thread under the session lock, so calling it here is safe."""
         self._last_error_code = "st_quota_exceeded"
         self._emit_status(t("st_quota_exceeded"), "warn")
-        self._events.put(("quota_refresh", None))
+        self._put_event(("quota_refresh", None))
         self.stop()
 
     def _on_session_failed(self):
@@ -266,9 +285,13 @@ class Bridge:
         exhausted). Billing already stopped via _is_session_live; tear the session
         down so capture, ducking and the endpoint redirection are released and the
         badge isn't a false green. Mirrors _on_quota_exceeded; stop() is
-        self-dispatching so calling it from the heartbeat thread is safe."""
-        self._last_error_code = "st_capture_lost"
-        self._emit_status(t("st_capture_lost"), "error")
+        self-dispatching so calling it from the heartbeat thread is safe.
+
+        Uses its own st_session_failed string (NOT st_capture_lost): a dead
+        translator is a connection failure, and mislabeling it as a capture
+        fault poisons field diagnosis (error_reason rides into problem reports)."""
+        self._last_error_code = "st_session_failed"
+        self._emit_status(t("st_session_failed"), "error")
         self.stop()
 
     def _obs_write(self, text):
@@ -959,26 +982,6 @@ class Bridge:
             return False
         return True
 
-    def _quota_ok(self) -> bool:
-        """Cached-quota precheck so the local hotkey path cannot kick off a
-        session the server would immediately reject. OSS builds have no quota.
-        A None/unreachable quota is treated as allowed — the authoritative
-        refusal still happens server-side in get_session_key()."""
-        if not IS_OFFICIAL_RELEASE:
-            return True
-        from . import voxis_client
-        quota = voxis_client.get_quota()
-        if not quota or quota.get("unlimited"):
-            return True
-        remaining = quota.get("remaining")
-        if remaining is None:
-            remaining = (quota.get("allowed_minutes", 0.0)
-                         - quota.get("used_minutes", 0.0))
-        if remaining <= 0:
-            self._emit_status(t("err_quota_exhausted"), "error")
-            return False
-        return True
-
     def _build_engine_resolver(self):
         """Returns resolve(target) -> (engine, key, model), called once per pipeline.
 
@@ -1001,26 +1004,28 @@ class Bridge:
             return resolve
 
         from . import voxis_client
-        # Verify once so the server-side cache entry is fresh before per-target calls.
-        info, verr = voxis_client.verify_session()
-        if not info:
-            raise RuntimeError(verr or t("st_not_signed_in"))
-        if not self._quota_ok():
-            raise RuntimeError(t("err_quota_exhausted"))
 
+        # Single-round-trip start: /auth/session-key now verifies the token
+        # inline on a cold server cache and returns the quota snapshot alongside
+        # the key, so the old verify → quota → session-key sequence (3 RTTs on a
+        # slow link) collapses into this one call. Auth/quota/license failures
+        # surface as localized errors from get_session_key itself.
         def resolve(target):
-            key, engine, model, quality, err = voxis_client.get_session_key(target=target, caps="engine-routing")
+            key, engine, model, quality, quota, err = voxis_client.get_session_key(
+                target=target, caps="engine-routing")
             if key:
+                if isinstance(quota, dict):
+                    self._last_quota = quota  # keeps the paid-badge gate fresh
                 if quality:
                     self.cfg["quality_preset"] = quality  # server-controlled default
                 return engine, key, (model or resolve_model(self.cfg, engine))
             # OpenAI unavailable (503) → fall back to Gemini via the legacy path.
-            key, engine, model, quality, err = voxis_client.get_session_key()
+            key, engine, model, quality, quota, err2 = voxis_client.get_session_key()
             if key:
                 if quality:
                     self.cfg["quality_preset"] = quality
                 return "gemini", key, (model or resolve_model(self.cfg, "gemini"))
-            raise RuntimeError(err or t("st_no_key"))
+            raise RuntimeError(err or err2 or t("st_no_key"))
         return resolve
 
     def _start(self, mode, consented=False):
@@ -1295,6 +1300,12 @@ class Bridge:
             return ""
         return t("powered_by")
 
+    def overlay_poll(self):
+        """Single combined poll for the overlay window: caption + badge in one
+        bridge round-trip (the overlay previously made two separate api calls
+        every 150 ms tick — half the crossings for the same data)."""
+        return {"text": self.overlay_text(), "badge": self.overlay_badge()}
+
     def overlay_fit(self, h):
         if self._overlay_win is None:
             return True
@@ -1479,12 +1490,11 @@ function fit(){
 }
 async function p(){
   try{
-    // Refresh the attribution badge (cheap; reflects a live cfg/language toggle).
-    try{
-      const b=await window.pywebview.api.overlay_badge();
-      if(b!==lastBrand){ lastBrand=b; brand.textContent=b||''; brand.style.display=b?'block':'none'; requestAnimationFrame(fit); }
-    }catch(e){}
-    const x=await window.pywebview.api.overlay_text();
+    // One combined bridge call per tick: caption + attribution badge together.
+    const r=await window.pywebview.api.overlay_poll();
+    const b=(r&&r.badge)||'';
+    if(b!==lastBrand){ lastBrand=b; brand.textContent=b||''; brand.style.display=b?'block':'none'; requestAnimationFrame(fit); }
+    const x=(r&&r.text)||'';
     if(x){
       if(txt.textContent!==x){ txt.textContent=x; requestAnimationFrame(fit); }
       if(!vis){ vis=true; window.pywebview.api.overlay_show(); }

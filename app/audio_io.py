@@ -4,6 +4,7 @@ The driverless path uses WASAPI loopback for capture and the Windows session
 volume API to duck other apps at their source. The VB-CABLE path intercepts
 the audio before it reaches the speakers so the engine can apply real DSP.
 """
+import collections
 import threading
 
 import numpy as np
@@ -240,7 +241,16 @@ class Capture:
     stereo=False (default): downmix to mono for VAD/Gemini.
     stereo=True: preserve both channels (n, 2) so the VB-CABLE path can perform
                  M/S center suppression downstream.
-    """
+
+    The PortAudio callback only conforms + copies + enqueues; the consumer
+    callback (VAD inference, resampling, premium DSP, websocket handoff) runs on
+    a dedicated worker thread — the same capture/processing split as
+    ProcessExcludeLoopback, so a consumer stall can never starve the realtime
+    callback into xruns. The queue is bounded drop-oldest to bound latency, and
+    a persistently faulting consumer flips `failed` so the session's liveness
+    gate stops billing (mirrors the ploopback processor)."""
+
+    _QUEUE_MAX = 64  # 64 * 20 ms ≈ 1.3 s of slack before drop-oldest
 
     def __init__(self, device: int | None, on_chunk, block_ms: int = 20,
                  stereo: bool = False):
@@ -249,17 +259,30 @@ class Capture:
         channels = min(2, info["max_input_channels"])
         self.stereo = stereo and channels >= 2
         blocksize = int(self.rate * block_ms / 1000)
+        self._on_chunk = on_chunk
+        self._queue: collections.deque = collections.deque(maxlen=self._QUEUE_MAX)
+        self._has_data = threading.Event()
+        self._run = False
+        self._err: Exception | None = None
+        self.dropped = 0  # chunks lost to drop-oldest (telemetry)
+        self._worker = threading.Thread(target=self._drain, daemon=True,
+                                        name="capture-feed")
 
         def _cb(indata, frames, time_info, status):
+            # RT callback: shape + copy + enqueue only. Never run user code here.
             if self.stereo:
                 out = indata if indata.shape[1] == 2 else np.repeat(indata[:, :1], 2, axis=1)
-                on_chunk(out.copy())
+                data = out.copy()
             else:
                 # Level-consistent mono downmix: mean across channels, the same
                 # convention as LoopbackCapture and ProcessExclude, so the VAD
                 # threshold has identical meaning on every capture backend.
                 mono = indata.mean(axis=1) if indata.shape[1] > 1 else indata[:, 0]
-                on_chunk(mono.copy())
+                data = mono.copy()
+            if len(self._queue) == self._QUEUE_MAX:
+                self.dropped += 1
+            self._queue.append(data)
+            self._has_data.set()
 
         self.stream = sd.InputStream(
             device=device,
@@ -271,12 +294,57 @@ class Capture:
             callback=_cb,
         )
 
+    @property
+    def failed(self) -> bool:
+        """True once the consumer has faulted persistently — polled by the
+        session liveness gate so a dead pipeline stops billing."""
+        return self._err is not None
+
+    def _drain(self):
+        # Same fault policy as ProcessExcludeLoopback._processor: a single bad
+        # chunk is transient, a long back-to-back run means the pipeline behind
+        # us is dead — record it so `failed` surfaces and billing stops.
+        fails = 0
+        while self._run or self._queue:
+            if not self._queue:
+                self._has_data.wait(0.05)
+                self._has_data.clear()
+                continue
+            try:
+                x = self._queue.popleft()
+            except IndexError:
+                continue
+            try:
+                self._on_chunk(x)
+                fails = 0
+            except Exception as e:
+                fails += 1
+                if fails == 1 or fails % 200 == 0:
+                    print(f"[capture] consumer fault #{fails}: {e!r}")
+                if fails >= 50 and self._err is None:
+                    self._err = e
+                continue
+
     def start(self):
+        if self._run:
+            return
+        # Thread objects are single-use: recreate after any prior run so a
+        # restart never hits "threads can only be started once".
+        if not self._worker.is_alive():
+            self._err = None
+            self._worker = threading.Thread(target=self._drain, daemon=True,
+                                            name="capture-feed")
+        self._run = True
+        self._worker.start()
         self.stream.start()
 
     def stop(self):
+        self._run = False
+        self._has_data.set()
         self.stream.stop()
         self.stream.close()
+        if self._worker.is_alive():
+            self._worker.join(timeout=1.0)
 
 
 class LoopbackCapture:

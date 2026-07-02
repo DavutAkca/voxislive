@@ -5,6 +5,7 @@ translator and sends the synthesized translation to the user's headphones.
 OutgoingPipeline routes the user's microphone to the translator and pipes the
 translation into the virtual microphone consumed by Teams/Zoom/etc.
 """
+import collections
 import threading
 import time
 import uuid
@@ -128,6 +129,41 @@ class RTTEstimator:
 _SMART_SILENCE_MAX_FRAMES = 48
 
 
+class _Accum:
+    """Preallocated float32 frame accumulator: append chunks, pop fixed-size
+    frames. Replaces the per-chunk np.concatenate churn (the same realloc
+    pattern the playback ring was rewritten to eliminate) with two slice copies
+    per cycle and zero steady-state allocation beyond the popped frame."""
+
+    __slots__ = ("_buf", "n")
+
+    def __init__(self, cap: int):
+        self._buf = np.empty(cap, dtype=np.float32)
+        self.n = 0
+
+    def push(self, x: np.ndarray) -> None:
+        m = len(x)
+        if m == 0:
+            return
+        need = self.n + m
+        if need > len(self._buf):  # rare: grow geometrically, then stabilize
+            nb = np.empty(max(need, 2 * len(self._buf)), dtype=np.float32)
+            nb[:self.n] = self._buf[:self.n]
+            self._buf = nb
+        self._buf[self.n:need] = x
+        self.n = need
+
+    def pop(self, k: int) -> np.ndarray:
+        """Remove and return the first k samples as an independent copy (the
+        gate stores frames across calls, so views into _buf are not safe)."""
+        out = self._buf[:k].copy()
+        rem = self.n - k
+        if rem:
+            self._buf[:rem] = self._buf[k:self.n]
+        self.n = rem
+        return out
+
+
 class _GatedSource:
     """Resamples captured audio to 16 kHz, splits into 512-sample frames and runs
     each frame through the VAD gate.
@@ -150,7 +186,7 @@ class _GatedSource:
         self._always_send = always_send
         self._smart = smart
         self._silence = _f32_to_pcm16(np.zeros(_FRAME, dtype=np.float32))
-        self._buf = np.zeros(0, dtype=np.float32)
+        self._acc = _Accum(8 * _FRAME)
         self._lock = threading.Lock()
         self._silent_run = 0
         self.speech_active = False
@@ -164,9 +200,9 @@ class _GatedSource:
         if send_rate != 16000:
             self._resample_send = _make_resampler(in_rate, send_rate)
             self._send_frame = _FRAME * send_rate // 16000
-            self._buf_send = np.zeros(0, dtype=np.float32)
-            self._hist_send: list[np.ndarray] = []
+            self._acc_send = _Accum(8 * self._send_frame)
             self._hist_max = 64
+            self._hist_send: collections.deque = collections.deque(maxlen=self._hist_max)
             self._silence_send = _f32_to_pcm16(np.zeros(self._send_frame, dtype=np.float32))
         else:
             self._resample_send = None
@@ -180,18 +216,15 @@ class _GatedSource:
         if self._suppress_when is not None and self._suppress_when():
             chunk = np.zeros_like(chunk)
         with self._lock:
-            self._buf = np.concatenate([self._buf, self._resample(chunk)])
+            self._acc.push(self._resample(chunk))
             if self._resample_send is not None:
-                self._buf_send = np.concatenate([self._buf_send, self._resample_send(chunk)])
-            while len(self._buf) >= _FRAME:
-                frame, self._buf = self._buf[:_FRAME], self._buf[_FRAME:]
+                self._acc_send.push(self._resample_send(chunk))
+            while self._acc.n >= _FRAME:
+                frame = self._acc.pop(_FRAME)
                 # Pull the time-aligned full-band frame into history (lockstep with
                 # the 16 kHz VAD frame: 768 @24k <-> 512 @16k = same 32 ms window).
-                if self._resample_send is not None and len(self._buf_send) >= self._send_frame:
-                    sf, self._buf_send = self._buf_send[:self._send_frame], self._buf_send[self._send_frame:]
-                    self._hist_send.append(sf)
-                    if len(self._hist_send) > self._hist_max:
-                        self._hist_send = self._hist_send[-self._hist_max:]
+                if self._resample_send is not None and self._acc_send.n >= self._send_frame:
+                    self._hist_send.append(self._acc_send.pop(self._send_frame))
                 active, to_send = self._gate.process(frame)
                 self.speech_active = active
                 if self._smart:
@@ -220,7 +253,7 @@ class _GatedSource:
                 self._send(_f32_to_pcm16(f))
             return
         k = len(frames16)
-        sframes = self._hist_send[-k:]
+        sframes = list(self._hist_send)[-k:]
         if len(sframes) == k:
             for sf in sframes:
                 self._send(_f32_to_pcm16(sf))
@@ -718,11 +751,11 @@ class ModeController:
         reconnect-storm time, where the socket is down and no audio flows, is NOT
         accrued — the user is not getting service, so they are not billed for it.
 
-        NOTE: this uses translator-thread Events as the liveness proxy because
-        the translator does not yet expose a public is_connected()/last_audio_at.
-        A precise "producing audio in the last N seconds" gate needs that signal
-        (see cross_file_needs) — _ready stays set across a transient reconnect,
-        so a long mid-session outage can still over-accrue until that lands.
+        NOTE: _ready is cleared by the translator on every reconnect/backoff
+        iteration, so ordinary outages stop accrual within one heartbeat. The
+        remaining hole — a silently hung socket that never raises — is closed
+        by the translators' stall watchdog (_STALL_ROTATE_SECONDS): sent audio
+        with zero server events forces a rotation, whose gap clears _ready.
         """
         for p in self._pipelines:
             # A capture backend that died mid-session (device unplug, exclusive-

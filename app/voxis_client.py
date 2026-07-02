@@ -39,6 +39,25 @@ _TIMEOUT: int  = 10
 # DPAPI entropy: ties the wrapped token to this Voxis client at rest.
 _JWT_ENTROPY: bytes = b"voxis-jwt-v1"
 
+# One shared HTTP session: connection keep-alive means the 6-second usage
+# heartbeat reuses its TCP+TLS connection instead of a full handshake per beat
+# (less client CPU, less server load, fewer transient failures on weak links).
+# requests.Session is thread-safe for our usage (no cookies; urllib3 pools are
+# locked internally) — heartbeat workers and UI threads may share it.
+_http = requests.Session()
+
+# Proactive JWT refresh via PocketBase's auth-refresh (exposed behind Caddy's
+# /dashboard/* -> :8090 route; PB expects the RAW token in Authorization, no
+# Bearer prefix). Without this, a token expiring mid-session silently stops
+# usage reporting while translation keeps running, and the user is bounced to
+# the login form on next launch. Refresh starts inside _REFRESH_MARGIN_S of
+# expiry and is throttled; every failure is non-fatal (the current token is
+# kept until it genuinely expires — the server stays the authority).
+_REFRESH_URL: str = _BASE_URL + "/dashboard/api/collections/users/auth-refresh"
+_REFRESH_MARGIN_S: float = 3 * 24 * 3600.0   # start refreshing 3 days early
+_REFRESH_THROTTLE_S: float = 3600.0          # at most one attempt per hour
+_last_refresh_attempt: float = 0.0
+
 _log = logging.getLogger("voxis.client")
 _lock: threading.Lock = threading.Lock()
 _jwt: Optional[str] = None
@@ -229,15 +248,56 @@ def _is_expired(token: str) -> bool:
         return False
 
 
+def _maybe_refresh_jwt(token: str) -> str:
+    """Best-effort proactive token refresh when expiry is near.
+
+    Returns the (possibly renewed) token. Strictly non-destructive: any failure
+    — network, 401 from PB, unexpected body — keeps the current token, which
+    remains valid until its own exp. Throttled so the rare synchronous HTTP
+    call cannot become a per-request tax."""
+    global _last_refresh_attempt
+    if not IS_OFFICIAL_RELEASE:
+        return token
+    claims = _jwt_claims(token)
+    exp = (claims or {}).get("exp")
+    try:
+        exp = float(exp)
+    except (TypeError, ValueError):
+        return token  # no readable exp — nothing to anticipate
+    now = time.time()
+    if exp - now > _REFRESH_MARGIN_S:
+        return token
+    if now - _last_refresh_attempt < _REFRESH_THROTTLE_S:
+        return token
+    _last_refresh_attempt = now
+    try:
+        # PocketBase auth header is the raw token (no Bearer prefix).
+        resp = _http.post(_REFRESH_URL, headers={"Authorization": token},
+                          timeout=_TIMEOUT)
+        if resp.status_code == 200:
+            new_token = (resp.json() or {}).get("token")
+            if new_token and new_token != token:
+                set_jwt(new_token)
+                _log.info("jwt refreshed (exp was %.0f h away)", (exp - now) / 3600)
+                return new_token
+        else:
+            _log_detail("jwt_refresh http %d" % resp.status_code,
+                        RuntimeError(resp.text[:200]))
+    except (requests.RequestException, ValueError) as exc:
+        _log_detail("jwt_refresh", exc)
+    return token
+
+
 def _valid_jwt() -> Optional[str]:
-    """Return the stored JWT, proactively clearing it when locally expired."""
+    """Return the stored JWT, proactively clearing it when locally expired.
+    Near-expiry tokens are renewed in-line (throttled, best-effort)."""
     token = get_jwt()
     if not token:
         return None
     if _is_expired(token):
         clear_jwt()
         return None
-    return token
+    return _maybe_refresh_jwt(token)
 
 
 def _auth_headers() -> dict:
@@ -297,7 +357,7 @@ def auth_register(email: str, password: str, name: str = "") -> tuple[Optional[s
     except Exception:
         device = {"primary": "", "secondary": ""}
     try:
-        resp = requests.post(
+        resp = _http.post(
             f"{_BASE_URL}/auth/register",
             json={
                 "email": email, "password": password, "name": name,
@@ -324,7 +384,7 @@ def pb_login(email: str, password: str) -> tuple[Optional[str], Optional[str]]:
     if not IS_OFFICIAL_RELEASE:
         return None, "Login is disabled in developer builds."
     try:
-        resp = requests.post(
+        resp = _http.post(
             f"{_BASE_URL}/auth/login",
             json={"email": email, "password": password},
             timeout=_TIMEOUT,
@@ -355,7 +415,7 @@ def verify_session() -> tuple[Optional[dict], Optional[str]]:
     if not token:
         return None, t("st_not_signed_in")
     try:
-        resp = requests.post(
+        resp = _http.post(
             f"{_BASE_URL}/auth/verify",
             headers=_auth_headers(),
             timeout=_TIMEOUT,
@@ -380,7 +440,7 @@ def get_quota() -> Optional[dict]:
     if not token:
         return None
     try:
-        resp = requests.get(
+        resp = _http.get(
             f"{_BASE_URL}/auth/quota",
             headers=_auth_headers(),
             timeout=_TIMEOUT,
@@ -395,23 +455,29 @@ def get_quota() -> Optional[dict]:
         return None
 
 
-def get_session_key(target=None, caps=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
+def get_session_key(target=None, caps=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str]]:
     """SaaS execution path: retrieves a server-issued translation key. With
     caps='engine-routing' the server picks the engine by TARGET language and also
-    returns {engine, model, quality}. Returns (key, engine, model, quality, error).
-    Never embedded in the client build."""
+    returns {engine, model, quality, quota}. Since the server verifies the token
+    inline on a cold cache, this single call is a complete session start — no
+    separate /auth/verify round-trip is needed.
+
+    Returns (key, engine, model, quality, quota, error); `quota` is the license
+    snapshot dict when the server provided one (routing-aware responses only).
+    401/402 are mapped to localized messages by STATUS CODE (never by sniffing
+    the server's English error string). Never embedded in the client build."""
     if not IS_OFFICIAL_RELEASE:
-        return None, None, None, None, "SaaS keys are disabled in developer builds."
+        return None, None, None, None, None, "SaaS keys are disabled in developer builds."
     token = _valid_jwt()
     if not token:
-        return None, None, None, None, t("st_not_signed_in")
+        return None, None, None, None, None, t("st_not_signed_in")
     params = {}
     if caps:
         params["caps"] = caps
     if target:
         params["target"] = target
     try:
-        resp = requests.get(
+        resp = _http.get(
             f"{_BASE_URL}/auth/session-key",
             headers=_auth_headers(),
             params=params,
@@ -419,20 +485,25 @@ def get_session_key(target=None, caps=None) -> tuple[Optional[str], Optional[str
         )
     except requests.RequestException as exc:
         _log_detail("get_session_key", exc)
-        return None, None, None, None, _net_error()
+        return None, None, None, None, None, _net_error()
     if resp.status_code == 200:
         d = resp.json()
-        return d.get("key"), d.get("engine", "gemini"), d.get("model"), d.get("quality"), None
+        quota = d.get("quota") if isinstance(d.get("quota"), dict) else None
+        return (d.get("key"), d.get("engine", "gemini"), d.get("model"),
+                d.get("quality"), quota, None)
     if resp.status_code == 401:
         clear_jwt()
+        return None, None, None, None, None, t("st_not_signed_in")
+    if resp.status_code == 402:
+        return None, None, None, None, None, t("err_quota_exhausted")
     if resp.status_code == 503:
         # Distinguishable "engine unavailable" → caller falls back to Gemini.
         try:
             eng = resp.json().get("engine")
         except Exception:
             eng = None
-        return None, eng, None, None, "engine unavailable"
-    return None, None, None, None, _core_error(resp)
+        return None, eng, None, None, None, "engine unavailable"
+    return None, None, None, None, None, _core_error(resp)
 
 
 def _post_usage(session_id: str, delta_minutes: float, source: str, engine: str) -> str:
@@ -444,7 +515,7 @@ def _post_usage(session_id: str, delta_minutes: float, source: str, engine: str)
     retries rather than discarding the token.
     """
     try:
-        resp = requests.post(
+        resp = _http.post(
             f"{_BASE_URL}/usage/report",
             headers=_auth_headers(),
             json={
@@ -542,7 +613,7 @@ def send_report(payload: dict) -> dict:
     if token:
         headers["Authorization"] = "Bearer " + token
     try:
-        resp = requests.post(
+        resp = _http.post(
             f"{_BASE_URL}/report",
             headers=headers,
             json=payload,

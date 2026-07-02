@@ -5,7 +5,9 @@ and silence are filtered locally. The model operates on 16 kHz 512-sample
 (32 ms) frames.
 """
 import collections
+import hashlib
 import os
+import tempfile
 import urllib.request
 
 import numpy as np
@@ -13,19 +15,50 @@ import onnxruntime as ort
 
 from .paths import model_path
 
-MODEL_URL = "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx"
+# Pinned to an immutable release tag (master is a moving target) and verified
+# by hash: a truncated/tampered download must fail loudly here, not surface as
+# an inscrutable onnxruntime load error at session start.
+MODEL_URL = "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx"
+MODEL_SHA256 = "2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f"
 MODEL_PATH = model_path("silero_vad.onnx")
+_DOWNLOAD_TIMEOUT = 30  # socket-level; an unreachable CDN can't hang session start
 
 SAMPLE_RATE = 16000
 FRAME = 512  # 32 ms @ 16 kHz — the frame size Silero v5 expects.
 FRAME_MS = 1000.0 * FRAME / SAMPLE_RATE
 
 
+def _download_model() -> None:
+    """Fetch the VAD model with a timeout, verify its SHA-256, then move it into
+    place atomically so a crash mid-download can never leave a truncated model
+    that would then fail every session start."""
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    req = urllib.request.Request(MODEL_URL, headers={"User-Agent": "voxis"})
+    with urllib.request.urlopen(req, timeout=_DOWNLOAD_TIMEOUT) as resp:
+        data = resp.read()  # ~2.3 MB — fine to buffer
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != MODEL_SHA256:
+        raise RuntimeError(
+            f"VAD model hash mismatch (got {digest[:16]}…, expected "
+            f"{MODEL_SHA256[:16]}…) — refusing to use an unverified model."
+        )
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(MODEL_PATH), suffix=".onnx.tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        os.replace(tmp, MODEL_PATH)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
 class SileroVAD:
     def __init__(self):
         if not os.path.exists(MODEL_PATH):
-            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-            urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+            _download_model()
         opts = ort.SessionOptions()
         opts.inter_op_num_threads = 1
         opts.intra_op_num_threads = 1

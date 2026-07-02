@@ -160,6 +160,7 @@ class ProcessExcludeLoopback:
         self._pid = exclude_pid or os.getpid()
         self._run = False
         self._err: Exception | None = None
+        self.dropped = 0  # chunks lost to the bounded queue's drop-oldest (telemetry)
         self._ready = threading.Event()
         # Capture and processing are separated: the capture thread must only
         # GetBuffer/copy/ReleaseBuffer and hand off, never run on_chunk, so a
@@ -235,6 +236,8 @@ class ProcessExcludeLoopback:
                         x = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
                     # ReleaseBuffer immediately — never gated on the consumer.
                     cap.ReleaseBuffer(frames)
+                    if len(self._queue) == self._QUEUE_MAX:
+                        self.dropped += 1  # deque(maxlen) evicts silently — count it
                     self._queue.append(x)
                     self._has_data.set()
                 except Exception as e:

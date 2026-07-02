@@ -71,6 +71,7 @@ STRINGS = {
         "st_renewing": "{name}: oturum yenileniyor...",
         "st_conn_err": "{name}: bağlantı hatası, {s:.0f}s sonra yeniden: {e}",
         "st_capture_lost": "Ses yakalama durdu (cihaz değişmiş olabilir). Oturumu yeniden başlat.",
+        "st_session_failed": "Çeviri bağlantısı koptu ve yeniden kurulamadı — oturum durduruldu. Tekrar başlatmayı dene.",
         "st_classic_capture_warning": "Gelişmiş ses yakalama açılamadı ({e}); uyumluluk moduna geçildi. Sürekli konuşmalı içerikte çeviri ilk cümleden sonra durabilir. En iyi sonuç için Windows'u güncelleyip Voxis'i yeniden başlatın.",
         "st_server_unreachable": "Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.",
         "st_mode_started": "Mod başladı: {mode}",
@@ -171,6 +172,7 @@ STRINGS = {
         "st_renewing": "{name}: renewing session...",
         "st_conn_err": "{name}: connection error, retrying in {s:.0f}s: {e}",
         "st_capture_lost": "Audio capture stopped (the device may have changed). Restart the session.",
+        "st_session_failed": "The translation connection was lost and could not be restored — session stopped. Try starting again.",
         "st_classic_capture_warning": "Advanced audio capture couldn't start ({e}); switched to compatibility mode. On continuous speech, translation may stop after the first sentence. For best results, update Windows and restart Voxis.",
         "st_server_unreachable": "Could not reach the server. Check your internet connection.",
         "st_mode_started": "Mode started: {mode}",
@@ -286,6 +288,7 @@ STRINGS = {
                                   "Systemsteuerung → Sound → Aufnahme → Rechtsklick → "
                                   "'Deaktivierte Geräte anzeigen'.",
         "st_capture_lost": "Audioaufnahme gestoppt (das Gerät hat sich möglicherweise geändert). Starte die Sitzung neu.",
+        "st_session_failed": "Die Übersetzungsverbindung wurde unterbrochen und konnte nicht wiederhergestellt werden — Sitzung beendet. Versuche es erneut.",
         "st_quota_exceeded": "Dein Kontingent ist aufgebraucht — Sitzung beendet. Upgrade deinen Plan, um fortzufahren.",
         "st_meeting_listen_only": "Kein virtuelles Audiokabel — Meeting läuft im NUR-ZUHÖREN-Modus: "
                                   "Sie hören die andere Seite in Ihrer Sprache, Ihre Stimme geht "
@@ -384,6 +387,7 @@ STRINGS = {
                                   "Pour l'activer : Panneau de configuration → Son → Enregistrement → "
                                   "clic droit → 'Afficher les appareils désactivés'.",
         "st_capture_lost": "La capture audio s'est arrêtée (l'appareil a peut-être changé). Redémarrez la session.",
+        "st_session_failed": "La connexion de traduction a été perdue et n'a pas pu être rétablie — session arrêtée. Réessayez.",
         "st_quota_exceeded": "Votre quota est épuisé — session arrêtée. Mettez votre forfait à niveau pour continuer.",
         "st_meeting_listen_only": "Pas de câble audio virtuel — la réunion fonctionne en mode ÉCOUTE "
                                   "UNIQUEMENT : vous entendez l'autre partie dans votre langue, votre "
@@ -482,6 +486,7 @@ STRINGS = {
                                   "Para habilitarlo: Panel de control → Sonido → Grabación → "
                                   "clic derecho → 'Mostrar dispositivos deshabilitados'.",
         "st_capture_lost": "Se detuvo la captura de audio (es posible que el dispositivo haya cambiado). Reinicia la sesión.",
+        "st_session_failed": "Se perdió la conexión de traducción y no se pudo restablecer — sesión detenida. Intenta iniciarla de nuevo.",
         "st_quota_exceeded": "Has agotado tu cuota — sesión detenida. Mejora tu plan para continuar.",
         "st_meeting_listen_only": "Sin cable de audio virtual — la reunión funciona en modo SOLO "
                                   "ESCUCHA: escuchas a la otra parte en tu idioma, tu voz sale sin "
@@ -580,6 +585,7 @@ STRINGS = {
                                   "Para habilitar: Painel de Controle → Som → Gravação → "
                                   "clique com o botão direito → 'Mostrar Dispositivos Desabilitados'.",
         "st_capture_lost": "A captura de áudio parou (o dispositivo pode ter mudado). Reinicie a sessão.",
+        "st_session_failed": "A conexão de tradução foi perdida e não pôde ser restaurada — sessão interrompida. Tente iniciar novamente.",
         "st_quota_exceeded": "Você esgotou sua cota — sessão interrompida. Faça upgrade do seu plano para continuar.",
         "st_meeting_listen_only": "Sem cabo de áudio virtual — a reunião funciona no modo SOMENTE "
                                   "ESCUTA: você ouve a outra parte no seu idioma, sua voz sai sem "
@@ -677,6 +683,7 @@ STRINGS = {
                                   "コントロールパネル → サウンド → 録音 → 右クリック → "
                                   "「無効なデバイスの表示」。",
         "st_capture_lost": "音声のキャプチャが停止しました (デバイスが変更された可能性があります)。セッションを再開してください。",
+        "st_session_failed": "翻訳接続が切断され、復元できませんでした — セッションを停止しました。もう一度開始してください。",
         "st_quota_exceeded": "利用枠を使い切りました — セッションを停止しました。続けるにはプランをアップグレードしてください。",
         "st_meeting_listen_only": "仮想オーディオケーブルがありません — ミーティングは聴取専用モードで動作します: "
                                   "相手の声はあなたの言語で聞こえますが、あなたの声は翻訳されずに送信されます。"
@@ -774,6 +781,7 @@ STRINGS = {
                                   "제어판 → 소리 → 녹음 → 마우스 오른쪽 클릭 → "
                                   "'비활성화된 장치 표시'.",
         "st_capture_lost": "오디오 캡처가 중단되었습니다(장치가 변경되었을 수 있습니다). 세션을 다시 시작하세요.",
+        "st_session_failed": "번역 연결이 끊어져 복구하지 못했습니다 — 세션이 중지되었습니다. 다시 시작해 보세요.",
         "st_quota_exceeded": "사용량을 모두 사용했습니다 — 세션이 중지되었습니다. 계속하려면 플랜을 업그레이드하세요.",
         "st_meeting_listen_only": "가상 오디오 케이블 없음 — 미팅이 듣기 전용 모드로 실행됩니다: "
                                   "상대방의 음성은 내 언어로 들리지만 내 음성은 번역 없이 전송됩니다. "
@@ -871,6 +879,7 @@ STRINGS = {
                                   "Чтобы включить: Панель управления → Звук → Запись → "
                                   "правая кнопка мыши → «Показать отключённые устройства».",
         "st_capture_lost": "Захват звука остановлен (возможно, изменилось устройство). Перезапустите сеанс.",
+        "st_session_failed": "Соединение перевода потеряно и не восстановлено — сеанс остановлен. Попробуйте запустить снова.",
         "st_quota_exceeded": "Ваша квота исчерпана — сеанс остановлен. Повысьте план, чтобы продолжить.",
         "st_meeting_listen_only": "Виртуальный аудиокабель отсутствует — совещание работает в режиме "
                                   "ТОЛЬКО ПРОСЛУШИВАНИЕ: вы слышите собеседника на своём языке, "
@@ -969,6 +978,7 @@ STRINGS = {
                                   "控制面板 → 声音 → 录制 → 右键单击 → "
                                   "'显示已禁用的设备'。",
         "st_capture_lost": "音频采集已停止（设备可能已更改）。请重新启动会话。",
+        "st_session_failed": "翻译连接已断开且无法恢复 — 会话已停止。请重新启动。",
         "st_quota_exceeded": "你的配额已用完 — 会话已停止。升级你的套餐以继续。",
         "st_meeting_listen_only": "没有虚拟音频线缆 — 会议以仅听模式运行："
                                   "您可以用自己的语言听到对方说话，但您的声音不经翻译直接发出。"
@@ -1066,6 +1076,7 @@ STRINGS = {
                                   "Panel sterowania → Dźwięk → Nagrywanie → prawy przycisk myszy → "
                                   "'Pokaz wylaczone urzadzenia'.",
         "st_capture_lost": "Przechwytywanie dźwięku zostało zatrzymane (urządzenie mogło się zmienić). Uruchom sesję ponownie.",
+        "st_session_failed": "Połączenie tłumaczenia zostało przerwane i nie udało się go przywrócić — sesja zatrzymana. Spróbuj ponownie.",
         "st_quota_exceeded": "Twój limit został wyczerpany — sesja zatrzymana. Ulepsz plan, aby kontynuować.",
         "st_meeting_listen_only": "Brak wirtualnego kabla audio — spotkanie działa w trybie TYLKO "
                                   "NASŁUCH: słyszysz rozmówcę w swoim języku, twój głos wychodzi "
@@ -1164,6 +1175,7 @@ STRINGS = {
                                   "Per abilitarlo: Pannello di controllo → Suono → Registrazione → "
                                   "clic destro → 'Mostra dispositivi disabilitati'.",
         "st_capture_lost": "Acquisizione audio interrotta (il dispositivo potrebbe essere cambiato). Riavvia la sessione.",
+        "st_session_failed": "La connessione di traduzione è stata persa e non è stato possibile ripristinarla — sessione interrotta. Riprova.",
         "st_quota_exceeded": "Hai esaurito la tua quota — sessione interrotta. Esegui l'upgrade del piano per continuare.",
         "st_meeting_listen_only": "Nessun cavo audio virtuale — la riunione funziona in modalità "
                                   "SOLO ASCOLTO: senti l'altro partecipante nella tua lingua, la "
@@ -1262,6 +1274,7 @@ STRINGS = {
                                   "Panel Kontrol → Suara → Rekaman → klik kanan → "
                                   "'Tampilkan Perangkat yang Dinonaktifkan'.",
         "st_capture_lost": "Perekaman audio berhenti (perangkat mungkin berubah). Mulai ulang sesi.",
+        "st_session_failed": "Koneksi terjemahan terputus dan tidak dapat dipulihkan — sesi dihentikan. Coba mulai lagi.",
         "st_quota_exceeded": "Kuota Anda habis — sesi dihentikan. Tingkatkan paket Anda untuk melanjutkan.",
         "st_meeting_listen_only": "Tidak ada kabel audio virtual — rapat berjalan dalam mode DENGARKAN "
                                   "SAJA: Anda mendengar mereka dalam bahasa Anda, suara Anda keluar "
@@ -1359,6 +1372,7 @@ STRINGS = {
                                   "Configuratiescherm → Geluid → Opnemen → rechtermuisknop → "
                                   "'Uitgeschakelde apparaten weergeven'.",
         "st_capture_lost": "Audio-opname gestopt (het apparaat is mogelijk gewijzigd). Start de sessie opnieuw.",
+        "st_session_failed": "De vertaalverbinding is verbroken en kon niet worden hersteld — sessie gestopt. Probeer opnieuw te starten.",
         "st_quota_exceeded": "Je tegoed is op — sessie gestopt. Upgrade je abonnement om door te gaan.",
         "st_meeting_listen_only": "Geen virtuele audiokabel — vergadering loopt in ALLEEN-LUISTEREN-modus: "
                                   "u hoort de andere partij in uw taal, uw stem gaat onvertaald uit. "
@@ -1456,6 +1470,7 @@ STRINGS = {
                                   "Control Panel → Sound → Recording → nhấp chuột phải → "
                                   "'Show Disabled Devices'.",
         "st_capture_lost": "Đã dừng thu âm thanh (thiết bị có thể đã thay đổi). Hãy khởi động lại phiên.",
+        "st_session_failed": "Kết nối dịch đã mất và không thể khôi phục — phiên đã dừng. Hãy thử bắt đầu lại.",
         "st_quota_exceeded": "Bạn đã dùng hết hạn mức — phiên đã dừng. Nâng cấp gói của bạn để tiếp tục.",
         "st_meeting_listen_only": "Không có cáp âm thanh ảo — cuộc họp chạy ở chế độ CHỈ NGHE: "
                                   "bạn nghe đối phương bằng ngôn ngữ của mình, giọng nói của bạn "
@@ -1553,6 +1568,7 @@ STRINGS = {
                                   "Control Panel → Sound → Recording → คลิกขวา → "
                                   "'Show Disabled Devices'",
         "st_capture_lost": "การจับเสียงหยุดลง (อุปกรณ์อาจมีการเปลี่ยนแปลง) โปรดเริ่มเซสชันใหม่",
+        "st_session_failed": "การเชื่อมต่อการแปลขาดหายและไม่สามารถกู้คืนได้ — เซสชันหยุดลง โปรดลองเริ่มใหม่",
         "st_quota_exceeded": "คุณใช้โควต้าหมดแล้ว — เซสชันหยุดลง อัปเกรดแพ็กเกจเพื่อใช้งานต่อ",
         "st_meeting_listen_only": "ไม่มีสายเคเบิลเสียงเสมือน — การประชุมทำงานในโหมดฟังอย่างเดียว: "
                                   "คุณได้ยินอีกฝ่ายเป็นภาษาของคุณ แต่เสียงของคุณส่งออกโดยไม่ได้แปล "

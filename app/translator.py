@@ -50,6 +50,15 @@ _MAX_TRANSIENT_FAILURES = 8
 # loop at full speed. A real session always lives far longer than this.
 _MIN_SESSION_SECONDS = 5.0
 
+# Stall watchdog: after this many SECONDS OF SENT AUDIO with zero server events
+# (no audio, no transcription, not even a resumption update) the socket is
+# treated as silently dead (TCP black hole after sleep/resume, NAT drop) and a
+# planned rotation is forced — carryover + the resume handle make it seamless.
+# Measured in sent-audio seconds, not wall clock, so quiet periods where the
+# gate sends nothing can never trip it. A healthy session interleaves server
+# events every few seconds of speech, so 20 s is far outside normal behavior.
+_STALL_ROTATE_SECONDS = 20.0
+
 # Live API audio pricing, USD per minute (input + output).
 COST_IN_PER_MIN = 0.0053
 COST_OUT_PER_MIN = 0.0315
@@ -153,6 +162,10 @@ class LiveTranslator(threading.Thread):
         # the ~1-2 s of unsent source audio at cutover is not lost.
         self._carryover: list[bytes] = []
         self._resume_handle = None  # session-resumption token for seamless reconnect
+        # Stall watchdog accumulator: seconds of audio sent since the last
+        # server event. Sender adds, receiver zeroes — both on the loop thread,
+        # so no locking is needed.
+        self._sent_since_recv = 0.0
 
     def send_pcm16(self, data: bytes):
         if self._loop and self._queue and not self._stopping.is_set():
@@ -277,6 +290,7 @@ class LiveTranslator(threading.Thread):
                     # bare connect — otherwise an accept-then-immediately-close server
                     # would reset the cap every iteration and never stop reconnecting.
                     started = time.monotonic()
+                    self._sent_since_recv = 0.0
                     sender = asyncio.create_task(self._sender(session, started))
                     receiver = asyncio.create_task(self._receiver(session))
                     done, pending = await asyncio.wait(
@@ -409,6 +423,16 @@ class LiveTranslator(threading.Thread):
             elapsed = time.monotonic() - started
             if elapsed > self.rotate_seconds or elapsed > _HARD_ROTATE_SECONDS:
                 raise _Rotate()
+            # Stall watchdog: this much sent audio with zero server events means
+            # the socket is silently dead — force a seamless rotation instead of
+            # streaming into a black hole (billing keeps running, user hears
+            # nothing, and receive() may never raise on a hung TCP connection).
+            if self._sent_since_recv >= _STALL_ROTATE_SECONDS:
+                self._sent_since_recv = 0.0
+                # Raw diagnostic (transcript precedent: the "capture: ..." line).
+                self.on_status("translator: no server events for %ds of sent "
+                               "audio — reconnecting" % int(_STALL_ROTATE_SECONDS))
+                raise _Rotate()
             try:
                 item = await asyncio.wait_for(self._queue.get(), timeout=0.5)
             except asyncio.TimeoutError:
@@ -419,11 +443,15 @@ class LiveTranslator(threading.Thread):
             )
             secs = len(item) / 32000
             _add_usage("in_sec", secs)
+            self._sent_since_recv += secs
 
     async def _receiver(self, session):
         async for resp in session.receive():
             if self._stopping.is_set():
                 return
+            # Any server event proves the connection is alive — reset the stall
+            # watchdog (audio, transcription, resumption updates all count).
+            self._sent_since_recv = 0.0
             # Track the resumption handle; on GoAway rotate now (carryover + the
             # handle make the reconnect seamless) instead of waiting for the drop.
             sru = getattr(resp, "session_resumption_update", None)
