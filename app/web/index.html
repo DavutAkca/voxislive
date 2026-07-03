@@ -478,7 +478,9 @@ body.resizing,body.resizing *{user-select:none!important}
 .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 /* ============ TRANSCRIPT HISTORY MODAL ============ */
-.historymodal{width:760px}
+/* .modal (defined below) shares specificity — compound the selector so the
+   wider history layout survives source order. */
+.modal.historymodal{width:760px}
 .historymodal .mhead{padding:22px 24px 8px}
 .histsearchwrap{margin:0 0 12px}
 .histsearchwrap input{width:100%;box-sizing:border-box;padding:9px 12px;border-radius:var(--r-ctl);
@@ -494,6 +496,7 @@ body.resizing,body.resizing *{user-select:none!important}
 .histrow .hr-prev{font-size:11px;color:var(--text-2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .histview{overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-card);padding:12px 14px}
 .histempty{color:var(--text-3);font-size:12.5px;display:grid;place-items:center;height:100%}
+.histempty[hidden]{display:none} /* author display beats the UA [hidden] rule */
 .histturns .ht{padding:7px 0;border-bottom:1px solid var(--border)}
 .histturns .ht:last-child{border-bottom:0}
 .histturns .ht .ht-t{font-family:var(--mono);font-size:10.5px;color:var(--text-3)}
@@ -501,7 +504,7 @@ body.resizing,body.resizing *{user-select:none!important}
 .histturns .ht .ht-text{font-size:13px;color:var(--text);margin-top:2px}
 .histturns mark{background:var(--accent-soft);color:var(--text);border-radius:3px;padding:0 1px}
 .histexportlbl{font-size:12px;color:var(--text-3);align-self:center;margin-right:2px}
-@media (max-width:640px){.historymodal{width:96vw}.histpanes{grid-template-columns:1fr}}
+@media (max-width:640px){.modal.historymodal{width:96vw}.histpanes{grid-template-columns:1fr}}
 /* ============ MODAL (consent / onboarding) — reuses scrim + drawer language ============ */
 .modal{
   position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);z-index:60;
