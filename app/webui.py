@@ -1457,23 +1457,26 @@ class Bridge:
 
 _OVERLAY_HTML = """<!DOCTYPE html><html><head><meta charset='utf-8'>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:#0a0b10;
-  font-family:'Inter','Segoe UI',sans-serif;-webkit-user-select:none;cursor:default}
+/* Graphite Console language (see index.html): flat graphite, hairline border,
+   amber = live/on-air signal. System font on purpose — the overlay is a
+   transient always-on-top window and must not stall on a webfont fetch. */
+html,body{margin:0;height:100%;overflow:hidden;background:#131518;
+  font-family:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;-webkit-user-select:none;cursor:default}
 #bar{display:flex;align-items:center;gap:16px;min-height:100%;box-sizing:border-box;
   padding:14px 22px;-webkit-app-region:drag;
-  background:linear-gradient(180deg,#13151d,#0c0e14)}
-#mark{width:34px;height:34px;flex:none;border-radius:9px;display:grid;place-items:center;
-  background:linear-gradient(135deg,#7c8aff,#5b6cff);box-shadow:0 3px 14px rgba(91,108,255,.5)}
+  background:#16181c;border:1px solid rgba(235,240,245,.12)}
+#mark{width:34px;height:34px;flex:none;border-radius:8px;display:grid;place-items:center;
+  background:#e9eef3}
 #divider{width:3px;align-self:stretch;flex:none;border-radius:3px;margin:2px 0;
-  background:linear-gradient(180deg,#7c8aff,#5b6cff);box-shadow:0 0 10px rgba(124,138,255,.6)}
-#txt{flex:1;color:#fff;font-size:25px;font-weight:600;line-height:1.34;
+  background:#ffb224;box-shadow:0 0 9px rgba(255,178,36,.55)}
+#txt{flex:1;color:#f2f5f8;font-size:25px;font-weight:600;line-height:1.34;
   text-shadow:0 1px 5px rgba(0,0,0,.55);max-height:101px;overflow:hidden}
 #col{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
-#brand{font-size:11px;font-weight:600;letter-spacing:.02em;color:#8b93a8;
+#brand{font-size:10.5px;font-weight:600;letter-spacing:.12em;color:rgba(233,238,243,.44);
   text-shadow:0 1px 3px rgba(0,0,0,.5);display:none}
 </style></head><body>
 <div id='bar'>
-  <div id='mark'><svg width='19' height='19' viewBox='0 0 16 16'><path d='M2 5.5v5M5 3v10M8 6.5v3M11 3v10M14 5.5v5' stroke='#fff' stroke-width='1.9' stroke-linecap='round'/></svg></div>
+  <div id='mark'><svg width='19' height='19' viewBox='0 0 1075.8 1075.8'><path fill='#131518' d='M89.65 332.95 L278.17 301.19 L367.78 737.34 L268.17 888.72 Z'/><path fill='#FFB224' d='M219.39 684.87 C278.89 597.47 341.64 519.58 421.23 455.83 C556.55 347.46 794.02 246.48 986.15 187.08 C878.25 251.89 758.69 321.26 640.05 417.53 C543.00 492.74 431.90 634.48 344.32 785.53 L320.60 575.30 Z'/></svg></div>
   <div id='divider'></div>
   <div id='col'>
     <div id='txt'></div>
