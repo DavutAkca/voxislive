@@ -1,17 +1,17 @@
-"""Qwen3.5-LiveTranslate engine — a duck-typed twin of OpenAITranslator.
+"""Qwen3.5-LiveTranslate engine — a BaseTranslator subclass.
 
-Mirrors the translator contract (send_pcm16/start/stop/wait_ready/is_alive +
-_ready/_stopping/name) and the field-hardened session machine (bounded
-drop-oldest queue, carryover across reconnect, planned rotation, stall/no-output
-watchdogs, terminal-error classification) so the pipeline and ModeController
-need no changes — but speaks the DashScope realtime protocol.
+Shares the field-hardened session machine (bounded drop-oldest queue, carryover
+across reconnect, planned rotation, stall/no-output watchdogs, terminal-error
+classification) with the Gemini and OpenAI engines via app/base_translator.py,
+and adds only the DashScope realtime protocol plus the SyncStager pacing this
+engine needs.
 
 Verified protocol + behavior (sandbox-qwen-livetranslate/FINDINGS.md +
 TEST_REPORT_2026-07-04.md, all live-measured):
   URL    wss://{workspace}.ap-southeast-1.maas.aliyuncs.com/api-ws/v1/realtime?model=...
          (intl accounts NEED the workspace MAAS host; dashscope-intl 403s)
   auth   Authorization: Bearer <key>
-  in     session.update                  -> config (see _session_config)
+  in     session.update                  -> config (see _session_update)
          input_audio_buffer.append      -> base64 PCM16 @ 16 kHz mono
          session.finish                 -> flush + end
   out    response.audio.delta           -> base64 PCM16 @ 24 kHz (translated)
@@ -32,53 +32,33 @@ Hard-won rules baked in here — do not "improve" these without re-measuring:
     through SyncStager (WSOLA speed-up first, oldest-first trim as last resort)
     instead of being fed straight into the Player ring like Gemini/OpenAI.
 """
-import asyncio
 import base64
 import collections
 import json
 import threading
 import time
-import traceback
 
 import numpy as np
 
+from .base_translator import BaseTranslator, is_terminal_error
 from .config import QWEN_TRANSLATE_MODEL, QWEN_WORKSPACE
-from .i18n import t
 
 URL_TEMPLATE = ("wss://{ws}.ap-southeast-1.maas.aliyuncs.com"
                 "/api-ws/v1/realtime?model={model}")
 IN_RATE = 16000     # capture side (same as Gemini — the classic gate path)
 OUT_RATE = 24000
 
-_QUEUE_MAX = 50
-_ROTATE_DRAIN_SECONDS = 1.5
-_MAX_TRANSIENT_FAILURES = 8
-_MIN_SESSION_SECONDS = 5.0
-_STALL_ROTATE_SECONDS = 20.0
-_NO_OUTPUT_WARN_SECONDS = 12.0
-_INPUT_RECENT_SECONDS = 4.0
 # Session ceiling is undocumented; the longest measured session (~6 min) never
 # dropped. Rotate proactively with carryover well inside the unknown.
 _DEFAULT_ROTATE_MINUTES = 25
-_HARD_ROTATE_SECONDS = 28 * 60
 
 # Measured economics (FINDINGS): input $7.5/1M tok, audio out $30/1M, text out
-# $20/1M -> per-minute rates for the shared usage/cost readout.
+# $20/1M -> per-minute rates. NOTE: the shared get_usage() readout currently
+# prices every engine's seconds at Gemini rates; these are kept as documentation
+# of Qwen's measured economics.
 COST_IN_PER_MIN = 0.0032
 COST_OUT_PER_MIN = 0.0265
 
-_USAGE_ADD = None
-
-
-def _record_usage(key: str, amount: float):
-    global _USAGE_ADD
-    if _USAGE_ADD is None:
-        from .translator import _add_usage
-        _USAGE_ADD = _add_usage
-    _USAGE_ADD(key, amount)
-
-
-_TERMINAL_CODES = {401, 403, 404}
 _TERMINAL_PHRASES = (
     "invalidapikey", "invalid_api_key", "invalid api key",
     "access denied", "accessdenied", "unauthorized", "forbidden",
@@ -86,25 +66,8 @@ _TERMINAL_PHRASES = (
 )
 
 
-def _is_terminal_error(exc: Exception) -> bool:
-    for attr in ("code", "status_code"):
-        val = getattr(exc, attr, None)
-        if callable(val):
-            try:
-                val = val()
-            except Exception:
-                val = None
-        try:
-            if val is not None and int(val) in _TERMINAL_CODES:
-                return True
-        except (TypeError, ValueError):
-            pass
-    text = str(exc).lower()
-    return any(p in text for p in _TERMINAL_PHRASES)
-
-
-class _Rotate(Exception):
-    """Signals a planned reconnect ahead of the (unknown) session ceiling."""
+def _is_terminal_error(exc) -> bool:
+    return is_terminal_error(exc, _TERMINAL_PHRASES)
 
 
 def _wsola(x: np.ndarray, speed: float, sr: int) -> np.ndarray:
@@ -149,11 +112,11 @@ class SyncStager:
 
     Qwen's translated speech is longer than the source and carries no silence
     padding (unlike OpenAI's self-timing stream), so feeding the Player ring
-    directly drifts the dub minutes behind the picture. This stager keeps the
-    ring only ~2.5 s deep and, as backlog grows, WSOLA-compresses blocks
-    (>=3 s -> 1.12x, >=6 s -> 1.25x, pitch preserved); beyond 12 s the OLDEST
-    audio is trimmed to 4 s — the loss is always stale content, never the line
-    currently playing. Exposes telemetry for the beta UI.
+    directly drifts the dub minutes behind. This stager keeps the ring only
+    ~2.5 s deep and, as backlog grows, WSOLA-compresses blocks (>=3 s -> 1.12x,
+    >=6 s -> 1.25x, pitch preserved); beyond 12 s the OLDEST audio is trimmed to
+    4 s — the loss is always stale content, never the line currently playing.
+    Exposes telemetry for the beta UI.
     """
 
     FEED_AHEAD_S = 2.5
@@ -235,34 +198,25 @@ class SyncStager:
         self._player = None
 
 
-class QwenTranslator(threading.Thread):
-    def __init__(
-        self,
-        api_key: str,
-        target_lang: str,
-        on_audio,
-        on_text,
-        on_status,
-        rotate_minutes: float = _DEFAULT_ROTATE_MINUTES,
-        name: str = "translator",
-        model: str = QWEN_TRANSLATE_MODEL,
-        source_lang: str = "auto",
-        clone: str = "off",              # off | once | always
-        hotwords: dict | None = None,    # translation.corpus.phrases (<=50)
-        vad_silence_ms: int = 500,       # server_vad silence_duration_ms; 0 = model default
-        workspace: str = QWEN_WORKSPACE,
-    ):
-        super().__init__(daemon=True, name=name)
-        self.api_key = api_key
+class QwenTranslator(BaseTranslator):
+    HARD_ROTATE_SECONDS = 28 * 60
+    IN_BYTES_PER_SEC = IN_RATE * 2    # 16 kHz mono PCM16 → 32000 bytes/sec
+    TERMINAL_PHRASES = _TERMINAL_PHRASES
+    READY_ON_CONNECT = True
+
+    def __init__(self, api_key, target_lang, on_audio, on_text, on_status,
+                 rotate_minutes: float = _DEFAULT_ROTATE_MINUTES,
+                 name: str = "translator", model: str = QWEN_TRANSLATE_MODEL,
+                 source_lang: str = "auto", clone: str = "off",
+                 hotwords: dict | None = None, vad_silence_ms: int = 500,
+                 workspace: str = QWEN_WORKSPACE):
         # Qwen wants base ISO codes: Voxis's 79-language BCP-47 targets
-        # (pt-BR, zh-Hans, …) are normalized the same way the OpenAI router
-        # does, so a regional variant can't bounce the session with
-        # InvalidParameter loops.
-        from .config import _norm_lang
-        self.target_lang = _norm_lang(target_lang) or target_lang
-        self.on_audio = on_audio
-        self.on_text = on_text
-        self.on_status = on_status
+        # (pt-BR, zh-Hans, …) are normalized the same way the OpenAI router does,
+        # so a regional variant can't bounce the session with InvalidParameter.
+        from .config import _norm_lang  # noqa: PLC0415
+        norm_target = _norm_lang(target_lang) or target_lang
+        super().__init__(api_key, norm_target, on_audio, on_text, on_status,
+                         rotate_minutes=rotate_minutes, name=name)
         self.model = model
         self.engine = "qwen"
         self.source_lang = source_lang or "auto"
@@ -270,51 +224,11 @@ class QwenTranslator(threading.Thread):
         self.hotwords = dict(list((hotwords or {}).items())[:50])
         self.vad_silence_ms = int(vad_silence_ms)
         self.workspace = workspace
-        self.rotate_seconds = rotate_minutes * 60
-        self._loop: asyncio.AbstractEventLoop | None = None
-        self._queue: asyncio.Queue | None = None
-        self._stopping = threading.Event()
-        self._ready = threading.Event()
-        self._carryover: list[bytes] = []
-        self._sent_since_recv = 0.0
-        self._last_input_ts = 0.0
-        self._last_output_ts = 0.0
-        self._no_output_warned = False
         self._clone_err_warned = False
         # Cumulative-stream -> increment conversion state (out + in captions).
         self._out_acc = ""
         self._in_acc = ""
         self._last_done_id = None
-
-    # ---- public contract (identical to LiveTranslator) ------------------
-    def send_pcm16(self, data: bytes):
-        if self._loop and self._queue and not self._stopping.is_set():
-            try:
-                self._loop.call_soon_threadsafe(self._put_nowait, data)
-            except RuntimeError:
-                pass
-
-    def _put_nowait(self, item):
-        try:
-            self._queue.put_nowait(item)
-            return
-        except asyncio.QueueFull:
-            pass
-        try:
-            self._queue.get_nowait()
-            _record_usage("dropped_frames", 1)
-        except asyncio.QueueEmpty:
-            pass
-        try:
-            self._queue.put_nowait(item)
-        except asyncio.QueueFull:
-            pass
-
-    def stop(self):
-        self._stopping.set()
-
-    def wait_ready(self, timeout: float) -> bool:
-        return self._ready.wait(timeout)
 
     # ---- session config ---------------------------------------------------
     def _session_update(self) -> str:
@@ -332,38 +246,14 @@ class QwenTranslator(threading.Thread):
             session["turn_detection"] = {"type": "server_vad",
                                          "silence_duration_ms": self.vad_silence_ms}
         if self.clone != "off":
-            # Docs + live: cloning REQUIRES voice="default"; plain mode
-            # requires the field to be ABSENT.
+            # Docs + live: cloning REQUIRES voice="default"; plain mode requires
+            # the field to be ABSENT.
             session["voice"] = "default"
             session["enable_voice_clone"] = True
             session["voice_clone_options"] = {"frequency": self.clone}
         if self.hotwords:
             session["translation"]["corpus"] = {"phrases": self.hotwords}
         return json.dumps({"type": "session.update", "session": session})
-
-    # ---- thread body ----------------------------------------------------
-    def run(self):
-        self._loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self._loop)
-        self._queue = asyncio.Queue(maxsize=_QUEUE_MAX)
-        try:
-            self._loop.run_until_complete(self._main())
-        except Exception as e:
-            if not self._stopping.is_set():
-                self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
-                traceback.print_exc()
-        finally:
-            self._stopping.set()
-            try:
-                pending = asyncio.all_tasks(self._loop)
-                for task in pending:
-                    task.cancel()
-                if pending:
-                    self._loop.run_until_complete(
-                        asyncio.gather(*pending, return_exceptions=True))
-            except Exception:
-                pass
-            self._loop.close()
 
     async def _connect(self):
         import websockets  # lazy: keep it off the cold path
@@ -376,149 +266,24 @@ class QwenTranslator(threading.Thread):
             return await websockets.connect(url, extra_headers=headers,
                                             max_size=None, compression=None)
 
-    async def _main(self):
-        backoff = 1.0
-        transient_failures = 0
-        last_error_text = None
-        while not self._stopping.is_set():
-            self._ready.clear()
-            started = None
-            try:
-                ws = await self._connect()
-                try:
-                    await ws.send(self._session_update())
-                    self._reinject_carryover()
-                    self.on_status(t("st_connected", name=self.name, lang=self.target_lang))
-                    self._ready.set()
-                    backoff = 1.0
-                    last_error_text = None
-                    started = time.monotonic()
-                    self._sent_since_recv = 0.0
-                    self._last_input_ts = 0.0
-                    self._last_output_ts = 0.0
-                    self._no_output_warned = False
-                    self._out_acc = ""
-                    self._in_acc = ""
-                    sender = asyncio.create_task(self._sender(ws, started))
-                    receiver = asyncio.create_task(self._receiver(ws))
-                    done, pending = await asyncio.wait(
-                        {sender, receiver}, return_when=asyncio.FIRST_COMPLETED)
-                    rotating = any(isinstance(task.exception(), _Rotate)
-                                   for task in done if not task.cancelled())
-                    if rotating and not self._stopping.is_set():
-                        await self._drain_receiver(receiver)
-                        self._snapshot_carryover()
-                    self._ready.clear()
-                    for task in pending:
-                        task.cancel()
-                    for task in done:
-                        if task.cancelled():
-                            continue
-                        exc = task.exception()
-                        if exc and not isinstance(exc, _Rotate):
-                            raise exc
-                finally:
-                    try:
-                        await ws.close()
-                    except Exception:
-                        pass
-                if rotating or (started is not None
-                                and time.monotonic() - started >= _MIN_SESSION_SECONDS):
-                    transient_failures = 0
-                    if not self._stopping.is_set():
-                        self.on_status(t("st_renewing", name=self.name))
-                elif not self._stopping.is_set():
-                    transient_failures += 1
-                    if transient_failures >= _MAX_TRANSIENT_FAILURES:
-                        self.on_status(t("st_conn_err", name=self.name, s=0,
-                                         e="server closed session immediately"))
-                        break
-                    self.on_status(t("st_conn_err", name=self.name, s=backoff,
-                                     e="server closed session immediately"))
-                    await asyncio.sleep(backoff)
-                    backoff = min(backoff * 1.6, 6)
-            except _Rotate:
-                self._ready.clear()
-                continue
-            except (asyncio.CancelledError, GeneratorExit):
-                raise
-            except Exception as e:
-                self._ready.clear()
-                if self._stopping.is_set():
-                    break
-                if _is_terminal_error(e):
-                    self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
-                    traceback.print_exc()
-                    break
-                if started is not None and time.monotonic() - started >= _MIN_SESSION_SECONDS:
-                    transient_failures = 0
-                transient_failures += 1
-                if transient_failures >= _MAX_TRANSIENT_FAILURES:
-                    self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
-                    traceback.print_exc()
-                    break
-                self.on_status(t("st_conn_err", name=self.name, s=backoff, e=e))
-                err_text = repr(e)
-                if err_text != last_error_text:
-                    traceback.print_exc()
-                    last_error_text = err_text
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 1.6, 6)
+    async def _open_session(self, conn):
+        await conn.send(self._session_update())
 
-    def _snapshot_carryover(self):
-        self._carryover = []
-        while True:
-            try:
-                self._carryover.append(self._queue.get_nowait())
-            except asyncio.QueueEmpty:
-                break
+    def _reset_session_state(self):
+        # Per-session parse state. _last_done_id is reset here too (it was NOT
+        # reset per session before the base-class consolidation), so a new
+        # session's first *.done event can never be deduped against a stale
+        # response id carried over from the previous session.
+        self._out_acc = ""
+        self._in_acc = ""
+        self._last_done_id = None
 
-    def _reinject_carryover(self):
-        if not self._carryover:
-            return
-        for frame in self._carryover:
-            self._put_nowait(frame)
-        self._carryover = []
-
-    async def _drain_receiver(self, receiver: asyncio.Task):
-        try:
-            await asyncio.wait_for(asyncio.shield(receiver),
-                                   timeout=_ROTATE_DRAIN_SECONDS)
-        except (asyncio.TimeoutError, asyncio.CancelledError):
-            pass
-        except Exception:
-            pass
-
-    async def _sender(self, ws, started: float):
-        while not self._stopping.is_set():
-            elapsed = time.monotonic() - started
-            if elapsed > self.rotate_seconds or elapsed > _HARD_ROTATE_SECONDS:
-                raise _Rotate()
-            if self._sent_since_recv >= _STALL_ROTATE_SECONDS:
-                self._sent_since_recv = 0.0
-                self.on_status("translator: no server events for %ds of sent "
-                               "audio — reconnecting" % int(_STALL_ROTATE_SECONDS))
-                raise _Rotate()
-            now = time.monotonic()
-            if self._last_input_ts > 0.0 and not self._no_output_warned:
-                if now - self._last_input_ts <= _INPUT_RECENT_SECONDS:
-                    last_out = self._last_output_ts if self._last_output_ts > 0.0 else started
-                    if now - last_out >= _NO_OUTPUT_WARN_SECONDS:
-                        self._no_output_warned = True
-                        self.on_status(t("st_no_output_warning"))
-            try:
-                item = await asyncio.wait_for(self._queue.get(), timeout=0.5)
-            except asyncio.TimeoutError:
-                continue
-            if not item:
-                continue
-            await ws.send(json.dumps({
-                "type": "input_audio_buffer.append",
-                "audio": base64.b64encode(item).decode("ascii"),
-            }))
-            secs = len(item) / (IN_RATE * 2)
-            _record_usage("in_sec", secs)
-            self._sent_since_recv += secs
+    async def _sender_frame(self, conn, item):
+        await conn.send(json.dumps({
+            "type": "input_audio_buffer.append",
+            "audio": base64.b64encode(item).decode("ascii"),
+        }))
+        self._account_sent(len(item))
 
     # ---- cumulative-stream -> increment conversion --------------------------
     def _delta(self, acc_attr: str, txt: str) -> str:
@@ -535,11 +300,11 @@ class QwenTranslator(threading.Thread):
         setattr(self, acc_attr, txt)
         return (" " if acc else "") + txt
 
-    async def _receiver(self, ws):
-        async for raw in ws:
+    async def _receive_loop(self, conn):
+        async for raw in conn:
             if self._stopping.is_set():
                 return
-            self._sent_since_recv = 0.0
+            self._reset_stall()
             try:
                 ev = json.loads(raw)
             except (ValueError, TypeError):
@@ -550,8 +315,8 @@ class QwenTranslator(threading.Thread):
                 if b64:
                     pcm = base64.b64decode(b64)
                     self.on_audio(pcm)
-                    _record_usage("out_sec", len(pcm) / (OUT_RATE * 2))
-                    self._last_output_ts = time.monotonic()
+                    self._record_usage("out_sec", len(pcm) / (OUT_RATE * 2))
+                    self._mark_output()
             elif et in ("response.audio_transcript.text",
                         "response.audio_transcript.delta", "response.text.delta"):
                 txt = ev.get("text") or ev.get("delta")
@@ -559,7 +324,7 @@ class QwenTranslator(threading.Thread):
                     inc = self._delta("_out_acc", txt)
                     if inc:
                         self.on_text("out", inc)
-                        self._last_output_ts = time.monotonic()
+                        self._mark_output()
             elif et in ("response.audio_transcript.done", "response.text.done"):
                 # Fires once per event TYPE per response with identical text —
                 # dedupe by response id, flush any tail, reset the accumulator.
@@ -573,7 +338,7 @@ class QwenTranslator(threading.Thread):
                     if inc.strip():
                         self.on_text("out", inc)
                 self._out_acc = ""
-                self._last_output_ts = time.monotonic()
+                self._mark_output()
             elif ("input_audio_transcription" in et
                   or et.startswith("conversation.item.input")):
                 txt = (ev.get("transcript") or ev.get("text")
@@ -582,7 +347,7 @@ class QwenTranslator(threading.Thread):
                     inc = self._delta("_in_acc", txt)
                     if inc:
                         self.on_text("in", inc)
-                    self._last_input_ts = time.monotonic()
+                    self._mark_input()
             elif et == "error":
                 msg = str(ev.get("error") or ev)
                 # A per-response clone hiccup (tiny segment with no sample to

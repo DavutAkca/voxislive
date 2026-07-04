@@ -104,3 +104,50 @@ def test_save_config_leaves_no_temp_files(tmp_config):
     leftovers = [n for n in os.listdir(os.path.dirname(tmp_config))
                  if n.endswith(".tmp")]
     assert leftovers == []
+
+
+def test_sanitize_seed_config_strips_secrets_and_machine_state():
+    # A realistic dirty developer config: secrets, machine-specific device names,
+    # window geometry, recovery state, custom hotkeys, first-run flags.
+    dirty = dict(config.DEFAULTS)
+    dirty["qwen_key"] = "sk-EXAMPLE-not-a-real-dashscope-key"
+    dirty["openai_key"] = "sk-proj-EXAMPLE-not-a-real-openai-key"
+    dirty["gemini_key"] = "AIza-EXAMPLE-not-a-real-gemini-key"
+    dirty["devices"] = {"headphones_output": "Dev Speakers (USB)",
+                        "microphone": "Dev Mic (Realtek)"}
+    dirty["window"] = {"w": 1367, "h": 934, "x": 650, "y": 299, "max": False}
+    dirty["_pending_default_restore"] = {"id": "CABLE Input"}
+    dirty["hotkeys"] = {"video": "ctrl+alt+9"}
+    dirty["onboarding_done"] = True
+    dirty["update_check_url"] = "http://dev.local/update"
+    # Whitelisted product choices must survive.
+    dirty["target_language_incoming"] = "de"
+    dirty["quality_preset"] = "turbo"
+    dirty["engine"] = "openai"
+
+    seed = config.sanitize_seed_config(dirty)
+
+    # Secrets and unknown keys are gone by construction.
+    for gone in ("qwen_key", "openai_key", "gemini_key", "window",
+                 "_pending_default_restore", "onboarding_done", "update_check_url"):
+        assert gone not in seed
+    # Machine-specific dicts fall back to the generic DEFAULTS (self-healing seed).
+    assert seed["devices"] == config.DEFAULTS["devices"]
+    assert seed["hotkeys"] == config.DEFAULTS["hotkeys"]
+    # Deliberate product choices are preserved.
+    assert seed["target_language_incoming"] == "de"
+    assert seed["quality_preset"] == "turbo"
+    assert seed["engine"] == "openai"
+    # No API-key-shaped value survives anywhere in the serialized seed.
+    blob = json.dumps(seed)
+    assert "sk-" not in blob and "AIza" not in blob
+    # Version is stamped current so a freshly-seeded user runs no migration.
+    assert seed["config_version"] == config.CONFIG_VERSION
+
+
+def test_sanitize_seed_config_ignores_absent_whitelist_keys():
+    # max_ambient_delay_ms is whitelisted but not in DEFAULTS; absent input must
+    # not inject a key, present input must pass through.
+    assert "max_ambient_delay_ms" not in config.sanitize_seed_config(dict(config.DEFAULTS))
+    seed = config.sanitize_seed_config({"max_ambient_delay_ms": 400})
+    assert seed["max_ambient_delay_ms"] == 400

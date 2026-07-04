@@ -1,0 +1,308 @@
+"""Characterization tests for the three translation-engine session machines.
+
+These lock the *external contract* that must survive the BaseTranslator
+consolidation (P0 #6): the drop-oldest queue, carryover ordering across a
+rotation, terminal-vs-transient error classification, when `_ready` fires, and
+the reconnect/rotation/terminal outcomes of the `_main` loop — all driven with
+in-memory fakes, no network. They must pass identically before and after the
+refactor.
+"""
+import asyncio
+import time
+
+import pytest
+
+import app.translator as gem
+import app.openai_translator as oai
+import app.qwen_translator as qwen
+
+ALL_MODULES = (gem, oai, qwen)
+ALL_CLASSES = (gem.LiveTranslator, oai.OpenAITranslator, qwen.QwenTranslator)
+
+
+def _noop(*a, **k):
+    pass
+
+
+def _make(cls, on_status=_noop, on_audio=_noop, on_text=_noop, target="en"):
+    return cls("k", target, on_audio=on_audio, on_text=on_text, on_status=on_status)
+
+
+# --- shared helpers that move into the base class ---------------------------
+
+@pytest.mark.parametrize("cls", ALL_CLASSES)
+def test_put_nowait_drops_oldest_and_counts(cls):
+    tr = _make(cls)
+    tr._queue = asyncio.Queue(maxsize=50)
+    for i in range(50):
+        tr._queue.put_nowait(bytes([i % 256]) * 4)
+    before = gem._USAGE["dropped_frames"]
+    tr._put_nowait(b"NEWEST-FRAME")
+    assert tr._queue.qsize() == 50                    # still bounded
+    assert gem._USAGE["dropped_frames"] == before + 1  # loss is counted
+    # The OLDEST frame (index 0) was evicted; the newest is retained.
+    drained = []
+    while not tr._queue.empty():
+        drained.append(tr._queue.get_nowait())
+    assert bytes([0]) * 4 not in drained
+    assert b"NEWEST-FRAME" in drained
+
+
+@pytest.mark.parametrize("cls", ALL_CLASSES)
+def test_carryover_snapshot_and_reinject_preserve_order(cls):
+    tr = _make(cls)
+    tr._queue = asyncio.Queue(maxsize=50)
+    frames = [b"a", b"b", b"c"]
+    for f in frames:
+        tr._queue.put_nowait(f)
+    tr._snapshot_carryover()
+    assert tr._carryover == frames          # oldest-first snapshot
+    assert tr._queue.empty()                # queue drained into carryover
+    tr._reinject_carryover()
+    assert tr._carryover == []              # consumed
+    out = [tr._queue.get_nowait() for _ in range(3)]
+    assert out == frames                     # order preserved into next session
+
+
+def test_terminal_error_classification_gemini():
+    assert gem._is_terminal_error(RuntimeError("Invalid API key"))
+    assert gem._is_terminal_error(RuntimeError("Permission denied for this key"))
+    assert gem._is_terminal_error(RuntimeError("resource_exhausted"))
+    assert not gem._is_terminal_error(RuntimeError("connection reset by peer"))
+    assert not gem._is_terminal_error(RuntimeError("429 rate limit"))  # transient
+
+
+def test_terminal_error_classification_openai():
+    assert oai._is_terminal_error(RuntimeError("account_deactivated"))
+    assert oai._is_terminal_error(RuntimeError("insufficient_quota"))
+    assert not oai._is_terminal_error(RuntimeError("temporarily unavailable"))
+
+
+def test_terminal_error_classification_qwen():
+    assert qwen._is_terminal_error(RuntimeError("Arrearage: account in debt"))
+    assert qwen._is_terminal_error(RuntimeError("AccessDenied"))
+    assert not qwen._is_terminal_error(RuntimeError("InvalidParameter: bad lang"))
+
+
+@pytest.mark.parametrize("cls", ALL_CLASSES)
+def test_terminal_error_prefers_structured_code(cls):
+    mod = {gem.LiveTranslator: gem, oai.OpenAITranslator: oai,
+           qwen.QwenTranslator: qwen}[cls]
+
+    class _E(Exception):
+        def __init__(self, code):
+            self.code = code
+
+    assert mod._is_terminal_error(_E(403))
+    assert not mod._is_terminal_error(_E(429))  # rate-limit is transient
+    assert not mod._is_terminal_error(_E(500))
+
+
+# --- Qwen-specific pure logic ----------------------------------------------
+
+def test_qwen_delta_cumulative_to_increments():
+    tr = _make(qwen.QwenTranslator)
+    # Cumulative stream: each event repeats the full text so far.
+    assert tr._delta("_out_acc", "Hel") == "Hel"
+    assert tr._delta("_out_acc", "Hello") == "lo"
+    assert tr._delta("_out_acc", "Hello") == ""        # no growth → nothing new
+    # A shorter, unrelated string after a reset is emitted whole.
+    assert tr._delta("_out_acc", "Bye") == " Bye"
+
+
+def test_qwen_constructor_normalizes_target_and_clamps_knobs():
+    tr = qwen.QwenTranslator("k", "zh-Hans", on_audio=_noop, on_text=_noop,
+                             on_status=_noop, clone="bogus", vad_silence_ms=250)
+    assert tr.target_lang == "zh"          # BCP-47 → base code
+    assert tr.clone == "off"               # invalid clone mode clamped
+    assert tr.vad_silence_ms == 250
+
+
+# --- driven _main loop: OpenAI / Qwen websocket family ----------------------
+
+class _FakeWS:
+    """Minimal async websocket: yields seeded messages then blocks until the
+    task is cancelled (mimics a live-but-idle socket)."""
+
+    def __init__(self, incoming=()):
+        self._incoming = list(incoming)
+        self.sent = []
+        self.closed = False
+
+    async def send(self, data):
+        self.sent.append(data)
+
+    async def close(self):
+        self.closed = True
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._incoming:
+            return self._incoming.pop(0)
+        while True:
+            await asyncio.sleep(0.02)
+
+
+def _run_ws_translator(cls, connect_impl, ready_msg=None):
+    events = []
+
+    class _Driven(cls):
+        async def _connect(self):
+            return await connect_impl()
+
+    tr = _Driven("k", "en", on_audio=_noop, on_text=_noop,
+                 on_status=lambda s: events.append(s))
+    tr.start()
+    return tr, events
+
+
+@pytest.mark.parametrize("cls,updated_evt", [
+    (oai.OpenAITranslator, '{"type":"session.updated"}'),
+    (qwen.QwenTranslator, '{"type":"session.updated"}'),
+])
+def test_ws_main_sets_ready_only_after_session_event(cls, updated_evt):
+    # These engines connect, then set _ready only when the server confirms the
+    # session (session.created/updated) — NOT on the bare socket open.
+    ws = _FakeWS([updated_evt])
+
+    async def _connect():
+        return ws
+
+    tr, events = _run_ws_translator(cls, _connect)
+    try:
+        assert tr.wait_ready(5.0)
+    finally:
+        tr.stop()
+        tr.join(timeout=5.0)
+    assert not tr.is_alive()
+    assert ws.closed
+
+
+@pytest.mark.parametrize("cls", [oai.OpenAITranslator, qwen.QwenTranslator])
+def test_ws_main_terminal_error_breaks_without_retry(cls):
+    connects = []
+    ws = _FakeWS(['{"type":"error","error":"unauthorized"}'])
+
+    async def _connect():
+        connects.append(1)
+        return ws
+
+    tr, events = _run_ws_translator(cls, _connect)
+    tr.join(timeout=6.0)
+    assert not tr.is_alive()
+    assert len(connects) == 1  # terminal → no reconnect spin
+
+
+@pytest.mark.parametrize("cls", [oai.OpenAITranslator, qwen.QwenTranslator])
+def test_ws_main_transient_error_retries_then_succeeds(cls):
+    calls = {"n": 0}
+    ws = _FakeWS(['{"type":"session.updated"}'])
+
+    async def _connect():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise ConnectionError("temporary reset")
+        return ws
+
+    tr, events = _run_ws_translator(cls, _connect)
+    try:
+        assert tr.wait_ready(8.0)   # succeeds on the 2nd attempt after backoff
+        assert calls["n"] == 2
+    finally:
+        tr.stop()
+        tr.join(timeout=6.0)
+    assert not tr.is_alive()
+
+
+# --- driven _main loop: Gemini SDK family -----------------------------------
+
+class _Obj:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
+class _FakeSession:
+    def __init__(self, responses=()):
+        self._responses = list(responses)
+        self.sent = []
+
+    async def send_realtime_input(self, audio=None):
+        self.sent.append(audio)
+
+    async def receive(self):
+        for r in self._responses:
+            yield r
+        while True:
+            await asyncio.sleep(0.02)
+
+
+class _FakeConnectCM:
+    def __init__(self, session):
+        self._session = session
+
+    async def __aenter__(self):
+        return self._session
+
+    async def __aexit__(self, *a):
+        return False
+
+
+class _FakeClient:
+    def __init__(self, sessions):
+        self._sessions = list(sessions)
+        outer = self
+
+        class _Live:
+            def connect(self, model=None, config=None):
+                s = outer._sessions.pop(0) if outer._sessions else _FakeSession()
+                return _FakeConnectCM(s)
+
+        self.aio = _Obj(live=_Live())
+
+
+def _patch_gemini_client(monkeypatch, sessions):
+    monkeypatch.setattr(gem.genai, "Client",
+                        lambda **kw: _FakeClient(sessions))
+
+
+def test_gemini_main_sets_ready_on_connect(monkeypatch):
+    # Gemini sets _ready right after the connect context opens (no separate
+    # server 'session live' event), unlike the websocket engines.
+    _patch_gemini_client(monkeypatch, [_FakeSession()])
+    tr = gem.LiveTranslator("k", "en", on_audio=_noop, on_text=_noop,
+                            on_status=_noop)
+    tr.start()
+    try:
+        assert tr.wait_ready(5.0)
+    finally:
+        tr.stop()
+        tr.join(timeout=5.0)
+    assert not tr.is_alive()
+
+
+def test_gemini_goaway_rotates_and_keeps_resume_handle(monkeypatch):
+    sru = _Obj(resumable=True, new_handle="H1")
+    resp_resume = _Obj(session_resumption_update=sru, go_away=None,
+                       server_content=None)
+    resp_goaway = _Obj(session_resumption_update=None, go_away=_Obj(),
+                       server_content=None)
+    s1 = _FakeSession([resp_resume, resp_goaway])
+    s2 = _FakeSession()
+    _patch_gemini_client(monkeypatch, [s1, s2])
+
+    tr = gem.LiveTranslator("k", "en", on_audio=_noop, on_text=_noop,
+                            on_status=_noop)
+    tr.start()
+    try:
+        # The GoAway on session 1 forces a seamless rotation; the resume handle
+        # captured from the resumption update survives into session 2.
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline and tr._resume_handle != "H1":
+            time.sleep(0.02)
+        assert tr._resume_handle == "H1"
+    finally:
+        tr.stop()
+        tr.join(timeout=5.0)
+    assert not tr.is_alive()

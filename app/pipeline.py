@@ -627,6 +627,19 @@ def _stop_all(pipeline):
             fn()
         except Exception:
             pass
+    # Join the translator thread so its receiver cannot deliver a late
+    # on_text/on_audio into the NEXT session's freshly-cleared transcript
+    # buffers (the 'ghost turn' desync — audit P2-4/P2-7). stop() already set
+    # _stopping and nudged the event loop, so the sender wakes within ~0.5 s and
+    # the thread converges well inside this bound; the timeout only guards the
+    # rare mid-backoff case (during which no receiver is emitting anyway).
+    tr = getattr(pipeline, "translator", None)
+    if tr is not None and hasattr(tr, "join") and hasattr(tr, "is_alive"):
+        try:
+            if tr.is_alive():
+                tr.join(timeout=2.0)
+        except Exception:
+            pass
 
 
 class ModeController:

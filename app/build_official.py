@@ -8,6 +8,7 @@ and packaging into a distributable installer or ZIP bundle.
 
 import os
 import sys
+import json
 import shutil
 import subprocess
 import re
@@ -139,6 +140,43 @@ def find_iscc_compiler() -> str:
     return ""
 
 
+# API-key shapes that must never appear in the shipped seed's serialized text
+# (sk-… = OpenAI/DashScope, AIza… = Google/Gemini). Belt-and-braces on top of the
+# config.SEED_WHITELIST allowlist: if that list is ever widened to admit a
+# secret-bearing key, this aborts the build instead of shipping the key.
+_SEED_KEY_SHAPES = re.compile(r"sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,}")
+_SEED_SECRET_KEY = re.compile(r"(?i)(key|secret|token|password)")
+
+
+def build_seed_config() -> dict:
+    """Load the developer's root config.json and reduce it to a clean production
+    seed via app.config.sanitize_seed_config (whitelist-only; see P0 #8)."""
+    import app.config as appconfig  # local: avoid importing the app at module load
+    with open(CONFIG_JSON, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    if not isinstance(raw, dict):
+        raise ValueError(f"{CONFIG_JSON} is not a JSON object")
+    return appconfig.sanitize_seed_config(raw)
+
+
+def assert_seed_is_clean(seed: dict) -> None:
+    """Fail the build if the seed carries a secret-like key with a value or any
+    API-key-shaped string. Runs on the exact dict about to be written."""
+    for key, value in seed.items():
+        if isinstance(value, str) and value and _SEED_SECRET_KEY.search(key):
+            raise RuntimeError(
+                f"seed config carries a secret-like key {key!r} with a value; "
+                "widen config.SEED_WHITELIST intentionally or drop the key"
+            )
+    blob = json.dumps(seed, ensure_ascii=False)
+    m = _SEED_KEY_SHAPES.search(blob)
+    if m:
+        raise RuntimeError(
+            f"seed config contains an API-key-shaped value ({m.group(0)[:8]}…); "
+            "refusing to ship a secret in the bundle"
+        )
+
+
 def main():
     print("Starting VoxisLive Production Release Build Pipeline...")
     temp_web_copied = False
@@ -252,9 +290,17 @@ def main():
         if not CONFIG_JSON.exists():
             raise FileNotFoundError(f"Production config.json not found in root: {CONFIG_JSON}")
 
+        # Seed a SANITIZED config.json (whitelist-only), never the developer's
+        # working file verbatim: the root config.json carries secrets (qwen_key),
+        # machine-specific device names, window geometry and _pending_* state that
+        # must not ship to every user via _seed_from_bundle. See P0 #8.
         dest_config_internal = target_dist_dir / "_internal" / "config.json"
-        print(f"Seeding config.json -> {dest_config_internal.relative_to(target_dist_dir)}")
-        shutil.copy2(CONFIG_JSON, dest_config_internal)
+        seed = build_seed_config()
+        assert_seed_is_clean(seed)  # fail-closed before anything is written
+        seed_text = json.dumps(seed, ensure_ascii=False, indent=2)
+        print(f"Seeding sanitized config.json ({len(seed)} keys) -> "
+              f"{dest_config_internal.relative_to(target_dist_dir)}")
+        dest_config_internal.write_text(seed_text, encoding="utf-8")
 
         # Flavor marker: its presence inside the bundle selects the SaaS flavor at
         # runtime (see app/config._resolve_official_release). This is the robust

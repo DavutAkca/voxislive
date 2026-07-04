@@ -390,6 +390,54 @@ def load_config() -> dict:
     return _migrate(dict(DEFAULTS))
 
 
+# --- Build seed sanitization (used by app/build_official.py) -----------------
+# Production-meaningful keys that are safe to carry from the developer's working
+# config.json into the shipped seed (build → _internal/config.json → every user's
+# %APPDATA%\Voxis on first run, see _seed_from_bundle). Everything NOT on this
+# list falls back to its DEFAULTS value, so secrets (qwen_key / any *_key),
+# machine-specific device names, window geometry, hotkey customizations,
+# _pending_* recovery state and the beta/qwen opt-in can never leak into the
+# bundle. This is the allowlist half of P0 #8; the build script adds a
+# fail-closed secret scan on top.
+#   capture_backend is included but is auto-resolved by premium on the official
+#   build (pipeline.resolve_capture_backend), falling back to driverless, so a
+#   seeded "vbcable" is harmless on a machine without a virtual cable.
+SEED_WHITELIST = (
+    "target_language_incoming",
+    "target_language_outgoing",
+    "quality_preset",
+    "original_audio",
+    "duck_gain",
+    "tts_volume",
+    "show_subtitles",
+    "ui_language",
+    "ui_theme",
+    "engine",
+    "model",
+    "openai_model",
+    "openai_langs",
+    "qwen_model",
+    "max_ambient_delay_ms",
+    "capture_backend",
+)
+
+
+def sanitize_seed_config(cfg: dict) -> dict:
+    """Build a clean production seed from a developer's working config.
+
+    Returns DEFAULTS overlaid with ONLY the whitelisted, production-meaningful
+    keys present in `cfg`. Anything else — secrets, PII, machine-specific state —
+    is dropped by construction (it never enters the returned dict). config_version
+    comes from DEFAULTS so a freshly-seeded user is already at the current version
+    and runs no first-launch migration. See P0 #8 and SEED_WHITELIST."""
+    seed = dict(DEFAULTS)
+    if isinstance(cfg, dict):
+        for key in SEED_WHITELIST:
+            if key in cfg:
+                seed[key] = cfg[key]
+    return seed
+
+
 def save_config(cfg: dict):
     # Atomic write: a crash / power loss mid-dump must not leave a truncated
     # config.json (which load_config would then discard, silently resetting all
