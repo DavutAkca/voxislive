@@ -23,7 +23,6 @@ from .config import (
 from .i18n import t
 from .pipeline import ModeController
 from .paths import icon_path, user_path, web_dir
-from .translator import get_usage
 from . import transcript_store
 
 WEB_DIR = web_dir()
@@ -1446,6 +1445,9 @@ class Bridge:
                 evs.append(self._events.get_nowait())
         except queue.Empty:
             pass
+        # Lazy: translator pulls google.genai; a module-top import would put the
+        # heavy runtime back on the cold start this codebase deliberately avoids.
+        from .translator import get_usage  # noqa: PLC0415
         in_sec, _o, usd = get_usage()
         speaking = any(getattr(getattr(p, "_source", None), "speech_active", False)
                        for p in self.controller._pipelines)

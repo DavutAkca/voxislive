@@ -254,7 +254,12 @@ class QwenTranslator(threading.Thread):
     ):
         super().__init__(daemon=True, name=name)
         self.api_key = api_key
-        self.target_lang = target_lang
+        # Qwen wants base ISO codes: Voxis's 79-language BCP-47 targets
+        # (pt-BR, zh-Hans, …) are normalized the same way the OpenAI router
+        # does, so a regional variant can't bounce the session with
+        # InvalidParameter loops.
+        from .config import _norm_lang
+        self.target_lang = _norm_lang(target_lang) or target_lang
         self.on_audio = on_audio
         self.on_text = on_text
         self.on_status = on_status
