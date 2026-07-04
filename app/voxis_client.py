@@ -455,7 +455,7 @@ def get_quota() -> Optional[dict]:
         return None
 
 
-def get_session_key(target=None, caps=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str]]:
+def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str]]:
     """SaaS execution path: retrieves a server-issued translation key. With
     caps='engine-routing' the server picks the engine by TARGET language and also
     returns {engine, model, quality, quota}. Since the server verifies the token
@@ -476,6 +476,10 @@ def get_session_key(target=None, caps=None) -> tuple[Optional[str], Optional[str
         params["caps"] = caps
     if target:
         params["target"] = target
+    if engine:
+        # Explicit engine request (beta opt-in). The server honors it only for
+        # beta-flagged accounts; anyone else gets normal routing / a refusal.
+        params["engine"] = engine
     try:
         resp = _http.get(
             f"{_BASE_URL}/auth/session-key",

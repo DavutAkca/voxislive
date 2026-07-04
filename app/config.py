@@ -47,23 +47,43 @@ GEMINI_LIVE_MODEL = "gemini-3.5-live-translate-preview"
 # name is a config key so a retired preview can be swapped without a client
 # release. See PLAN/OPENAI_ENGINE_INTEGRATION.md.
 OPENAI_TRANSLATE_MODEL = "gpt-realtime-translate"
+# Third engine (Qwen3.5-LiveTranslate) — BETA, per-user server-gated. Same
+# swap-without-release pattern as the other two. The intl account requires the
+# workspace-scoped MAAS endpoint (see app/qwen_translator.py).
+QWEN_TRANSLATE_MODEL = "qwen3.5-livetranslate-flash-realtime"
+QWEN_WORKSPACE = "ws-o9euzpyp254xo4es"
 ENGINE_GEMINI = "gemini"
 ENGINE_OPENAI = "openai"
-VALID_ENGINES = (ENGINE_GEMINI, ENGINE_OPENAI)
+ENGINE_QWEN = "qwen"
+VALID_ENGINES = (ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN)
 DEFAULT_ENGINE = ENGINE_GEMINI
 
-# OpenAI gpt-realtime-translate validated OUTPUT (target) languages (13).
+# OpenAI gpt-realtime-translate validated OUTPUT (target) languages (13), per
+# OpenAI's current official docs. English is #1 of the supported set.
 OPENAI_OUTPUT_LANGS = ["en", "es", "pt", "fr", "de", "it", "ru", "ja", "ko", "zh", "hi", "id", "vi"]
-# Default per-language routing set: the validated 13 plus targets we A/B-confirmed
-# work well on OpenAI (Turkish/Arabic/Polish). Server-/config-overridable via
-# cfg["openai_langs"]; anything NOT in this set routes to Gemini (79-lang catch-all).
-DEFAULT_OPENAI_LANGS = OPENAI_OUTPUT_LANGS + ["tr", "ar", "pl"]
+# Default per-language routing set = exactly OpenAI's documented 13. Server-/config-
+# overridable via cfg["openai_langs"]; anything NOT in this set routes to Gemini
+# (79-lang catch-all). (tr/ar/pl were previously added on an "A/B-confirmed" note
+# that OpenAI's official docs do not corroborate — removed pending real evidence.)
+DEFAULT_OPENAI_LANGS = list(OPENAI_OUTPUT_LANGS)
 
 DEFAULTS = {
     "engine": DEFAULT_ENGINE,
     "model": GEMINI_LIVE_MODEL,
     "openai_model": OPENAI_TRANSLATE_MODEL,
     "openai_langs": DEFAULT_OPENAI_LANGS,
+    "qwen_model": QWEN_TRANSLATE_MODEL,
+    # Beta engine (Qwen) opt-in + its knobs. The Settings tab only renders when
+    # the server marks the account beta-eligible; "enabled" is the user's own
+    # switch. vad_ms=0 leaves segmentation to the model; 500 is the validated
+    # sweet spot (sandbox TEST_REPORT_2026-07-04).
+    "beta": {
+        "enabled": False,
+        "source_lang": "auto",
+        "clone": "off",
+        "hotwords": "",
+        "vad_ms": 500,
+    },
     "target_language_incoming": "tr",
     "target_language_outgoing": "en",
     "devices": {
@@ -171,7 +191,26 @@ def resolve_model(cfg: dict, engine: str | None = None) -> str:
     if engine == ENGINE_OPENAI:
         return (os.environ.get("VOXIS_OPENAI_MODEL", "").strip()
                 or cfg.get("openai_model") or OPENAI_TRANSLATE_MODEL)
+    if engine == ENGINE_QWEN:
+        return (os.environ.get("VOXIS_QWEN_MODEL", "").strip()
+                or cfg.get("qwen_model") or QWEN_TRANSLATE_MODEL)
     return os.environ.get("VOXIS_MODEL", "").strip() or cfg.get("model") or GEMINI_LIVE_MODEL
+
+
+def parse_hotwords(text: str) -> dict:
+    """Beta hotword box: `term=translation` lines -> Qwen corpus.phrases dict.
+    A bare `term` pins the term to itself (proper-noun passthrough). Capped at
+    50 pairs by the engine (server limit)."""
+    phrases: dict[str, str] = {}
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        term, _, tr = line.partition("=")
+        term, tr = term.strip(), tr.strip()
+        if term:
+            phrases[term] = tr or term
+    return phrases
 
 
 def _norm_lang(code: str) -> str:

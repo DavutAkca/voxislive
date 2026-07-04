@@ -59,6 +59,20 @@ _MIN_SESSION_SECONDS = 5.0
 # events every few seconds of speech, so 20 s is far outside normal behavior.
 _STALL_ROTATE_SECONDS = 20.0
 
+# No-output watchdog. Distinct from the stall watchdog above: the translate model
+# can stay perfectly connected AND keep emitting input transcription while never
+# producing any translated output — its echo-suppression firing on audio it wrongly
+# believes is already in the target language (the target=en failure mode). That
+# leaves the stall watchdog untripped (input transcription IS a server event), so
+# the user gets unexplained silence. If input transcription has been arriving yet
+# NO output (audio or output transcription) for this many seconds, surface one
+# actionable status. Wall-clock, gated on RECENT input activity so a genuine quiet
+# stretch (no speech → no input transcription) can never trip it.
+_NO_OUTPUT_WARN_SECONDS = 12.0
+# How recently input transcription must have arrived for the source to count as
+# "actively speaking" — keeps the watchdog from firing during real silence.
+_INPUT_RECENT_SECONDS = 4.0
+
 # Live API audio pricing, USD per minute (input + output).
 COST_IN_PER_MIN = 0.0053
 COST_OUT_PER_MIN = 0.0315
@@ -166,6 +180,12 @@ class LiveTranslator(threading.Thread):
         # server event. Sender adds, receiver zeroes — both on the loop thread,
         # so no locking is needed.
         self._sent_since_recv = 0.0
+        # No-output watchdog state (loop-thread only): monotonic timestamps of the
+        # last input transcription and last model output, plus a once-per-session
+        # latch so the warning surfaces at most once per connected session.
+        self._last_input_ts = 0.0
+        self._last_output_ts = 0.0
+        self._no_output_warned = False
 
     def send_pcm16(self, data: bytes):
         if self._loop and self._queue and not self._stopping.is_set():
@@ -241,7 +261,15 @@ class LiveTranslator(threading.Thread):
             "thinking_config": {"thinking_budget": 0},
             "translation_config": {
                 "target_language_code": self.target_lang,
-                "echo_target_language": False,
+                # echo_target_language=False = "stay silent if the input is already
+                # in the target language." The model's source detection is biased
+                # toward its default language (English), so genuinely non-English
+                # audio is frequently mis-judged "already English" when the target
+                # is "en" — silently suppressing ALL output (the target=en bug).
+                # Echo for "en" so real translation never gets false-suppressed;
+                # the cost is that truly-English input is parroted rather than
+                # muted, which is the safer failure for an English target.
+                "echo_target_language": self.target_lang != "en",
             },
             # Locked prebuilt voice — the strongest stability setting the client
             # API exposes for the translate-preview model.
@@ -291,6 +319,9 @@ class LiveTranslator(threading.Thread):
                     # would reset the cap every iteration and never stop reconnecting.
                     started = time.monotonic()
                     self._sent_since_recv = 0.0
+                    self._last_input_ts = 0.0
+                    self._last_output_ts = 0.0
+                    self._no_output_warned = False
                     sender = asyncio.create_task(self._sender(session, started))
                     receiver = asyncio.create_task(self._receiver(session))
                     done, pending = await asyncio.wait(
@@ -433,6 +464,14 @@ class LiveTranslator(threading.Thread):
                 self.on_status("translator: no server events for %ds of sent "
                                "audio — reconnecting" % int(_STALL_ROTATE_SECONDS))
                 raise _Rotate()
+            # No-output watchdog: if we have input transcription recently but no output, warning is triggered.
+            now = time.monotonic()
+            if self._last_input_ts > 0.0 and not self._no_output_warned:
+                if now - self._last_input_ts <= _INPUT_RECENT_SECONDS:
+                    last_out = self._last_output_ts if self._last_output_ts > 0.0 else started
+                    if now - last_out >= _NO_OUTPUT_WARN_SECONDS:
+                        self._no_output_warned = True
+                        self.on_status(t("st_no_output_warning"))
             try:
                 item = await asyncio.wait_for(self._queue.get(), timeout=0.5)
             except asyncio.TimeoutError:
@@ -468,14 +507,18 @@ class LiveTranslator(threading.Thread):
                         self.on_audio(part.inline_data.data)
                         secs = len(part.inline_data.data) / 48000
                         _add_usage("out_sec", secs)
+                        self._last_output_ts = time.monotonic()
                     if getattr(part, "text", None):
                         self.on_text("out", part.text)
+                        self._last_output_ts = time.monotonic()
             it = getattr(sc, "input_transcription", None)
             if it and it.text:
                 self.on_text("in", it.text)
+                self._last_input_ts = time.monotonic()
             ot = getattr(sc, "output_transcription", None)
             if ot and ot.text:
                 self.on_text("out", ot.text)
+                self._last_output_ts = time.monotonic()
 
 
 class _Rotate(Exception):

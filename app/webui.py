@@ -250,7 +250,14 @@ class Bridge:
         The legacy positional payload (the message string) is preserved so the
         existing JS poll handler keeps working; the structured fields ride
         alongside for callers that read them."""
-        self._put_event(("status", msg, {"level": level, "msg": msg}))
+        # Raw engineering diagnostics (the "capture: backend=..." line, the
+        # translator stall/clone notices) go to voxis.log + the problem-report
+        # tail below — never to the user-facing transcript.
+        diagnostic = isinstance(msg, str) and msg.startswith(("capture: ", "translator: "))
+        if diagnostic:
+            logging.getLogger("voxis").info(msg)
+        else:
+            self._put_event(("status", msg, {"level": level, "msg": msg}))
         # Keep a bounded tail for the problem-report diagnostics (raw text; it is
         # scrubbed again at report-assembly time).
         if isinstance(msg, str) and msg:
@@ -344,8 +351,37 @@ class Bridge:
             "official_release": IS_OFFICIAL_RELEASE,
             "badge_removable": self._badge_removable(),
             "onboarding_done": bool(self.cfg.get("onboarding_done", False)),
+            "beta_allowed": self._beta_allowed(),
+            "beta": dict(self.cfg.get("beta") or {}),
             "cfg": self._cfg_view(outs, mics),
         }
+
+    def _beta_allowed(self) -> bool:
+        """Beta (Qwen) eligibility. Dev builds: always. Official: the server's
+        per-account flag, refreshed by check_auth/verify — the client renders
+        the tab from this, and the server re-checks on session-key anyway."""
+        if not IS_OFFICIAL_RELEASE:
+            return True
+        return bool(getattr(self, "_beta_flag", False))
+
+    def set_beta(self, beta) -> dict:
+        """Persist the Beta tab settings; a running session restarts to apply."""
+        cur = dict(self.cfg.get("beta") or {})
+        if isinstance(beta, dict):
+            if not self._beta_allowed():
+                beta = {**beta, "enabled": False}  # belt-and-braces client gate
+            cur.update({
+                "enabled": bool(beta.get("enabled", cur.get("enabled", False))),
+                "source_lang": str(beta.get("source_lang", cur.get("source_lang", "auto")) or "auto"),
+                "clone": beta.get("clone") if beta.get("clone") in ("off", "once", "always")
+                         else cur.get("clone", "off"),
+                "hotwords": str(beta.get("hotwords", cur.get("hotwords", "")))[:4000],
+                "vad_ms": int(beta.get("vad_ms", cur.get("vad_ms", 500)) or 0),
+            })
+        self.cfg["beta"] = cur
+        save_config(self.cfg)
+        self._maybe_restart()
+        return {"ok": True, "beta": cur}
 
     def _quality_options(self):
         """End-user build sees two friendly choices (smooth vs savings); the
@@ -360,9 +396,13 @@ class Bridge:
     def _engine_options(self):
         """Engine choices for the selector. Keys only — the per-locale benefit
         labels resolve from the JS I18N dict (app/i18n.py is TR/EN-only).
-        OpenAI is an official-build feature; the OSS/BYOK build is Gemini-only."""
-        from .config import VALID_ENGINES, ENGINE_GEMINI
-        return list(VALID_ENGINES) if IS_OFFICIAL_RELEASE else [ENGINE_GEMINI]
+        OpenAI is an official-build feature; the OSS/BYOK build is Gemini-only.
+        Qwen is EXCLUDED here on purpose: it is a beta engine reachable only
+        through the server-gated Beta tab, never the engine selector."""
+        from .config import VALID_ENGINES, ENGINE_GEMINI, ENGINE_QWEN
+        if IS_OFFICIAL_RELEASE:
+            return [e for e in VALID_ENGINES if e != ENGINE_QWEN]
+        return [ENGINE_GEMINI]
 
     # ---------- store ----------
     def open_store_page(self):
@@ -730,7 +770,10 @@ class Bridge:
             offline = bool(err) and err == t("st_server_unreachable")
             return {"authenticated": False, "offline": offline, "quota": None}
         self._last_quota = info
-        return {"authenticated": True, "quota": info}
+        # Per-account beta (Qwen) eligibility rides on the verify snapshot.
+        self._beta_flag = bool(info.get("beta"))
+        return {"authenticated": True, "quota": info,
+                "beta_allowed": self._beta_allowed()}
 
     def win_resize(self, width, height, anchor="br") -> bool:
         """Resize the frameless main window from the custom JS edge/corner grips
@@ -824,15 +867,17 @@ class Bridge:
             pass
 
     def open_url(self, url: str) -> bool:
-        # Allowlist http/https only so a crafted bridge call can never launch
-        # file:, javascript: or other handler schemes via the default browser.
+        # Allowlist http/https/mailto only so a crafted bridge call can never
+        # launch file:, javascript: or other handler schemes via the default
+        # browser. mailto is safe (opens the mail client, executes nothing) and
+        # carries the Beta-application prefilled email.
         import webbrowser
         from urllib.parse import urlparse
         try:
             parts = urlparse(url)
         except Exception:
             return False
-        if parts.scheme not in ("http", "https"):
+        if parts.scheme not in ("http", "https", "mailto"):
             return False
         try:
             webbrowser.open(url)
@@ -990,12 +1035,24 @@ class Bridge:
         over the stored keys. Raises a localized error if no key is available.
         """
         from .config import resolve_model
+        # Beta engine opt-in (Qwen): only honored when the account is
+        # beta-eligible (server flag; dev builds are always eligible) AND the
+        # user switched it on. Never touches the normal Gemini/OpenAI routing.
+        beta_qwen = (self._beta_allowed()
+                     and bool((self.cfg.get("beta") or {}).get("enabled")))
         if not IS_OFFICIAL_RELEASE:
             # OSS/BYOK is Gemini-only; OpenAI is an official-build feature.
             from . import byok_store
-            from .config import ENGINE_GEMINI
+            from .config import ENGINE_GEMINI, ENGINE_QWEN
             uid = self._ensure_user_id()
             keys = byok_store.load_byok(uid) if uid else {}
+            # Dev beta path: a DashScope key in config.json ("qwen_key") selects
+            # the Qwen engine locally — sandbox-style, no server round-trip.
+            if beta_qwen and self.cfg.get("qwen_key"):
+                def resolve(target):
+                    return (ENGINE_QWEN, self.cfg.get("qwen_key"),
+                            resolve_model(self.cfg, ENGINE_QWEN))
+                return resolve
             if not keys.get("gemini"):
                 raise RuntimeError(t("st_no_key_offline"))
 
@@ -1004,6 +1061,28 @@ class Bridge:
             return resolve
 
         from . import voxis_client
+
+        if beta_qwen:
+            # SaaS beta: ask the server for the Qwen session key explicitly. The
+            # server re-checks the account's beta flag (client is not trusted)
+            # and refuses otherwise — then we fall through to normal routing.
+            def resolve(target):
+                key, engine, model, quality, quota, err = voxis_client.get_session_key(
+                    target=target, caps="engine-routing", engine="qwen")
+                if key and engine == "qwen":
+                    if isinstance(quota, dict):
+                        self._last_quota = quota
+                    return engine, key, (model or resolve_model(self.cfg, engine))
+                key, engine, model, quality, quota, err2 = voxis_client.get_session_key(
+                    target=target, caps="engine-routing")
+                if key:
+                    if isinstance(quota, dict):
+                        self._last_quota = quota
+                    if quality:
+                        self.cfg["quality_preset"] = quality
+                    return engine, key, (model or resolve_model(self.cfg, engine))
+                raise RuntimeError(err or err2 or t("st_no_key"))
+            return resolve
 
         # Single-round-trip start: /auth/session-key now verifies the token
         # inline on a cold server cache and returns the quota snapshot alongside

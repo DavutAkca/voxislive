@@ -11,7 +11,7 @@ factory so cold app startup is not slowed by an engine that won't be used.
 """
 from __future__ import annotations
 
-from .config import ENGINE_GEMINI, ENGINE_OPENAI, resolve_model, route_engine
+from .config import ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN, resolve_model, route_engine
 
 
 def resolve_engine_for_target(cfg, keys, target_lang):
@@ -34,6 +34,25 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
     if not key:
         raise RuntimeError(f"no API key for engine '{engine}'")
     model = model or resolve_model(cfg, engine)
+
+    if engine == ENGINE_QWEN:
+        # BETA engine: reachable only through the server-gated Beta opt-in (the
+        # language router never selects it), so Gemini/OpenAI paths are
+        # untouched. Its knobs live under cfg["beta"].
+        from .qwen_translator import QwenTranslator  # lazy: keep websockets off cold start
+        from .config import parse_hotwords  # noqa: PLC0415
+        beta = cfg.get("beta") or {}
+        tr = QwenTranslator(
+            key, target_lang,
+            on_audio=on_audio, on_text=on_text, on_status=on_status,
+            rotate_minutes=cfg.get("qwen_rotate_minutes", 25), name=name,
+            model=model,
+            source_lang=beta.get("source_lang", "auto"),
+            clone=beta.get("clone", "off"),
+            hotwords=parse_hotwords(beta.get("hotwords", "")),
+            vad_silence_ms=int(beta.get("vad_ms", 500)))
+        tr.engine = engine
+        return tr
 
     if engine == ENGINE_OPENAI:
         from .openai_translator import OpenAITranslator  # lazy: keep websockets off cold start

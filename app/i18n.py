@@ -68,6 +68,7 @@ STRINGS = {
         "consent_dontshow": "Bir daha gösterme",
         # boru hattı / çevirmen durumları
         "st_connected": "{name}: bağlandı (hedef: {lang})",
+        "st_no_output_warning": "Çeviri çıktısı algılanmadı — ses gelmiyorsa, hedef dili veya modeli değiştirmeyi deneyin.",
         "st_renewing": "{name}: oturum yenileniyor...",
         "st_conn_err": "{name}: bağlantı hatası, {s:.0f}s sonra yeniden: {e}",
         "st_capture_lost": "Ses yakalama durdu (cihaz değişmiş olabilir). Oturumu yeniden başlat.",
@@ -169,6 +170,7 @@ STRINGS = {
         "consent_cancel": "Cancel",
         "consent_dontshow": "Don't show again",
         "st_connected": "{name}: connected (target: {lang})",
+        "st_no_output_warning": "No translation output detected — if silent, try changing your target language or model.",
         "st_renewing": "{name}: renewing session...",
         "st_conn_err": "{name}: connection error, retrying in {s:.0f}s: {e}",
         "st_capture_lost": "Audio capture stopped (the device may have changed). Restart the session.",

@@ -858,6 +858,10 @@ body.resizing,body.resizing *{user-select:none!important}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.4 5 5.6.8-4 3.9 1 5.5L12 19.8 6.9 22.2l1-5.5-4-3.9 5.6-.8z"/></svg>
         <span id="tab-lbl-membership" data-i18n="tab_membership">Üyelik</span>
       </button>
+      <button class="dtab" data-pane="beta" role="tab" aria-selected="false" id="tab-beta-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.3L4.7 18a2 2 0 0 0 1.7 3h11.2a2 2 0 0 0 1.7-3L14 9.3V3"/></svg>
+        <span data-i18n="tab_beta">Beta</span>
+      </button>
       <button class="dtab" data-pane="about" role="tab" aria-selected="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
         <span id="tab-lbl-about" data-i18n="tab_about">Hakkında</span>
@@ -916,6 +920,40 @@ body.resizing,body.resizing *{user-select:none!important}
           <button class="btn btn-ghost" id="manageplanbtn" style="display:none;width:auto" data-i18n="manage_plan">Planı yönet</button>
           <button class="btn btn-ghost" id="storebtn" style="width:auto;display:none" data-i18n="store_view">Microsoft Store'da görüntüle</button>
           <button class="btn btn-danger" id="logoutbtn" style="width:auto" data-i18n="logout">Çıkış</button>
+        </div>
+      </section>
+      <section class="dpane" data-pane="beta" role="tabpanel" hidden>
+        <div class="dsection">
+          <h3 data-i18n="beta_title">Beta motor</h3>
+          <div class="fieldhint" data-i18n="beta_hint">Deneysel çeviri motoru: konuşmacı sesi eşleme, kaynak dil algılama ve terim sözlüğü. Geri bildirimlerinizi bekliyoruz — sorun olursa kapatmanız yeterli.</div>
+          <div class="fieldhint" id="beta-locked-note" style="display:none;margin-top:6px">
+            <span style="color:var(--amber)" data-i18n="beta_locked">Bu bölüm yalnızca beta programı kullanıcılarına açıktır — hesabınız için henüz etkin değil.</span><br>
+            <a href="#" id="beta-apply-link" style="color:var(--accent)" data-i18n="beta_apply">Beta kullanıcısı olmak için e-posta gönderin →</a><br>
+            <span data-i18n="beta_apply_note">E-postayı, siteye kayıt olduğunuz adresten göndermeniz gerekir.</span>
+          </div>
+          <label class="switch" style="margin-top:8px"><input type="checkbox" id="beta-on"><span class="track"></span><span data-i18n="beta_enable">Beta motoru etkinleştir</span></label>
+        </div>
+        <div class="dsection" id="beta-opts">
+          <div class="fieldlabel" data-i18n="beta_source">Kaynak dil</div>
+          <div class="selectwrap"><select id="beta-source"></select></div>
+          <div class="fieldlabel" data-i18n="beta_target">Hedef dil</div>
+          <div class="selectwrap"><select id="beta-target"></select></div>
+          <div class="fieldlabel" data-i18n="beta_clone">Ses eşleme (klon)</div>
+          <div class="selectwrap"><select id="beta-clone">
+            <option value="off" data-i18n="beta_clone_off">Kapalı — tek ses, en düşük gecikme</option>
+            <option value="once" data-i18n="beta_clone_once">Bir kez — ilk konuşmacıdan</option>
+            <option value="always" data-i18n="beta_clone_always">Sürekli — konuşmacıya uyum sağlar</option>
+          </select></div>
+          <div class="fieldlabel" data-i18n="beta_vad">Segmentasyon</div>
+          <div class="selectwrap"><select id="beta-vad">
+            <option value="0" data-i18n="beta_vad_model">Model varsayılanı</option>
+            <option value="300">300 ms</option>
+            <option value="500" data-i18n="beta_vad_500">500 ms (önerilen)</option>
+            <option value="800">800 ms</option>
+          </select></div>
+          <div class="fieldlabel" data-i18n="beta_hotwords">Terim sözlüğü (satır başına terim=çeviri)</div>
+          <textarea id="beta-hotwords" rows="3" style="width:100%;resize:vertical" placeholder="Voxis=Voxis&#10;Alexandria=Alexandria"></textarea>
+          <div class="fieldhint" data-i18n="beta_hotwords_hint">Özel isimlerin/terimlerin doğru çevrilmesini sabitler (en fazla 50 satır).</div>
         </div>
       </section>
       <section class="dpane" data-pane="about" role="tabpanel" hidden>
@@ -1178,7 +1216,7 @@ const I18N = {
     waiting_signal:"Giriş sinyali bekleniyor", translation:"Çeviri", profile:"Profil", quality:"Kalite",
     voice:"Çeviri sesi", duck_label:"Orijinal ses (konuşmada)", vol_label:"Çeviri ses seviyesi",
     session:"Oturum", ready_idle:"Hazır bekliyor", save_transcript:"Transkripti kaydet",
-    hear:"Duyduğum", to_other:"Karşıya", overlay:"Ekran üstü yazı", subtitle:"Altyazı",
+    hear:"Şu dile çevir", to_other:"Karşıya", overlay:"Ekran üstü yazı", subtitle:"Altyazı",
     stream_title:"Çeviri Akışı", empty_big:"Dinlemeye hazır",
     empty_small:"Soldan bir senaryo seçerek başlayın.<br>Çeviriler burada gerçek zamanlı akar.",
     foot_ready:"Hazır", foot_latency:"gecikme", foot_session:"oturum", foot_sample:"örnek", foot_model:"model",
@@ -1222,7 +1260,7 @@ const I18N = {
     onboard_step_fmt:"{n} / {total}. adım", onboard_eyebrow:"Hızlı tanıtım",
     tour_skip:"Geç",
     tour_lang_t:"Dilleri seçin",
-    tour_lang_d:"Solda duymak istediğiniz dili, sağda karşı tarafa gönderilecek dili seçin. Video modunda yalnızca soldaki (duyduğunuz dil) önemlidir.",
+    tour_lang_d:"Solda çevrilmesini istediğiniz dili, sağda karşı tarafa gönderilecek dili seçin. Video modunda yalnızca soldaki (çeviri dili) önemlidir.",
     tour_profile_t:"Ses profili",
     tour_profile_d:"Orijinal sesin ve çevirinin ne kadar yüksek çalacağını hazır bir profilden seçin. Alttaki kaydıraçlarla orijinal ses ve çeviri seviyesini ince ayarlayabilirsiniz.",
     tour_audio_t:"Oynatma cihazı",
@@ -1277,7 +1315,7 @@ const I18N = {
     waiting_signal:"Waiting for input signal", translation:"Translation", profile:"Profile", quality:"Quality",
     voice:"Translation voice", duck_label:"Original audio (while speaking)", vol_label:"Translation volume",
     session:"Session", ready_idle:"Idle, ready", save_transcript:"Save transcript",
-    hear:"I hear", to_other:"To others", overlay:"On-screen text", subtitle:"Subtitles",
+    hear:"Translate to", to_other:"To others", overlay:"On-screen text", subtitle:"Subtitles",
     stream_title:"Translation stream", empty_big:"Ready to listen",
     empty_small:"Pick a scenario on the left to start.<br>Translations stream here in real time.",
     foot_ready:"Ready", foot_latency:"latency", foot_session:"session", foot_sample:"sample", foot_model:"model",
@@ -1325,7 +1363,7 @@ const I18N = {
     show_tour:"Show the tour again",
     tour_skip:"Skip",
     tour_lang_t:"Choose languages",
-    tour_lang_d:"Pick the language you want to hear on the left, and the language sent to the other side on the right. In Video mode only the left one (what you hear) matters.",
+    tour_lang_d:"Pick your translation language on the left, and the language sent to the other side on the right. In Video mode only the left one (translate to) matters.",
     tour_profile_t:"Sound profile",
     tour_profile_d:"Pick a profile for how loud the original audio and the translation play. Fine-tune the original and translation levels with the sliders below.",
     tour_audio_t:"Playback device",
@@ -1376,7 +1414,7 @@ const I18N = {
     waiting_signal:"Warte auf Eingangssignal", translation:"Übersetzung", profile:"Profil", quality:"Qualität",
     voice:"Übersetzungsstimme", duck_label:"Originalton (beim Sprechen)", vol_label:"Übersetzungslautstärke",
     session:"Sitzung", ready_idle:"Bereit", save_transcript:"Transkript speichern",
-    hear:"Ich höre", to_other:"An andere", overlay:"Bildschirmtext", subtitle:"Untertitel",
+    hear:"Übersetzen in", to_other:"An andere", overlay:"Bildschirmtext", subtitle:"Untertitel",
     stream_title:"Übersetzungsstream", empty_big:"Bereit zum Zuhören",
     empty_small:"Wähle links ein Szenario, um zu beginnen.<br>Übersetzungen erscheinen hier in Echtzeit.",
     foot_ready:"Bereit", foot_latency:"Latenz", foot_session:"Sitzung", foot_sample:"Sample", foot_model:"Modell",
@@ -1461,7 +1499,7 @@ const I18N = {
     waiting_signal:"En attente du signal d'entrée", translation:"Traduction", profile:"Profil", quality:"Qualité",
     voice:"Voix de traduction", duck_label:"Audio original (pendant la parole)", vol_label:"Volume de traduction",
     session:"Session", ready_idle:"En attente", save_transcript:"Enregistrer la transcription",
-    hear:"J'entends", to_other:"Aux autres", overlay:"Texte à l'écran", subtitle:"Sous-titres",
+    hear:"Traduire en", to_other:"Aux autres", overlay:"Texte à l'écran", subtitle:"Sous-titres",
     stream_title:"Flux de traduction", empty_big:"Prêt à écouter",
     empty_small:"Choisissez un scénario à gauche pour commencer.<br>Les traductions s'affichent ici en temps réel.",
     foot_ready:"Prêt", foot_latency:"latence", foot_session:"session", foot_sample:"échantillon", foot_model:"modèle",
@@ -1546,7 +1584,7 @@ const I18N = {
     waiting_signal:"Esperando señal de entrada", translation:"Traducción", profile:"Perfil", quality:"Calidad",
     voice:"Voz de traducción", duck_label:"Audio original (mientras se habla)", vol_label:"Volumen de traducción",
     session:"Sesión", ready_idle:"Listo, en espera", save_transcript:"Guardar transcripción",
-    hear:"Escucho", to_other:"A otros", overlay:"Texto en pantalla", subtitle:"Subtítulos",
+    hear:"Traducir a", to_other:"A otros", overlay:"Texto en pantalla", subtitle:"Subtítulos",
     stream_title:"Flujo de traducción", empty_big:"Listo para escuchar",
     empty_small:"Elige un escenario a la izquierda para comenzar.<br>Las traducciones aparecen aquí en tiempo real.",
     foot_ready:"Listo", foot_latency:"latencia", foot_session:"sesión", foot_sample:"muestra", foot_model:"modelo",
@@ -1631,7 +1669,7 @@ const I18N = {
     waiting_signal:"Aguardando sinal de entrada", translation:"Tradução", profile:"Perfil", quality:"Qualidade",
     voice:"Voz de tradução", duck_label:"Áudio original (ao falar)", vol_label:"Volume da tradução",
     session:"Sessão", ready_idle:"Ocioso, pronto", save_transcript:"Salvar transcrição",
-    hear:"Eu ouço", to_other:"Para outros", overlay:"Texto na tela", subtitle:"Legendas",
+    hear:"Traduzir para", to_other:"Para outros", overlay:"Texto na tela", subtitle:"Legendas",
     stream_title:"Fluxo de tradução", empty_big:"Pronto para ouvir",
     empty_small:"Escolha um cenário à esquerda para começar.<br>As traduções aparecem aqui em tempo real.",
     foot_ready:"Pronto", foot_latency:"latência", foot_session:"sessão", foot_sample:"amostra", foot_model:"modelo",
@@ -1716,7 +1754,7 @@ const I18N = {
     waiting_signal:"入力信号待機中", translation:"翻訳", profile:"プロフィール", quality:"品質",
     voice:"翻訳の音声", duck_label:"元の音声（発話中）", vol_label:"翻訳の音量",
     session:"セッション", ready_idle:"待機中", save_transcript:"文字起こしを保存",
-    hear:"聞こえる言語", to_other:"相手へ", overlay:"画面上のテキスト", subtitle:"字幕",
+    hear:"翻訳先言語", to_other:"相手へ", overlay:"画面上のテキスト", subtitle:"字幕",
     stream_title:"翻訳ストリーム", empty_big:"リスニング待機中",
     empty_small:"左のシナリオを選択して開始してください。<br>翻訳がここにリアルタイムで表示されます。",
     foot_ready:"準備完了", foot_latency:"遅延", foot_session:"セッション", foot_sample:"サンプル", foot_model:"モデル",
@@ -1801,7 +1839,7 @@ const I18N = {
     waiting_signal:"입력 신호 대기 중", translation:"번역", profile:"프로필", quality:"품질",
     voice:"번역 음성", duck_label:"원본 오디오 (말하는 동안)", vol_label:"번역 볼륨",
     session:"세션", ready_idle:"대기 중", save_transcript:"자막 저장",
-    hear:"내가 듣는 언어", to_other:"상대방에게", overlay:"화면 텍스트", subtitle:"자막",
+    hear:"번역할 언어", to_other:"상대방에게", overlay:"화면 텍스트", subtitle:"자막",
     stream_title:"번역 스트림", empty_big:"청취 준비 완료",
     empty_small:"왼쪽에서 시나리오를 선택하여 시작하세요.<br>번역이 실시간으로 여기에 표시됩니다.",
     foot_ready:"준비됨", foot_latency:"지연", foot_session:"세션", foot_sample:"샘플", foot_model:"모델",
@@ -1886,7 +1924,7 @@ const I18N = {
     waiting_signal:"Ожидание входного сигнала", translation:"Перевод", profile:"Профиль", quality:"Качество",
     voice:"Голос перевода", duck_label:"Оригинальный звук (во время речи)", vol_label:"Громкость перевода",
     session:"Сессия", ready_idle:"Готов, ожидание", save_transcript:"Сохранить транскрипт",
-    hear:"Я слышу", to_other:"Собеседнику", overlay:"Текст на экране", subtitle:"Субтитры",
+    hear:"Переводить на", to_other:"Собеседнику", overlay:"Текст на экране", subtitle:"Субтитры",
     stream_title:"Поток перевода", empty_big:"Готов к прослушиванию",
     empty_small:"Выберите сценарий слева, чтобы начать.<br>Переводы появятся здесь в реальном времени.",
     foot_ready:"Готов", foot_latency:"задержка", foot_session:"сессия", foot_sample:"сэмпл", foot_model:"модель",
@@ -1971,7 +2009,7 @@ const I18N = {
     waiting_signal:"等待输入信号", translation:"翻译", profile:"配置文件", quality:"质量",
     voice:"翻译语音", duck_label:"原始音频（讲话时）", vol_label:"翻译音量",
     session:"会话", ready_idle:"空闲，就绪", save_transcript:"保存转录",
-    hear:"我听到的", to_other:"发送给对方", overlay:"屏幕文字", subtitle:"字幕",
+    hear:"翻译为", to_other:"发送给对方", overlay:"屏幕文字", subtitle:"字幕",
     stream_title:"翻译流", empty_big:"准备收听",
     empty_small:"从左侧选择一个场景以开始。<br>翻译将实时显示在这里。",
     foot_ready:"就绪", foot_latency:"延迟", foot_session:"会话", foot_sample:"采样", foot_model:"模型",
@@ -2056,7 +2094,7 @@ const I18N = {
     waiting_signal:"Oczekiwanie na sygnał wejściowy", translation:"Tłumaczenie", profile:"Profil", quality:"Jakość",
     voice:"Głos tłumaczenia", duck_label:"Oryginalny dźwięk (podczas mówienia)", vol_label:"Głośność tłumaczenia",
     session:"Sesja", ready_idle:"Gotowy, bezczynny", save_transcript:"Zapisz transkrypt",
-    hear:"Słyszę", to_other:"Do innych", overlay:"Tekst na ekranie", subtitle:"Napisy",
+    hear:"Przetłumacz na", to_other:"Do innych", overlay:"Tekst na ekranie", subtitle:"Napisy",
     stream_title:"Strumień tłumaczenia", empty_big:"Gotowy do słuchania",
     empty_small:"Wybierz scenariusz po lewej stronie, aby rozpocząć.<br>Tłumaczenia pojawiają się tutaj w czasie rzeczywistym.",
     foot_ready:"Gotowy", foot_latency:"opóźnienie", foot_session:"sesja", foot_sample:"próbka", foot_model:"model",
@@ -2141,7 +2179,7 @@ const I18N = {
     waiting_signal:"In attesa del segnale di ingresso", translation:"Traduzione", profile:"Profilo", quality:"Qualità",
     voice:"Voce di traduzione", duck_label:"Audio originale (durante la voce)", vol_label:"Volume traduzione",
     session:"Sessione", ready_idle:"In attesa", save_transcript:"Salva trascrizione",
-    hear:"Sento", to_other:"Agli altri", overlay:"Testo su schermo", subtitle:"Sottotitoli",
+    hear:"Traduci in", to_other:"Agli altri", overlay:"Testo su schermo", subtitle:"Sottotitoli",
     stream_title:"Flusso di traduzione", empty_big:"Pronto ad ascoltare",
     empty_small:"Scegli uno scenario a sinistra per iniziare.<br>Le traduzioni vengono trasmesse qui in tempo reale.",
     foot_ready:"Pronto", foot_latency:"latenza", foot_session:"sessione", foot_sample:"campione", foot_model:"modello",
@@ -2226,7 +2264,7 @@ const I18N = {
     waiting_signal:"Menunggu sinyal masukan", translation:"Terjemahan", profile:"Profil", quality:"Kualitas",
     voice:"Suara terjemahan", duck_label:"Audio asli (saat berbicara)", vol_label:"Volume terjemahan",
     session:"Sesi", ready_idle:"Siap, menunggu", save_transcript:"Simpan transkrip",
-    hear:"Yang saya dengar", to_other:"Ke lawan bicara", overlay:"Teks di layar", subtitle:"Teks terjemahan",
+    hear:"Terjemahkan ke", to_other:"Ke lawan bicara", overlay:"Teks di layar", subtitle:"Teks terjemahan",
     stream_title:"Aliran terjemahan", empty_big:"Siap mendengarkan",
     empty_small:"Pilih skenario di kiri untuk memulai.<br>Terjemahan mengalir di sini secara real time.",
     foot_ready:"Siap", foot_latency:"latensi", foot_session:"sesi", foot_sample:"sampel", foot_model:"model",
@@ -2311,7 +2349,7 @@ const I18N = {
     waiting_signal:"Wachten op ingangssignaal", translation:"Vertaling", profile:"Profiel", quality:"Kwaliteit",
     voice:"Vertaalstem", duck_label:"Originele audio (tijdens spreken)", vol_label:"Vertaalvolume",
     session:"Sessie", ready_idle:"Inactief, gereed", save_transcript:"Transcriptie opslaan",
-    hear:"Ik hoor", to_other:"Naar anderen", overlay:"Tekst op scherm", subtitle:"Ondertitels",
+    hear:"Vertalen naar", to_other:"Naar anderen", overlay:"Tekst op scherm", subtitle:"Ondertitels",
     stream_title:"Vertaalstroom", empty_big:"Klaar om te luisteren",
     empty_small:"Kies een scenario aan de linkerkant om te beginnen.<br>Vertalingen verschijnen hier in realtime.",
     foot_ready:"Gereed", foot_latency:"latentie", foot_session:"sessie", foot_sample:"sample", foot_model:"model",
@@ -2396,7 +2434,7 @@ const I18N = {
     waiting_signal:"Đang chờ tín hiệu đầu vào", translation:"Bản dịch", profile:"Hồ sơ", quality:"Chất lượng",
     voice:"Giọng dịch", duck_label:"Âm thanh gốc (khi nói)", vol_label:"Âm lượng dịch",
     session:"Phiên", ready_idle:"Sẵn sàng, chờ", save_transcript:"Lưu bản ghi",
-    hear:"Tôi nghe", to_other:"Đến người khác", overlay:"Văn bản trên màn hình", subtitle:"Phụ đề",
+    hear:"Dịch sang", to_other:"Đến người khác", overlay:"Văn bản trên màn hình", subtitle:"Phụ đề",
     stream_title:"Luồng dịch", empty_big:"Sẵn sàng nghe",
     empty_small:"Chọn kịch bản ở bên trái để bắt đầu.<br>Bản dịch xuất hiện ở đây theo thời gian thực.",
     foot_ready:"Sẵn sàng", foot_latency:"độ trễ", foot_session:"phiên", foot_sample:"mẫu", foot_model:"mô hình",
@@ -2481,7 +2519,7 @@ const I18N = {
     waiting_signal:"รอสัญญาณอินพุต", translation:"การแปล", profile:"โปรไฟล์", quality:"คุณภาพ",
     voice:"เสียงแปล", duck_label:"เสียงต้นฉบับ (ขณะพูด)", vol_label:"ระดับเสียงแปล",
     session:"เซสชัน", ready_idle:"พร้อม รอใช้งาน", save_transcript:"บันทึกการถอดความ",
-    hear:"ฉันได้ยิน", to_other:"ถึงผู้อื่น", overlay:"ข้อความบนหน้าจอ", subtitle:"คำบรรยาย",
+    hear:"แปลเป็น", to_other:"ถึงผู้อื่น", overlay:"ข้อความบนหน้าจอ", subtitle:"คำบรรยาย",
     stream_title:"สตรีมการแปล", empty_big:"พร้อมรับฟัง",
     empty_small:"เลือกสถานการณ์ทางซ้ายเพื่อเริ่มต้น<br>การแปลจะปรากฏที่นี่แบบเรียลไทม์",
     foot_ready:"พร้อม", foot_latency:"ความหน่วง", foot_session:"เซสชัน", foot_sample:"ตัวอย่าง", foot_model:"โมเดล",
@@ -2534,6 +2572,46 @@ const I18N_EXTRA = {"en":{"tab_membership":"Membership","tab_about":"About","al_
 /* Settings/auth strings (1.0.18) merged into the 16 language blocks above so
    they need no per-block edits; T()/applyI18n resolve them (en fallback if any). */
 Object.keys(I18N_EXTRA).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_EXTRA[l]; for(var k in s) I18N[l][k]=s[k]; });
+/* Beta (Qwen) tab strings — en+tr only; other locales resolve via the en fallback. */
+const I18N_BETA = {
+  en: {
+    tab_beta:"Beta", beta_title:"Beta engine",
+    beta_hint:"Experimental translation engine: speaker voice matching, source-language auto-detect and a term glossary. If anything misbehaves, just switch it off.",
+    beta_locked:"This section is for beta program users only — not yet enabled for your account.",
+    beta_apply:"Email us to become a beta user →",
+    beta_apply_note:"Please send the email from the address you registered with on the site.",
+    beta_mail_body:"Hello, I would like to join the Voxis beta program. My account email is this address.",
+    beta_enable:"Enable beta engine",
+    beta_source:"Source language", beta_target:"Target language",
+    beta_clone:"Voice matching (clone)",
+    beta_clone_off:"Off — single voice, lowest latency",
+    beta_clone_once:"Once — from the first speaker",
+    beta_clone_always:"Continuous — adapts to each speaker",
+    beta_vad:"Segmentation", beta_vad_model:"Model default", beta_vad_500:"500 ms (recommended)",
+    beta_hotwords:"Term glossary (one term=translation per line)",
+    beta_hotwords_hint:"Pins proper nouns/terms to a fixed translation (max 50 lines).",
+    beta_auto:"Auto-detect", beta_queue:"queue", beta_speed:"speed", beta_skipped:"skipped",
+  },
+  tr: {
+    tab_beta:"Beta", beta_title:"Beta motor",
+    beta_hint:"Deneysel çeviri motoru: konuşmacı sesi eşleme, kaynak dil algılama ve terim sözlüğü. Sorun olursa kapatmanız yeterli.",
+    beta_locked:"Bu bölüm yalnızca beta programı kullanıcılarına açıktır — hesabınız için henüz etkin değil.",
+    beta_apply:"Beta kullanıcısı olmak için e-posta gönderin →",
+    beta_apply_note:"E-postayı, siteye kayıt olduğunuz adresten göndermeniz gerekir.",
+    beta_mail_body:"Merhaba, Voxis beta programına katılmak istiyorum. Hesap e-postam bu adrestir.",
+    beta_enable:"Beta motoru etkinleştir",
+    beta_source:"Kaynak dil", beta_target:"Hedef dil",
+    beta_clone:"Ses eşleme (klon)",
+    beta_clone_off:"Kapalı — tek ses, en düşük gecikme",
+    beta_clone_once:"Bir kez — ilk konuşmacıdan",
+    beta_clone_always:"Sürekli — konuşmacıya uyum sağlar",
+    beta_vad:"Segmentasyon", beta_vad_model:"Model varsayılanı", beta_vad_500:"500 ms (önerilen)",
+    beta_hotwords:"Terim sözlüğü (satır başına terim=çeviri)",
+    beta_hotwords_hint:"Özel isimlerin/terimlerin çevirisini sabitler (en fazla 50 satır).",
+    beta_auto:"Otomatik algıla", beta_queue:"kuyruk", beta_speed:"hız", beta_skipped:"atlanan",
+  },
+};
+Object.keys(I18N_BETA).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_BETA[l]; for(var k in s) I18N[l][k]=s[k]; });
 /* Report-a-problem modal strings — only en/tr shipped in I18N_EXTRA, so every
    other locale fell back to English. Fill the store languages here (merge is
    non-destructive: never overrides a key a locale already defines). */
@@ -2831,9 +2909,53 @@ async function init(){
     $('#logoutbtn').style.display = 'none';
     bindByokHandlers();
   }
+  renderBeta();
   // First-run onboarding once the app is ready (gated by the bridge flag).
   if(!STATE.onboarding_done) openOnboard();
   poll();
+}
+
+/* ---------- Beta tab ---------- */
+function renderBeta(){
+  // The tab is always visible; without the server-side invite everything in it
+  // is inert (and the options stay inert until the master toggle is on).
+  const allowed = !!STATE.beta_allowed;
+  const b = STATE.beta || {};
+  const langs = (STATE.langs||[]).map(langPair);
+  opt($('#beta-source'), [['auto', T('beta_auto')||'Otomatik']].concat(langs), b.source_lang||'auto');
+  opt($('#beta-target'), langs, (STATE.cfg||{}).target_language_incoming);
+  $('#beta-on').checked = allowed && !!b.enabled;
+  $('#beta-clone').value = b.clone||'off';
+  $('#beta-vad').value = String(b.vad_ms ?? 500);
+  $('#beta-hotwords').value = b.hotwords||'';
+  { const n=$('#beta-locked-note'); if(n) n.style.display = allowed ? 'none' : ''; }
+  { const a=$('#beta-apply-link'); if(a) a.onclick = (e)=>{ e.preventDefault();
+      const mail = 'mailto:contact@voxislive.com?subject=' + encodeURIComponent('Beta User')
+        + '&body=' + encodeURIComponent(T('beta_mail_body')||'');
+      try{ api().open_url(mail); }catch(_){} }; }
+  const applyDim = ()=>{
+    $('#beta-on').disabled = !allowed;
+    const on = allowed && $('#beta-on').checked;
+    for (const id of ['beta-source','beta-target','beta-clone','beta-vad','beta-hotwords'])
+      { const el=$('#'+id); if(el) el.disabled = !on; }
+    { const o=$('#beta-opts'); if(o) o.style.opacity = on ? '' : '.5'; }
+  };
+  applyDim();
+  const saveBeta = ()=>{ STATE.beta = {
+      enabled: allowed && $('#beta-on').checked,
+      source_lang: $('#beta-source').value,
+      clone: $('#beta-clone').value,
+      vad_ms: parseInt($('#beta-vad').value,10)||0,
+      hotwords: $('#beta-hotwords').value,
+    }; applyDim(); try{ api().set_beta(STATE.beta); }catch(_){}}
+  $('#beta-on').onchange = saveBeta;
+  $('#beta-source').onchange = saveBeta;
+  $('#beta-clone').onchange = saveBeta;
+  $('#beta-vad').onchange = saveBeta;
+  $('#beta-hotwords').onchange = saveBeta;
+  // Target rides the normal config key so the main selector stays in sync.
+  $('#beta-target').onchange = e=>{ api().set_cfg('target_language_incoming', e.target.value);
+    const h=$('#hear'); if(h) h.value = e.target.value; };
 }
 
 /* ---------- kontroller ---------- */
@@ -2942,7 +3064,17 @@ document.addEventListener('keydown', e=>{
   else trapTab(e);
 });
 
-function openDrawer(){ $('#scrim').classList.add('open'); $('#drawer').classList.add('open'); localizeSettings(); renderMembership(); switchSettingsTab('general'); openModal($('#drawer'), closeDrawer, $('#gear')); }
+function openDrawer(){ $('#scrim').classList.add('open'); $('#drawer').classList.add('open'); localizeSettings(); renderMembership(); refreshBeta(); switchSettingsTab('general'); openModal($('#drawer'), closeDrawer, $('#gear')); }
+// Re-check the server-side beta invite whenever Settings opens, so an admin
+// grant/revoke shows up without an app restart (bounded by the server's ~5 min
+// token cache). Dev builds return no beta_allowed field and stay always-on.
+function refreshBeta(){
+  try{ api().check_auth().then(a=>{
+    if(a && a.beta_allowed !== undefined && !!a.beta_allowed !== !!STATE.beta_allowed){
+      STATE.beta_allowed = !!a.beta_allowed; renderBeta();
+    }
+  }).catch(()=>{}); }catch(_){}
+}
 function closeDrawer(){ $('#scrim').classList.remove('open'); $('#drawer').classList.remove('open'); closeModal(); }
 // Settings tabs (Genel / Kısayollar / Üyelik / Hakkında)
 function switchSettingsTab(pane){

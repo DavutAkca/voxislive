@@ -62,6 +62,12 @@ _MIN_SESSION_SECONDS = 5.0
 # rotation. Measured in sent-audio seconds so quiet periods can never trip it.
 _STALL_ROTATE_SECONDS = 20.0
 
+# No-output watchdog (mirrors LiveTranslator): if input transcription has been
+# arriving yet NO output (audio or output transcription) for this many seconds,
+# surface one actionable status. Wall-clock, gated on RECENT input activity.
+_NO_OUTPUT_WARN_SECONDS = 12.0
+_INPUT_RECENT_SECONDS = 4.0
+
 # Usage is recorded into LiveTranslator's process-wide accumulator so the in-app
 # minutes/cost readout (webui get_usage) aggregates both engines into one total.
 # Imported lazily on first frame to keep google.genai off the OpenAI cold path.
@@ -146,6 +152,10 @@ class OpenAITranslator(threading.Thread):
         self._carryover: list[bytes] = []
         # Stall watchdog accumulator (loop-thread only, no locking needed).
         self._sent_since_recv = 0.0
+        # No-output watchdog state (loop-thread only):
+        self._last_input_ts = 0.0
+        self._last_output_ts = 0.0
+        self._no_output_warned = False
 
     # ---- public contract (identical to LiveTranslator) ------------------
     def send_pcm16(self, data: bytes):
@@ -256,6 +266,9 @@ class OpenAITranslator(threading.Thread):
                     # would reset the cap every iteration and never stop reconnecting.
                     started = time.monotonic()
                     self._sent_since_recv = 0.0
+                    self._last_input_ts = 0.0
+                    self._last_output_ts = 0.0
+                    self._no_output_warned = False
                     sender = asyncio.create_task(self._sender(ws, started))
                     receiver = asyncio.create_task(self._receiver(ws))
                     done, pending = await asyncio.wait(
@@ -371,6 +384,14 @@ class OpenAITranslator(threading.Thread):
                 self.on_status("translator: no server events for %ds of sent "
                                "audio — reconnecting" % int(_STALL_ROTATE_SECONDS))
                 raise _Rotate()
+            # No-output watchdog: if we have input transcription recently but no output, warning is triggered.
+            now = time.monotonic()
+            if self._last_input_ts > 0.0 and not self._no_output_warned:
+                if now - self._last_input_ts <= _INPUT_RECENT_SECONDS:
+                    last_out = self._last_output_ts if self._last_output_ts > 0.0 else started
+                    if now - last_out >= _NO_OUTPUT_WARN_SECONDS:
+                        self._no_output_warned = True
+                        self.on_status(t("st_no_output_warning"))
             try:
                 item = await asyncio.wait_for(self._queue.get(), timeout=0.5)
             except asyncio.TimeoutError:
@@ -406,14 +427,17 @@ class OpenAITranslator(threading.Thread):
                     self.on_audio(pcm)
                     # 24 kHz mono PCM16 → 48000 bytes/sec received.
                     _record_usage("out_sec", len(pcm) / 48000)
+                    self._last_output_ts = time.monotonic()
             elif etype == "session.output_transcript.delta":
                 txt = ev.get("delta") or ev.get("text")
                 if txt:
                     self.on_text("out", txt)
+                    self._last_output_ts = time.monotonic()
             elif etype == "session.input_transcript.delta":
                 txt = ev.get("delta") or ev.get("text")
                 if txt:
                     self.on_text("in", txt)
+                    self._last_input_ts = time.monotonic()
             elif etype in ("session.created", "session.updated"):
                 # Session is live and the language config is applied.
                 self._ready.set()

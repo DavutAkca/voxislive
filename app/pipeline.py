@@ -22,7 +22,7 @@ try:
 except ImportError:
     _premium = None
 from .audio_io import Capture, Player, find_device, resolve_name, _make_resampler
-from .config import ENGINE_OPENAI, gate_params, stream_gated
+from .config import ENGINE_OPENAI, ENGINE_QWEN, gate_params, stream_gated
 from .engines import make_translator
 from .i18n import t
 # LiveTranslator (google.genai) and SpeechGate (onnxruntime) are imported lazily
@@ -308,17 +308,29 @@ class IncomingPipeline:
         self.input_level = 0.0
         self._prev_active = False
 
+        # Resolve engine + key + model for this target ONCE (locally for BYOK,
+        # server-side for SaaS) so the capture send-rate matches the engine.
+        self._engine, _key, _model = resolve(cfg["target_language_incoming"])
+
+        # Qwen's translated speech runs longer than the source and carries no
+        # silence padding, so its stream is paced through a SyncStager (WSOLA
+        # speed-up, oldest-first trim) instead of the direct ring feed the
+        # self-timing Gemini/OpenAI streams use.
+        self._stager = None
+        if self._engine == ENGINE_QWEN:
+            from .qwen_translator import SyncStager  # noqa: PLC0415
+            self._stager = SyncStager(self.player)
+
         def _tts_sink(data: bytes):
             # Gate the first-audio metric on AUDIBLE output: an initial near-silent
             # / padding chunk (OpenAI pads its stream) would understate latency.
             a = np.frombuffer(data, dtype=np.int16)
             audible = a.size > 0 and int(np.abs(a).max()) > 512
             self._rtt.mark_tts(audible=audible)
-            self.player.feed_tts_pcm16(data)
-
-        # Resolve engine + key + model for this target ONCE (locally for BYOK,
-        # server-side for SaaS) so the capture send-rate matches the engine.
-        self._engine, _key, _model = resolve(cfg["target_language_incoming"])
+            if self._stager is not None:
+                self._stager.feed(data)
+            else:
+                self.player.feed_tts_pcm16(data)
         self.translator = make_translator(
             cfg, cfg["target_language_incoming"], engine=self._engine, key=_key, model=_model,
             on_audio=_tts_sink, on_text=on_text, on_status=on_status,
@@ -497,7 +509,7 @@ class IncomingPipeline:
             except Exception:
                 pass
             self._sducker = None
-        for attr in ("player", "translator"):
+        for attr in ("_stager", "player", "translator"):
             comp = getattr(self, attr, None)
             if comp is not None:
                 try:
@@ -606,7 +618,7 @@ def _stop_all(pipeline):
     if src is not None:
         src.closed = True
     fns = []
-    for attr in ("capture", "player", "translator"):
+    for attr in ("capture", "_stager", "player", "translator"):
         comp = getattr(pipeline, attr, None)
         if comp is not None:
             fns.append(comp.stop)

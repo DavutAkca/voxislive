@@ -91,3 +91,6 @@ start-official.bat
 
 # --- Throwaway experiment: OpenAI Realtime translate sandbox (never ship) ---
 sandbox-openai-realtime/
+
+# --- Throwaway experiment: Qwen LiveTranslate realtime sandbox (never ship) ---
+sandbox-qwen-livetranslate/
