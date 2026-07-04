@@ -1154,6 +1154,11 @@ class Bridge:
     def _stop(self):
         # Idempotent: serialized against _start so a stop racing a start cannot
         # tear down a half-built session, and a redundant stop is a no-op.
+        # Invalidate any pending _maybe_restart debounce timer FIRST: its run()
+        # reads controller.mode outside the lock, and mid-teardown that still
+        # says the old mode — without this bump the timer would resurrect the
+        # session (capture + billing) the user just stopped.
+        self._restart_token += 1
         with self._lifecycle:
             self.save_txt(silent=True)
             self.controller.stop()

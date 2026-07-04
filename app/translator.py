@@ -269,7 +269,11 @@ class LiveTranslator(threading.Thread):
                 # Echo for "en" so real translation never gets false-suppressed;
                 # the cost is that truly-English input is parroted rather than
                 # muted, which is the safer failure for an English target.
-                "echo_target_language": self.target_lang != "en",
+                # NOTE: this must be == "en" (echo ONLY for the English target).
+                # It shipped inverted for a while — echo off for en (the very
+                # false-suppression this comment describes) and echo ON for all
+                # other targets. Caught in the 2026-07-04 audit.
+                "echo_target_language": self.target_lang == "en",
             },
             # Locked prebuilt voice — the strongest stability setting the client
             # API exposes for the translate-preview model.

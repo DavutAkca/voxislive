@@ -415,7 +415,19 @@ class LoopbackCapture:
                 # Level-consistent mono downmix (mean across channels): the VAD
                 # threshold then means the same here as on every other backend.
                 x = x.reshape(-1, self._ch).mean(axis=1)
-            self._on_chunk(x)
+            # Consumer guard (mirrors ProcessExcludeLoopback._processor): one
+            # bad frame is swallowed, a persistent consumer fault flips _err so
+            # `failed` surfaces and billing stops — instead of the reader thread
+            # dying silently and the session streaming dead air.
+            try:
+                self._on_chunk(x)
+                self._consumer_fails = 0
+            except Exception as e:
+                self._consumer_fails = getattr(self, "_consumer_fails", 0) + 1
+                if self._consumer_fails == 1 or self._consumer_fails % 200 == 0:
+                    print(f"[loopback] consumer fault #{self._consumer_fails}: {e!r}")
+                if self._consumer_fails >= 50 and self._err is None:
+                    self._err = e
 
     def start(self):
         if self._run:

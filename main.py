@@ -180,9 +180,13 @@ def main():
             from app import win_audio
             win_audio.restore(pending)
         except Exception:
+            # Restore failed (COM hiccup, device briefly absent): KEEP the
+            # snapshot so the next launch retries, instead of stranding the
+            # user's default endpoints on the virtual cable forever.
             pass
-        cfg["_pending_default_restore"] = None
-        save_config(cfg)
+        else:
+            cfg["_pending_default_restore"] = None
+            save_config(cfg)
 
     # A crash mid-duck leaves OTHER apps' session volumes lowered — and Windows
     # persists per-app levels, so without this they'd stay quiet forever. The
