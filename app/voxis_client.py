@@ -22,6 +22,7 @@ from typing import Optional
 
 import requests
 
+from . import APP_VERSION
 from .config import IS_OFFICIAL_RELEASE
 from .i18n import t
 from .paths import client_channel, user_path
@@ -528,6 +529,7 @@ def _post_usage(session_id: str, delta_minutes: float, source: str, engine: str)
                 "source":        source,
                 "client":        _CLIENT_CHANNEL,
                 "engine":        engine,
+                "app_version":   APP_VERSION,
             },
             timeout=_TIMEOUT,
         )
