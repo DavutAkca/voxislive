@@ -3743,6 +3743,7 @@ async function poll(){
       if(ev[0]==='status'){ addSys(ev[1], ev[2] && ev[2].level); }
       else if(ev[0]==='trans'){ onTrans(ev[1], ev[2]); }
       else if(ev[0]==='src'){ onSrc(ev[1]); }
+      else if(ev[0]==='saved'){ addTranscriptActions(ev[1]); }
       else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
       else if(ev[0]==='quota_wall'){ showPaywallCard(); }
     });
