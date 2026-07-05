@@ -19,6 +19,14 @@ import urllib.request
 # Define Paths
 APP_DIR = pathlib.Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parent
+
+# Make `import app.*` resolve no matter how this file is launched. Run as a plain
+# script (`python app/build_official.py`), Python puts app/ — not the repo root —
+# on sys.path[0], so `import app.config` in build_seed_config() raised "No module
+# named 'app'". Prepending the repo root makes script- and module-mode
+# (`python -m app.build_official`) invocations behave identically.
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 CONFIG_PY = APP_DIR / "config.py"
 CONFIG_PY_BAK = APP_DIR / "config.py.bak"
 CONFIG_JSON = ROOT_DIR / "config.json"
