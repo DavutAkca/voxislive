@@ -80,6 +80,66 @@ def user_path(*parts: str) -> str:
     return os.path.join(user_data_dir(), *parts)
 
 
+def documents_dir() -> str:
+    """The user's real Documents folder via the Windows known-folder API.
+
+    NOT %USERPROFILE%\\Documents: OneDrive Known-Folder-Move (and a localized
+    Windows profile — e.g. Turkish 'Belgeler') relocate Documents, so the env-var
+    guess points at a folder that does not exist. SHGetKnownFolderPath(FOLDERID_
+    Documents) always resolves the true location. Falls back to ~/Documents only
+    when the API call fails."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _GUID(ctypes.Structure):
+            _fields_ = [("Data1", wintypes.DWORD), ("Data2", wintypes.WORD),
+                        ("Data3", wintypes.WORD), ("Data4", ctypes.c_ubyte * 8)]
+
+        # FOLDERID_Documents = {FDD39AD0-238F-46AF-ADB4-6C85480369C7}
+        folderid = _GUID(0xFDD39AD0, 0x238F, 0x46AF,
+                         (ctypes.c_ubyte * 8)(0xAD, 0xB4, 0x6C, 0x85, 0x48, 0x03, 0x69, 0xC7))
+        out = ctypes.c_wchar_p()
+        # SHGetKnownFolderPath(rfid, dwFlags=0 (KF_FLAG_DEFAULT), hToken=None, ppszPath)
+        rc = ctypes.windll.shell32.SHGetKnownFolderPath(
+            ctypes.byref(folderid), 0, None, ctypes.byref(out))
+        try:
+            if rc == 0 and out.value:
+                return out.value
+        finally:
+            if out.value:
+                ctypes.windll.ole32.CoTaskMemFree(out)
+    except Exception:
+        pass
+    return os.path.join(os.path.expanduser("~"), "Documents")
+
+
+def legacy_transcripts_dir() -> str:
+    """Pre-1.0.26 transcript location (%APPDATA%\\Voxis\\transcripts when frozen;
+    repo transcripts/ from source). Retained so old sessions still list and can be
+    migrated to the new user-facing default. On the Store MSIX this AppData path is
+    virtualized into LocalCache\\Roaming — the reason the old default was buried."""
+    return user_path("transcripts")
+
+
+def default_transcripts_dir() -> str:
+    """Built-in default when cfg['transcript_dir'] is unset. Frozen builds save to
+    Documents\\Voxis\\Transcripts — a user-facing folder that, unlike %APPDATA%, is
+    NOT virtualized by the MSIX container (full-trust packaged apps keep real
+    Documents access). From source it stays in the repo transcripts/ dir so the
+    developer workflow is unchanged."""
+    if is_frozen():
+        return os.path.join(documents_dir(), APP_NAME, "Transcripts")
+    return os.path.join(_repo_root(), "transcripts")
+
+
+def transcripts_dir(cfg: dict | None = None) -> str:
+    """Active transcript save directory. A non-empty cfg['transcript_dir'] override
+    wins (Settings-configurable); otherwise the built-in default."""
+    custom = ((cfg or {}).get("transcript_dir") or "").strip()
+    return custom or default_transcripts_dir()
+
+
 def web_dir() -> str:
     """The single-file UI directory. Bundled at <bundle>/web; source at app/web."""
     if is_frozen():

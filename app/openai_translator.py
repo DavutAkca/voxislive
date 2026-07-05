@@ -140,12 +140,12 @@ class OpenAITranslator(BaseTranslator):
                     self.on_audio(pcm)
                     # 24 kHz mono PCM16 → 48000 bytes/sec received.
                     self._record_usage("out_sec", len(pcm) / 48000)
-                    self._mark_output()
+                    self._mark_audio_output()
             elif etype == "session.output_transcript.delta":
                 txt = ev.get("delta") or ev.get("text")
                 if txt:
                     self.on_text("out", txt)
-                    self._mark_output()
+                    self._mark_text_output()
             elif etype == "session.input_transcript.delta":
                 txt = ev.get("delta") or ev.get("text")
                 if txt:

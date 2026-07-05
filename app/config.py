@@ -67,6 +67,16 @@ OPENAI_OUTPUT_LANGS = ["en", "es", "pt", "fr", "de", "it", "ru", "ja", "ko", "zh
 # that OpenAI's official docs do not corroborate — removed pending real evidence.)
 DEFAULT_OPENAI_LANGS = list(OPENAI_OUTPUT_LANGS)
 
+# Qwen3.5-LiveTranslate synthesizes translated SPEECH for these 29 targets; its
+# other ~31 supported targets are TEXT-ONLY (captions, no voice) — routing one of
+# those to Qwen yields subtitles with no translated audio. Source: Alibaba Model
+# Studio doc for qwen3.5-livetranslate-flash-realtime (verified 2026-07-05).
+# Server-/config-overridable via cfg["qwen_audio_langs"] since the tier can shift
+# with model updates. Base ISO codes (matched via _norm_lang).
+QWEN_AUDIO_LANGS = ["zh", "en", "ar", "de", "fr", "es", "pt", "id", "it", "ko",
+                    "ru", "th", "vi", "ja", "tr", "hi", "ms", "nl", "ur", "nb",
+                    "sv", "da", "he", "fi", "pl", "is", "cs", "fil", "fa"]
+
 DEFAULTS = {
     "engine": DEFAULT_ENGINE,
     "model": GEMINI_LIVE_MODEL,
@@ -114,6 +124,12 @@ DEFAULTS = {
     "gemini_voice": "Aoede",
     "gemini_temperature": 0.3,
     "capture_backend": "driverless",
+    # Where session transcripts are saved. Empty = the built-in default
+    # (Documents\Voxis\Transcripts on a frozen build); a non-empty path overrides.
+    "transcript_dir": "",
+    # Qwen audio-output tier (see QWEN_AUDIO_LANGS); server-overridable so a model
+    # update that adds/removes voiced languages doesn't need a client release.
+    "qwen_audio_langs": list(QWEN_AUDIO_LANGS),
     "ui_theme": "dark",
     # Bumped when a load-time migration is added; see _migrate / load_config.
     "config_version": 2,
@@ -229,6 +245,23 @@ def openai_route_langs(cfg: dict) -> list:
     v = cfg.get("openai_langs")
     src = v if isinstance(v, list) and v else DEFAULT_OPENAI_LANGS
     return [str(s).strip().lower() for s in src]
+
+
+def qwen_audio_langs(cfg: dict) -> list:
+    """Target languages (base codes) for which Qwen produces translated SPEECH.
+    Config-/server-overridable via cfg['qwen_audio_langs']; defaults to the
+    documented 29-language audio tier."""
+    v = cfg.get("qwen_audio_langs")
+    src = v if isinstance(v, list) and v else QWEN_AUDIO_LANGS
+    return [str(s).strip().lower() for s in src]
+
+
+def qwen_can_voice(cfg: dict, target: str) -> bool:
+    """True when the Qwen beta engine can synthesize a translated VOICE for this
+    target. A text-only target must fall back to the standard engine, or the user
+    is left with subtitles and no audio (the class of bug behind the 1.0.24 field
+    report). Czech (cs) IS voiced, so this does not change the EN->CS path."""
+    return _norm_lang(target) in qwen_audio_langs(cfg)
 
 
 def route_engine(cfg: dict, target: str) -> str:

@@ -22,12 +22,14 @@ from .config import (
 )
 from .i18n import t
 from .pipeline import ModeController
-from .paths import icon_path, user_path, web_dir
+from .paths import icon_path, legacy_transcripts_dir, transcripts_dir, user_path, web_dir
 from . import transcript_store
 
 WEB_DIR = web_dir()
-TRANSCRIPT_DIR = user_path("transcripts")
 OBS_FILE = user_path("obs_subtitle.txt")
+# Allowed transcript file extensions for the open/reveal bridge (path-traversal +
+# type guard). JSON is the canonical record; the rest are on-demand exports.
+_TRANSCRIPT_EXTS = (".json", ".txt", ".srt", ".vtt")
 
 # Target languages offered in the picker — the full documented set for the
 # gemini-3.5-live-translate-preview model (ai.google.dev live-translate table),
@@ -168,6 +170,9 @@ class Bridge:
         # report's diagnostics. Bounded so it can never grow unbounded.
         self._status_log: list[str] = []
         self._last_error_code = ""
+        # One-time move of transcripts from the old (virtualized) AppData location
+        # to the user-facing default. Best-effort; never blocks startup.
+        self._migrate_transcripts()
 
     # ---------- callbacks from audio threads ----------
     def _put_event(self, ev):
@@ -431,6 +436,9 @@ class Bridge:
             (n for n in outs if cur_out and cur_out.lower() in n.lower()), outs[0] if outs else "")
         c["devices"]["microphone_label"] = next(
             (n for n in mics if cur_mic and cur_mic.lower() in n.lower()), t("default_mic"))
+        # Resolved transcript folder for the Settings readout (the raw
+        # cfg["transcript_dir"] may be "" = default; show where files actually go).
+        c["transcript_dir_display"] = self._transcript_dir()
         return c
 
     def get_cfg(self):
@@ -570,11 +578,23 @@ class Bridge:
         import platform
         from .paths import client_channel
         cfg = self.cfg
+        # Engine + model of the LIVE session (not the config selector) — the field
+        # that actually answers "was this a Gemini or a Qwen-beta session?". Falls
+        # back to the routed engine when idle.
+        engine = ""
         try:
-            from .config import resolve_model
-            model = resolve_model(cfg)
+            engine = self.controller.current_engine() or ""
+        except Exception:
+            engine = ""
+        try:
+            from .config import resolve_model, route_engine
+            if not engine:
+                engine = route_engine(cfg, cfg.get("target_language_incoming", ""))
+            model = resolve_model(cfg, engine or None)
         except Exception:
             model = cfg.get("model", "")
+        beta = cfg.get("beta") or {}
+        beta_enabled = bool(beta.get("enabled")) and self._beta_allowed()
         backend = "vbcable" if cfg.get("capture_backend", "driverless") == "vbcable" else "driverless"
         return {
             "app_version": APP_VERSION,
@@ -585,6 +605,13 @@ class Bridge:
             "arch": platform.machine(),
             "mode": getattr(self.controller, "mode", None) or "idle",
             "quality": cfg.get("quality_preset", ""),
+            "engine": engine,
+            "beta_enabled": beta_enabled,
+            # Qwen-beta voice-clone mode: distinguishes "all speakers one voice by
+            # design" (once) from "per-response clone failing" (always) when a
+            # report complains voices collapsed — invisible without it.
+            "beta_clone": (beta.get("clone", "off") if beta_enabled else ""),
+            "beta_source": (beta.get("source_lang", "auto") if beta_enabled else ""),
             "model": model,
             "capture_backend": backend,
             "lang_target_incoming": cfg.get("target_language_incoming", ""),
@@ -1037,7 +1064,7 @@ class Bridge:
         Gemini (the engine selector is server-controlled). Dev/BYOK routes locally
         over the stored keys. Raises a localized error if no key is available.
         """
-        from .config import resolve_model
+        from .config import resolve_model, qwen_can_voice
         # Beta engine opt-in (Qwen): only honored when the account is
         # beta-eligible (server flag; dev builds are always eligible) AND the
         # user switched it on. Never touches the normal Gemini/OpenAI routing.
@@ -1052,7 +1079,14 @@ class Bridge:
             # Dev beta path: a DashScope key in config.json ("qwen_key") selects
             # the Qwen engine locally — sandbox-style, no server round-trip.
             if beta_qwen and self.cfg.get("qwen_key"):
+                gem = keys.get("gemini")
                 def resolve(target):
+                    # Qwen has no VOICE for some targets (text-only tier) — those
+                    # would give subtitles with no audio, so prefer Gemini when a
+                    # key is available.
+                    if gem and not qwen_can_voice(self.cfg, target):
+                        _log.info("Qwen beta has no voice for target %r; using Gemini", target)
+                        return ENGINE_GEMINI, gem, resolve_model(self.cfg, ENGINE_GEMINI)
                     return (ENGINE_QWEN, self.cfg.get("qwen_key"),
                             resolve_model(self.cfg, ENGINE_QWEN))
                 return resolve
@@ -1070,12 +1104,18 @@ class Bridge:
             # server re-checks the account's beta flag (client is not trusted)
             # and refuses otherwise — then we fall through to normal routing.
             def resolve(target):
-                key, engine, model, quality, quota, err = voxis_client.get_session_key(
-                    target=target, caps="engine-routing", engine="qwen")
-                if key and engine == "qwen":
-                    if isinstance(quota, dict):
-                        self._last_quota = quota
-                    return engine, key, (model or resolve_model(self.cfg, engine))
+                err = None
+                # Skip Qwen entirely for a target it can't voice (text-only tier):
+                # the standard engine gives translated speech, not just subtitles.
+                if qwen_can_voice(self.cfg, target):
+                    key, engine, model, quality, quota, err = voxis_client.get_session_key(
+                        target=target, caps="engine-routing", engine="qwen")
+                    if key and engine == "qwen":
+                        if isinstance(quota, dict):
+                            self._last_quota = quota
+                        return engine, key, (model or resolve_model(self.cfg, engine))
+                else:
+                    _log.info("Qwen beta has no voice for target %r; using standard routing", target)
                 key, engine, model, quality, quota, err2 = voxis_client.get_session_key(
                     target=target, caps="engine-routing")
                 if key:
@@ -1213,37 +1253,201 @@ class Bridge:
 
     def save_txt(self, silent=False):
         """Persist the session as a JSON record (the canonical, timestamped
-        store). Backs the 'Save transcript' button; also called on stop."""
+        store). Backs the 'Save transcript' button; also called on stop.
+        Returns {ok, path, file} on success (the JS renders open/reveal actions
+        from it) or False on nothing-to-save / write failure."""
         self._flush_turns()
         if not self._turns:
             if not silent:
                 self._emit_status(t("no_transcript"))
             return False
+        record = self._build_record()
+        primary = self._transcript_dir()
+        path = None
         try:
-            os.makedirs(TRANSCRIPT_DIR, exist_ok=True)
-            record = self._build_record()
-            path = transcript_store.save_record(TRANSCRIPT_DIR, record)
-            self._session_file = path
+            os.makedirs(primary, exist_ok=True)
+            path = transcript_store.save_record(primary, record)
         except OSError:
-            _log.exception("transcript save failed")
-            if not silent:
-                self._emit_status(t("err_save_failed"), "error")
-            return False
+            # Documents can be blocked (Controlled Folder Access) or unwritable —
+            # never lose a transcript: retry into the legacy AppData dir and report
+            # THAT path so the user can still find it.
+            _log.exception("transcript save to %s failed; retrying legacy dir", primary)
+            legacy = legacy_transcripts_dir()
+            try:
+                os.makedirs(legacy, exist_ok=True)
+                path = transcript_store.save_record(legacy, record)
+            except OSError:
+                _log.exception("transcript save failed")
+                if not silent:
+                    self._emit_status(t("err_save_failed"), "error")
+                return False
+        self._session_file = path
         if not silent:
             self._emit_status(t("saved_to", path=path))
-        return True
+        return {"ok": True, "path": path, "file": os.path.basename(path)}
+
+    # ---------- transcript directory + reveal ----------
+    def _transcript_dir(self) -> str:
+        """Active save directory (Documents\\Voxis\\Transcripts by default, or the
+        user's configured folder)."""
+        return transcripts_dir(self.cfg)
+
+    def _transcript_dirs(self) -> list:
+        """Directories to scan for saved sessions: the active dir first, then the
+        legacy AppData dir (so pre-move sessions still appear even if migration
+        was skipped/partial). Deduped, order-preserving."""
+        dirs, seen = [], set()
+        for d in (self._transcript_dir(), legacy_transcripts_dir()):
+            key = os.path.normcase(os.path.abspath(d))
+            if key not in seen:
+                seen.add(key)
+                dirs.append(d)
+        return dirs
+
+    def _safe_transcript_name(self, file: str) -> bool:
+        """Reject path traversal + non-transcript files (the bare filename must
+        equal its own basename and carry a known extension)."""
+        return bool(file) and os.path.basename(file) == file \
+            and file.lower().endswith(_TRANSCRIPT_EXTS)
+
+    def _find_transcript(self, file: str) -> str | None:
+        """Full path of a saved file, searched across the active + legacy dirs.
+        Returns None if the name is unsafe or the file does not exist."""
+        if not self._safe_transcript_name(file):
+            return None
+        for d in self._transcript_dirs():
+            path = os.path.join(d, file)
+            if os.path.isfile(path):
+                return path
+        return None
+
+    def _migrate_transcripts(self):
+        """One-time move of pre-1.0.26 transcripts from the legacy AppData dir into
+        the active (user-facing) dir. On the Store MSIX the legacy read resolves
+        through the container's LocalCache view while the write lands in real
+        Documents — this also rescues files Windows would delete on uninstall.
+        Best-effort: any per-file failure is skipped, never fatal."""
+        try:
+            import shutil
+            src = legacy_transcripts_dir()
+            dst = self._transcript_dir()
+            if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
+                return
+            try:
+                names = [n for n in os.listdir(src)
+                         if n.startswith("voxis_") and n.lower().endswith(_TRANSCRIPT_EXTS)]
+            except OSError:
+                return
+            if not names:
+                return
+            os.makedirs(dst, exist_ok=True)
+            for n in names:
+                target = os.path.join(dst, n)
+                if os.path.exists(target):
+                    continue  # never clobber a file already in the new location
+                try:
+                    shutil.move(os.path.join(src, n), target)
+                except OSError:
+                    pass  # locked / permission — leave it; it still lists via legacy
+        except Exception:
+            _log.exception("transcript migration skipped")
+
+    def open_transcript(self, file: str) -> dict:
+        """Open a saved transcript file in its default app (JSON in the editor,
+        etc.). Traversal-guarded; searches the active + legacy dirs."""
+        path = self._find_transcript(file)
+        if not path:
+            return {"ok": False, "error": "not_found"}
+        try:
+            os.startfile(path)  # noqa: S606 — Windows shell open, path validated
+            return {"ok": True}
+        except OSError as e:
+            _log.exception("open_transcript failed")
+            return {"ok": False, "error": str(e)}
+
+    def reveal_transcript(self, file: str) -> dict:
+        """Open Explorer with the transcript file selected ('Open containing
+        folder'). Also proves to the user where the file actually lives."""
+        path = self._find_transcript(file)
+        if not path:
+            return {"ok": False, "error": "not_found"}
+        try:
+            import subprocess
+            # explorer /select, highlights the file in its folder. Not shell=True;
+            # path is validated + normalized so no argument injection is possible.
+            subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
+            return {"ok": True}
+        except OSError as e:
+            _log.exception("reveal_transcript failed")
+            return {"ok": False, "error": str(e)}
+
+    def open_transcript_folder(self) -> dict:
+        """Open the active transcript folder in Explorer (creating it if needed)."""
+        d = self._transcript_dir()
+        try:
+            os.makedirs(d, exist_ok=True)
+            os.startfile(d)
+            return {"ok": True, "path": d}
+        except OSError as e:
+            _log.exception("open_transcript_folder failed")
+            return {"ok": False, "error": str(e)}
+
+    def choose_transcript_dir(self) -> dict:
+        """Folder-picker for a custom transcript directory. Validates writability
+        before persisting so a bad choice can't silently break saving."""
+        win = self._main_window
+        if win is None:
+            return {"ok": False, "error": "no_window"}
+        try:
+            sel = win.create_file_dialog(webview.FOLDER_DIALOG)
+        except Exception:
+            _log.exception("choose_transcript_dir dialog failed")
+            return {"ok": False, "error": "dialog_failed"}
+        if not sel:
+            return {"ok": False, "cancelled": True}
+        folder = sel[0] if isinstance(sel, (list, tuple)) else sel
+        # Writability probe: create + remove a temp file so we never persist a
+        # directory the app cannot actually write transcripts into.
+        probe = os.path.join(folder, ".voxis_write_test")
+        try:
+            with open(probe, "w", encoding="utf-8") as f:
+                f.write("")
+            os.remove(probe)
+        except OSError:
+            return {"ok": False, "error": "unwritable"}
+        self.cfg["transcript_dir"] = folder
+        self._save_cfg()
+        return {"ok": True, "path": folder}
+
+    def reset_transcript_dir(self) -> dict:
+        """Clear the custom folder override; revert to the built-in default."""
+        self.cfg["transcript_dir"] = ""
+        self._save_cfg()
+        return {"ok": True, "path": self._transcript_dir()}
 
     # ---------- transcript history + export ----------
     def list_sessions(self) -> list:
-        """Newest-first summaries of saved sessions for the history panel."""
-        return transcript_store.list_records(TRANSCRIPT_DIR)
+        """Newest-first summaries of saved sessions for the history panel, merged
+        across the active + legacy dirs (deduped by filename, active wins)."""
+        merged, seen = [], set()
+        for d in self._transcript_dirs():
+            for rec in transcript_store.list_records(d):
+                name = rec.get("file")
+                if name in seen:
+                    continue
+                seen.add(name)
+                merged.append(rec)
+        merged.sort(key=lambda r: r.get("started", 0.0), reverse=True)
+        return merged
 
     def load_session(self, file: str) -> dict | None:
         """Load one saved session's full record. `file` is the bare filename
         returned by list_sessions; path traversal is rejected."""
         if not file or os.path.basename(file) != file or not file.endswith(".json"):
             return None
-        path = os.path.join(TRANSCRIPT_DIR, file)
+        path = self._find_transcript(file)
+        if not path:
+            return None
         try:
             return transcript_store.load_record(path)
         except (OSError, ValueError):
@@ -1252,23 +1456,30 @@ class Bridge:
     def delete_session(self, file: str) -> bool:
         if not file or os.path.basename(file) != file or not file.endswith(".json"):
             return False
+        path = self._find_transcript(file)
+        if not path:
+            return False
         try:
-            os.remove(os.path.join(TRANSCRIPT_DIR, file))
+            os.remove(path)
             return True
         except OSError:
             return False
 
     def export_session(self, file: str, fmt: str) -> dict:
         """Render a saved session to TXT/SRT/VTT next to its JSON. Returns
-        {ok, path?, error?}. No tier gating — available on every build."""
+        {ok, path?, file?, error?}. No tier gating — available on every build."""
+        if not file or os.path.basename(file) != file or not file.endswith(".json"):
+            return {"ok": False, "error": "not_found"}
+        src_path = self._find_transcript(file)
         record = self.load_session(file)
-        if record is None:
+        if record is None or src_path is None:
             return {"ok": False, "error": "not_found"}
         try:
             content, ext = transcript_store.export(record, fmt)
         except ValueError:
             return {"ok": False, "error": "bad_format"}
-        out_path = os.path.join(TRANSCRIPT_DIR, file[:-len(".json")] + "." + ext)
+        # Write the export beside its source JSON (wherever that turned out to be).
+        out_path = os.path.join(os.path.dirname(src_path), file[:-len(".json")] + "." + ext)
         try:
             with open(out_path, "w", encoding="utf-8") as f:
                 f.write(content)
@@ -1277,7 +1488,7 @@ class Bridge:
             self._emit_status(t("err_save_failed"), "error")
             return {"ok": False, "error": "write_failed"}
         self._emit_status(t("saved_to", path=out_path))
-        return {"ok": True, "path": out_path}
+        return {"ok": True, "path": out_path, "file": os.path.basename(out_path)}
 
     def toggle_overlay(self, on):
         self.cfg["overlay_enabled"] = bool(on)

@@ -69,6 +69,7 @@ STRINGS = {
         # boru hattı / çevirmen durumları
         "st_connected": "{name}: bağlandı (hedef: {lang})",
         "st_no_output_warning": "Çeviri çıktısı algılanmadı — ses gelmiyorsa, hedef dili veya modeli değiştirmeyi deneyin.",
+        "st_no_voice_warning": "Çeviri sesi algılanmadı (altyazılar çalışıyor) — beta motoru açıksa kapatmayı deneyin ya da oturumu yeniden başlatın.",
         "st_renewing": "{name}: oturum yenileniyor...",
         "st_conn_err": "{name}: bağlantı hatası, {s:.0f}s sonra yeniden: {e}",
         "st_capture_lost": "Ses yakalama durdu (cihaz değişmiş olabilir). Oturumu yeniden başlat.",
@@ -171,6 +172,7 @@ STRINGS = {
         "consent_dontshow": "Don't show again",
         "st_connected": "{name}: connected (target: {lang})",
         "st_no_output_warning": "No translation output detected — if silent, try changing your target language or model.",
+        "st_no_voice_warning": "Translated voice not detected (subtitles are working) — if the beta engine is on, switch it off, or restart the session.",
         "st_renewing": "{name}: renewing session...",
         "st_conn_err": "{name}: connection error, retrying in {s:.0f}s: {e}",
         "st_capture_lost": "Audio capture stopped (the device may have changed). Restart the session.",
@@ -289,6 +291,7 @@ STRINGS = {
                                   "wählen Sie das Mikrofon Ihrer Meeting-App manuell. Aktivieren: "
                                   "Systemsteuerung → Sound → Aufnahme → Rechtsklick → "
                                   "'Deaktivierte Geräte anzeigen'.",
+        "st_no_voice_warning": "Übersetzte Stimme nicht erkannt (Untertitel funktionieren) — falls die Beta-Engine aktiv ist, schalte sie aus oder starte die Sitzung neu.",
         "st_capture_lost": "Audioaufnahme gestoppt (das Gerät hat sich möglicherweise geändert). Starte die Sitzung neu.",
         "st_session_failed": "Die Übersetzungsverbindung wurde unterbrochen und konnte nicht wiederhergestellt werden — Sitzung beendet. Versuche es erneut.",
         "st_quota_exceeded": "Dein Kontingent ist aufgebraucht — Sitzung beendet. Upgrade deinen Plan, um fortzufahren.",
@@ -388,6 +391,7 @@ STRINGS = {
                                   "sélectionnez manuellement le microphone de votre application de réunion. "
                                   "Pour l'activer : Panneau de configuration → Son → Enregistrement → "
                                   "clic droit → 'Afficher les appareils désactivés'.",
+        "st_no_voice_warning": "Voix traduite non détectée (les sous-titres fonctionnent) — si le moteur bêta est activé, désactivez-le ou redémarrez la session.",
         "st_capture_lost": "La capture audio s'est arrêtée (l'appareil a peut-être changé). Redémarrez la session.",
         "st_session_failed": "La connexion de traduction a été perdue et n'a pas pu être rétablie — session arrêtée. Réessayez.",
         "st_quota_exceeded": "Votre quota est épuisé — session arrêtée. Mettez votre forfait à niveau pour continuer.",
@@ -487,6 +491,7 @@ STRINGS = {
                                   "selecciona manualmente el micrófono de tu aplicación de reunión. "
                                   "Para habilitarlo: Panel de control → Sonido → Grabación → "
                                   "clic derecho → 'Mostrar dispositivos deshabilitados'.",
+        "st_no_voice_warning": "No se detecta la voz traducida (los subtítulos funcionan) — si el motor beta está activado, desactívalo o reinicia la sesión.",
         "st_capture_lost": "Se detuvo la captura de audio (es posible que el dispositivo haya cambiado). Reinicia la sesión.",
         "st_session_failed": "Se perdió la conexión de traducción y no se pudo restablecer — sesión detenida. Intenta iniciarla de nuevo.",
         "st_quota_exceeded": "Has agotado tu cuota — sesión detenida. Mejora tu plan para continuar.",
@@ -586,6 +591,7 @@ STRINGS = {
                                   "selecione manualmente o microfone do seu aplicativo de reunião. "
                                   "Para habilitar: Painel de Controle → Som → Gravação → "
                                   "clique com o botão direito → 'Mostrar Dispositivos Desabilitados'.",
+        "st_no_voice_warning": "Voz traduzida não detectada (as legendas funcionam) — se o motor beta estiver ativado, desative-o ou reinicie a sessão.",
         "st_capture_lost": "A captura de áudio parou (o dispositivo pode ter mudado). Reinicie a sessão.",
         "st_session_failed": "A conexão de tradução foi perdida e não pôde ser restaurada — sessão interrompida. Tente iniciar novamente.",
         "st_quota_exceeded": "Você esgotou sua cota — sessão interrompida. Faça upgrade do seu plano para continuar.",
@@ -684,6 +690,7 @@ STRINGS = {
                                   "会議アプリのマイクを手動で選択してください。有効にする方法: "
                                   "コントロールパネル → サウンド → 録音 → 右クリック → "
                                   "「無効なデバイスの表示」。",
+        "st_no_voice_warning": "翻訳音声が検出されません（字幕は動作しています）。ベータエンジンがオンの場合はオフにするか、セッションを再開してください。",
         "st_capture_lost": "音声のキャプチャが停止しました (デバイスが変更された可能性があります)。セッションを再開してください。",
         "st_session_failed": "翻訳接続が切断され、復元できませんでした — セッションを停止しました。もう一度開始してください。",
         "st_quota_exceeded": "利用枠を使い切りました — セッションを停止しました。続けるにはプランをアップグレードしてください。",
@@ -782,6 +789,7 @@ STRINGS = {
                                   "미팅 앱의 마이크를 수동으로 선택하세요. 활성화 방법: "
                                   "제어판 → 소리 → 녹음 → 마우스 오른쪽 클릭 → "
                                   "'비활성화된 장치 표시'.",
+        "st_no_voice_warning": "번역 음성이 감지되지 않습니다(자막은 작동 중) — 베타 엔진이 켜져 있으면 끄거나 세션을 다시 시작하세요.",
         "st_capture_lost": "오디오 캡처가 중단되었습니다(장치가 변경되었을 수 있습니다). 세션을 다시 시작하세요.",
         "st_session_failed": "번역 연결이 끊어져 복구하지 못했습니다 — 세션이 중지되었습니다. 다시 시작해 보세요.",
         "st_quota_exceeded": "사용량을 모두 사용했습니다 — 세션이 중지되었습니다. 계속하려면 플랜을 업그레이드하세요.",
@@ -880,6 +888,7 @@ STRINGS = {
                                   "выберите микрофон вашего приложения для звонков вручную. "
                                   "Чтобы включить: Панель управления → Звук → Запись → "
                                   "правая кнопка мыши → «Показать отключённые устройства».",
+        "st_no_voice_warning": "Переведённый голос не обнаружен (субтитры работают) — если включён бета-движок, отключите его или перезапустите сеанс.",
         "st_capture_lost": "Захват звука остановлен (возможно, изменилось устройство). Перезапустите сеанс.",
         "st_session_failed": "Соединение перевода потеряно и не восстановлено — сеанс остановлен. Попробуйте запустить снова.",
         "st_quota_exceeded": "Ваша квота исчерпана — сеанс остановлен. Повысьте план, чтобы продолжить.",
@@ -979,6 +988,7 @@ STRINGS = {
                                   "请手动选择会议应用的麦克风。启用方法："
                                   "控制面板 → 声音 → 录制 → 右键单击 → "
                                   "'显示已禁用的设备'。",
+        "st_no_voice_warning": "未检测到翻译语音（字幕正常）——如果启用了测试版引擎，请将其关闭，或重新启动会话。",
         "st_capture_lost": "音频采集已停止（设备可能已更改）。请重新启动会话。",
         "st_session_failed": "翻译连接已断开且无法恢复 — 会话已停止。请重新启动。",
         "st_quota_exceeded": "你的配额已用完 — 会话已停止。升级你的套餐以继续。",
@@ -1077,6 +1087,7 @@ STRINGS = {
                                   "ręcznie wybierz mikrofon aplikacji do spotkań. Aby włączyć: "
                                   "Panel sterowania → Dźwięk → Nagrywanie → prawy przycisk myszy → "
                                   "'Pokaz wylaczone urzadzenia'.",
+        "st_no_voice_warning": "Nie wykryto przetłumaczonego głosu (napisy działają) — jeśli silnik beta jest włączony, wyłącz go lub uruchom sesję ponownie.",
         "st_capture_lost": "Przechwytywanie dźwięku zostało zatrzymane (urządzenie mogło się zmienić). Uruchom sesję ponownie.",
         "st_session_failed": "Połączenie tłumaczenia zostało przerwane i nie udało się go przywrócić — sesja zatrzymana. Spróbuj ponownie.",
         "st_quota_exceeded": "Twój limit został wyczerpany — sesja zatrzymana. Ulepsz plan, aby kontynuować.",
@@ -1176,6 +1187,7 @@ STRINGS = {
                                   "seleziona manualmente il microfono della tua app per riunioni. "
                                   "Per abilitarlo: Pannello di controllo → Suono → Registrazione → "
                                   "clic destro → 'Mostra dispositivi disabilitati'.",
+        "st_no_voice_warning": "Voce tradotta non rilevata (i sottotitoli funzionano) — se il motore beta è attivo, disattivalo o riavvia la sessione.",
         "st_capture_lost": "Acquisizione audio interrotta (il dispositivo potrebbe essere cambiato). Riavvia la sessione.",
         "st_session_failed": "La connessione di traduzione è stata persa e non è stato possibile ripristinarla — sessione interrotta. Riprova.",
         "st_quota_exceeded": "Hai esaurito la tua quota — sessione interrotta. Esegui l'upgrade del piano per continuare.",
@@ -1275,6 +1287,7 @@ STRINGS = {
                                   "pilih mikrofon aplikasi rapat Anda secara manual. Untuk mengaktifkan: "
                                   "Panel Kontrol → Suara → Rekaman → klik kanan → "
                                   "'Tampilkan Perangkat yang Dinonaktifkan'.",
+        "st_no_voice_warning": "Suara terjemahan tidak terdeteksi (subtitel berfungsi) — jika mesin beta aktif, matikan, atau mulai ulang sesi.",
         "st_capture_lost": "Perekaman audio berhenti (perangkat mungkin berubah). Mulai ulang sesi.",
         "st_session_failed": "Koneksi terjemahan terputus dan tidak dapat dipulihkan — sesi dihentikan. Coba mulai lagi.",
         "st_quota_exceeded": "Kuota Anda habis — sesi dihentikan. Tingkatkan paket Anda untuk melanjutkan.",
@@ -1373,6 +1386,7 @@ STRINGS = {
                                   "selecteer handmatig de microfoon van uw vergader-app. Om in te schakelen: "
                                   "Configuratiescherm → Geluid → Opnemen → rechtermuisknop → "
                                   "'Uitgeschakelde apparaten weergeven'.",
+        "st_no_voice_warning": "Vertaalde stem niet gedetecteerd (ondertitels werken) — als de beta-engine aan staat, schakel deze uit of start de sessie opnieuw.",
         "st_capture_lost": "Audio-opname gestopt (het apparaat is mogelijk gewijzigd). Start de sessie opnieuw.",
         "st_session_failed": "De vertaalverbinding is verbroken en kon niet worden hersteld — sessie gestopt. Probeer opnieuw te starten.",
         "st_quota_exceeded": "Je tegoed is op — sessie gestopt. Upgrade je abonnement om door te gaan.",
@@ -1471,6 +1485,7 @@ STRINGS = {
                                   "hãy chọn thủ công micrô của ứng dụng họp. Để bật: "
                                   "Control Panel → Sound → Recording → nhấp chuột phải → "
                                   "'Show Disabled Devices'.",
+        "st_no_voice_warning": "Không phát hiện giọng nói đã dịch (phụ đề vẫn hoạt động) — nếu công cụ beta đang bật, hãy tắt nó hoặc khởi động lại phiên.",
         "st_capture_lost": "Đã dừng thu âm thanh (thiết bị có thể đã thay đổi). Hãy khởi động lại phiên.",
         "st_session_failed": "Kết nối dịch đã mất và không thể khôi phục — phiên đã dừng. Hãy thử bắt đầu lại.",
         "st_quota_exceeded": "Bạn đã dùng hết hạn mức — phiên đã dừng. Nâng cấp gói của bạn để tiếp tục.",
@@ -1569,6 +1584,7 @@ STRINGS = {
                                   "เลือกไมโครโฟนของแอปประชุมด้วยตนเอง วิธีเปิดใช้งาน: "
                                   "Control Panel → Sound → Recording → คลิกขวา → "
                                   "'Show Disabled Devices'",
+        "st_no_voice_warning": "ไม่พบเสียงที่แปล (คำบรรยายทำงานอยู่) — หากเปิดเอนจินเบต้าอยู่ ให้ปิด หรือเริ่มเซสชันใหม่",
         "st_capture_lost": "การจับเสียงหยุดลง (อุปกรณ์อาจมีการเปลี่ยนแปลง) โปรดเริ่มเซสชันใหม่",
         "st_session_failed": "การเชื่อมต่อการแปลขาดหายและไม่สามารถกู้คืนได้ — เซสชันหยุดลง โปรดลองเริ่มใหม่",
         "st_quota_exceeded": "คุณใช้โควต้าหมดแล้ว — เซสชันหยุดลง อัปเกรดแพ็กเกจเพื่อใช้งานต่อ",

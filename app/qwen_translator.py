@@ -35,10 +35,13 @@ Hard-won rules baked in here — do not "improve" these without re-measuring:
 import base64
 import collections
 import json
+import logging
 import threading
 import time
 
 import numpy as np
+
+_log = logging.getLogger("voxis")
 
 from .base_translator import BaseTranslator, is_terminal_error
 from .config import QWEN_TRANSLATE_MODEL, QWEN_WORKSPACE
@@ -124,14 +127,21 @@ class SyncStager:
     PENDING_MAX_S = 12.0
     PENDING_KEEP_S = 4.0
 
-    def __init__(self, player):
+    def __init__(self, player, on_status=None):
         self._player = player
+        self._on_status = on_status
         self._pending: collections.deque[bytes] = collections.deque()
         self._pending_bytes = 0
         self._lock = threading.Lock()
         self.speed = 1.0
         self.skipped_s = 0.0
         self.sped_s = 0.0
+        # Player-feed fault telemetry: a persistently raising feed_tts_pcm16 would
+        # silently drop ALL translated audio (text keeps flowing) — the exact
+        # "subtitles but no voice" failure. Counted + surfaced once instead of
+        # swallowed, so a field report captures it.
+        self.feed_errors = 0
+        self._feed_err_warned = False
         self._run = True
         self._thread = threading.Thread(target=self._loop, daemon=True,
                                         name="qwen-stager")
@@ -188,7 +198,22 @@ class SyncStager:
                             data = (np.clip(y, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
                         player.feed_tts_pcm16(data)
                 except Exception:
-                    pass
+                    # A persistent feed fault here is exactly how the translated
+                    # voice goes missing while captions still flow. Count EVERY
+                    # occurrence (telemetry), but log the stack trace + surface the
+                    # status only ONCE — a sustained fault must not flood the log
+                    # with a fresh traceback on every 20 ms iteration.
+                    self.feed_errors += 1
+                    if not self._feed_err_warned:
+                        self._feed_err_warned = True
+                        _log.exception("qwen stager player-feed failed (#%d)", self.feed_errors)
+                        if self._on_status is not None:
+                            try:
+                                self._on_status(
+                                    "translator: audio playback fault — translated "
+                                    "voice may be silent")
+                            except Exception:
+                                pass
             time.sleep(0.02)
 
     def stop(self):
@@ -316,7 +341,7 @@ class QwenTranslator(BaseTranslator):
                     pcm = base64.b64decode(b64)
                     self.on_audio(pcm)
                     self._record_usage("out_sec", len(pcm) / (OUT_RATE * 2))
-                    self._mark_output()
+                    self._mark_audio_output()
             elif et in ("response.audio_transcript.text",
                         "response.audio_transcript.delta", "response.text.delta"):
                 txt = ev.get("text") or ev.get("delta")
@@ -324,7 +349,7 @@ class QwenTranslator(BaseTranslator):
                     inc = self._delta("_out_acc", txt)
                     if inc:
                         self.on_text("out", inc)
-                        self._mark_output()
+                        self._mark_text_output()
             elif et in ("response.audio_transcript.done", "response.text.done"):
                 # Fires once per event TYPE per response with identical text —
                 # dedupe by response id, flush any tail, reset the accumulator.
@@ -338,7 +363,7 @@ class QwenTranslator(BaseTranslator):
                     if inc.strip():
                         self.on_text("out", inc)
                 self._out_acc = ""
-                self._mark_output()
+                self._mark_text_output()
             elif ("input_audio_transcription" in et
                   or et.startswith("conversation.item.input")):
                 txt = (ev.get("transcript") or ev.get("text")
@@ -355,6 +380,12 @@ class QwenTranslator(BaseTranslator):
                 if self.clone != "off" and "voice" in msg.lower():
                     if not self._clone_err_warned:
                         self._clone_err_warned = True
+                        # Log the FULL DashScope error (voxis.log is local and
+                        # scrubbed before any report leaves the device) so the
+                        # rejected parameter survives — the 80-char status line
+                        # truncates InvalidParameter exactly where the reason is.
+                        _log.warning("qwen clone rejected (frequency=%s): %s",
+                                     self.clone, msg)
                         self.on_status(f"translator: clone voice hiccup ({msg[:80]})")
                     continue
                 raise RuntimeError(msg)

@@ -182,10 +182,10 @@ class LiveTranslator(BaseTranslator):
                         self.on_audio(part.inline_data.data)
                         # 24 kHz mono PCM16 → 48000 bytes/sec received.
                         self._record_usage("out_sec", len(part.inline_data.data) / 48000)
-                        self._mark_output()
+                        self._mark_audio_output()
                     if getattr(part, "text", None):
                         self.on_text("out", part.text)
-                        self._mark_output()
+                        self._mark_text_output()
             it = getattr(sc, "input_transcription", None)
             if it and it.text:
                 self.on_text("in", it.text)
@@ -193,4 +193,4 @@ class LiveTranslator(BaseTranslator):
             ot = getattr(sc, "output_transcription", None)
             if ot and ot.text:
                 self.on_text("out", ot.text)
-                self._mark_output()
+                self._mark_text_output()

@@ -100,6 +100,10 @@ class BaseTranslator(threading.Thread):
     # on RECENT input so a genuine quiet stretch can never trip it.
     NO_OUTPUT_WARN_SECONDS = 12.0
     INPUT_RECENT_SECONDS = 4.0
+    # Voice watchdog: translated TEXT is flowing but NO translated AUDIO for this
+    # long — the user sees subtitles with no voice (a text-only engine tier, or a
+    # broken audio leg). Distinct from NO_OUTPUT above, which needs BOTH absent.
+    NO_AUDIO_WARN_SECONDS = 8.0
     # Hard rotation deadline (per engine's session ceiling) and the usage
     # accounting divisor (bytes/sec of the engine's INPUT sample rate).
     HARD_ROTATE_SECONDS = 14.5 * 60
@@ -139,6 +143,11 @@ class BaseTranslator(threading.Thread):
         self._last_input_ts = 0.0
         self._last_output_ts = 0.0
         self._no_output_warned = False
+        # Voice watchdog state: audio vs text output tracked separately so
+        # "captions flowing, no voice" is distinguishable from "no output at all".
+        self._last_audio_ts = 0.0
+        self._last_text_ts = 0.0
+        self._no_audio_warned = False
         # When the current session became live (None until ready), so the
         # error/exit paths can tell a connect failure from a dropped session.
         self._session_started: float | None = None
@@ -211,11 +220,28 @@ class BaseTranslator(threading.Thread):
     def _mark_output(self):
         self._last_output_ts = time.monotonic()
 
+    def _mark_audio_output(self):
+        """Translated AUDIO frame delivered to the sink. Also counts as generic
+        output (keeps the no-output watchdog satisfied)."""
+        now = time.monotonic()
+        self._last_audio_ts = now
+        self._last_output_ts = now
+
+    def _mark_text_output(self):
+        """Translated TEXT (caption) delivered. Generic output too — but tracked
+        apart from audio so the voice watchdog can spot text-without-voice."""
+        now = time.monotonic()
+        self._last_text_ts = now
+        self._last_output_ts = now
+
     def _reset_watchdogs(self):
         self._sent_since_recv = 0.0
         self._last_input_ts = 0.0
         self._last_output_ts = 0.0
         self._no_output_warned = False
+        self._last_audio_ts = 0.0
+        self._last_text_ts = 0.0
+        self._no_audio_warned = False
 
     # --- subclass hooks (defaults) ------------------------------------------
     def _session_cm(self):
@@ -461,6 +487,17 @@ class BaseTranslator(threading.Thread):
                     if now - last_out >= self.NO_OUTPUT_WARN_SECONDS:
                         self._no_output_warned = True
                         self.on_status(t("st_no_output_warning"))
+            # Voice watchdog: translated TEXT is flowing (recently) but translated
+            # AUDIO is absent — subtitles with no voice. Gated on recent text so a
+            # normal end-of-speech (audio + text stop together) never trips it, and
+            # on a minimum session age so the first utterance's lag doesn't.
+            if (self._last_text_ts > 0.0 and not self._no_audio_warned
+                    and now - self._last_text_ts <= self.INPUT_RECENT_SECONDS
+                    and now - started >= self.NO_AUDIO_WARN_SECONDS):
+                if (self._last_audio_ts == 0.0
+                        or now - self._last_audio_ts >= self.NO_AUDIO_WARN_SECONDS):
+                    self._no_audio_warned = True
+                    self.on_status(t("st_no_voice_warning"))
             try:
                 item = await asyncio.wait_for(self._queue.get(), timeout=0.5)
             except asyncio.TimeoutError:

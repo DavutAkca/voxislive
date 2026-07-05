@@ -319,7 +319,7 @@ class IncomingPipeline:
         self._stager = None
         if self._engine == ENGINE_QWEN:
             from .qwen_translator import SyncStager  # noqa: PLC0415
-            self._stager = SyncStager(self.player)
+            self._stager = SyncStager(self.player, on_status=on_status)
 
         def _tts_sink(data: bytes):
             # Gate the first-audio metric on AUDIBLE output: an initial near-silent
