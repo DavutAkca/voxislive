@@ -94,3 +94,9 @@ sandbox-openai-realtime/
 
 # --- Throwaway experiment: Qwen LiveTranslate realtime sandbox (never ship) ---
 sandbox-qwen-livetranslate/
+
+# --- Private brand asset kit (icons, favicons, lockups, OG/social) — moved in from Desktop 2026-07-05 ---
+brand-set/
+
+# --- Private working notes (outreach, responses, pricing plans) — moved in from Desktop 2026-07-05 ---
+notes/
