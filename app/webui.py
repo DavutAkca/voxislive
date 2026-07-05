@@ -134,6 +134,11 @@ class Bridge:
         self._cur_src, self._last_src = "", ""
         self._last_src_t = 0.0
         self._session_file = None
+        # Path of the transcript auto-saved by the most recent stop(). Unlike
+        # _session_file it SURVIVES the stop-time buffer clear, so a user who
+        # presses Stop and then clicks "Save transcript" gets the already-saved
+        # file back instead of a confusing "nothing to save".
+        self._last_saved_file = None
         # Structured, timestamped turn log for JSON persistence + caption export.
         # Each entry: {"t": offset_s, "dir": "out", "src": str, "text": str}.
         # Parallel to self._lines (kept for the plain-text path); reset per session.
@@ -1164,6 +1169,9 @@ class Bridge:
                 # Per-target engine+key+model resolver (SaaS=server-routed,
                 # dev=local). Built once; each pipeline calls it for its target.
                 self.controller.resolve = self._build_engine_resolver()
+                # Fresh session: drop the previous stop's auto-saved file so a
+                # post-stop Save on the NEW session can't re-surface a stale one.
+                self._last_saved_file = None
                 self.controller.start(mode)
                 self._badge = (t("badge_active", mode=self._mode_name(mode)), "#34d399", "on")
             except Exception as e:
@@ -1203,7 +1211,10 @@ class Bridge:
         # session (capture + billing) the user just stopped.
         self._restart_token += 1
         with self._lifecycle:
-            self.save_txt(silent=True)
+            # Auto-save the session on stop so the transcript is never lost.
+            # Saved silently here (avoids a status race with the teardown below);
+            # the path + open/reveal actions are surfaced once, after teardown.
+            saved = self.save_txt(silent=True)
             self.controller.stop()
             self._overlay_text = ""
             self._badge = (t("badge_idle"), "#8593a6", "")
@@ -1217,6 +1228,14 @@ class Bridge:
                 self._session_file = None
                 self._lines, self._cur_line = [], ""
                 self._cur_src, self._last_src = "", ""
+        # Tell the user where the auto-saved transcript went and offer open/reveal
+        # actions, so pressing Stop confirms the save instead of leaving them to
+        # click "Save transcript" and hit "nothing to save". Remember the path so
+        # a post-stop Save button click can re-surface it (see save_txt).
+        if isinstance(saved, dict) and saved.get("ok"):
+            self._last_saved_file = saved["path"]
+            self._emit_status(t("saved_to", path=saved["path"]))
+            self._put_event(("saved", saved["file"]))
 
     def _flush_turns(self):
         """Fold the in-progress turn into the structured log so a session that is
@@ -1258,6 +1277,15 @@ class Bridge:
         from it) or False on nothing-to-save / write failure."""
         self._flush_turns()
         if not self._turns:
+            # Nothing new in the buffer. But if this session was already
+            # auto-saved on stop, re-surface that file (path + open/reveal) so a
+            # post-stop "Save transcript" click confirms the save instead of
+            # claiming there is nothing to save.
+            if self._last_saved_file and os.path.exists(self._last_saved_file):
+                if not silent:
+                    self._emit_status(t("saved_to", path=self._last_saved_file))
+                return {"ok": True, "path": self._last_saved_file,
+                        "file": os.path.basename(self._last_saved_file)}
             if not silent:
                 self._emit_status(t("no_transcript"))
             return False
