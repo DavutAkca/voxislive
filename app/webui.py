@@ -284,6 +284,10 @@ class Bridge:
         self._last_error_code = "st_quota_exceeded"
         self._emit_status(t("st_quota_exceeded"), "warn")
         self._put_event(("quota_refresh", None))
+        # Raise the in-app paywall card at the mid-session cutoff (the highest-
+        # intent moment) instead of a silent stop. JS reads the live QUOTA global
+        # for the number; this only fires once per session (guarded upstream).
+        self._put_event(("quota_wall", None))
         self.stop()
 
     def _on_session_failed(self):

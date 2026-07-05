@@ -518,6 +518,17 @@ body.resizing,body.resizing *{user-select:none!important}
 .modal .mhead .micon{width:38px;height:38px;flex:none;border-radius:var(--r-ctl);display:grid;place-items:center;
   background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
 .modal .mhead h2{font-size:17px;font-weight:700;letter-spacing:-.02em}
+/* free-limit paywall card — amber, the brand's one upsell accent */
+#limit-modal .micon{background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber);border-color:color-mix(in srgb,var(--amber) 30%,transparent)}
+#limit-modal .btn-primary{background:var(--amber);border-color:var(--amber);color:#131518}
+#limit-modal .btn-primary:hover{filter:brightness(1.06)}
+.limit-stat{font-size:13px;color:var(--text-2);margin:0 0 8px}
+.limit-stat b{font-family:var(--mono);color:var(--text);font-size:15px}
+.quota-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:58;
+  background:var(--surface-2);border:1px solid color-mix(in srgb,var(--amber) 55%,var(--border-strong));
+  color:var(--text);padding:9px 15px;border-radius:10px;font-size:12.5px;box-shadow:var(--shadow-float);
+  display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px)}
+.quota-toast::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--amber);flex:none}
 .modal .mbody{padding:14px 24px 4px;font-size:13px;line-height:1.6;color:var(--text-2)}
 .modal .mbody p{margin-bottom:12px}
 .modal .mbody p:last-child{margin-bottom:0}
@@ -1003,6 +1014,26 @@ body.resizing,body.resizing *{user-select:none!important}
   </div>
 </div>
 
+<!-- ============ FREE-LIMIT PAYWALL CARD ============ -->
+<div class="modal limitmodal" id="limit-modal" role="dialog" aria-modal="true" aria-labelledby="limit-title" aria-describedby="limit-body">
+  <div class="mhead">
+    <span class="micon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></span>
+    <h2 id="limit-title" data-i18n="limit_title">Ücretsiz dakikaların doldu</h2>
+  </div>
+  <div class="mbody" id="limit-body">
+    <p class="limit-stat"><b id="limit-min">10</b> <span data-i18n="limit_stat_suffix">ücretsiz dakika kullanıldı</span></p>
+    <p data-i18n="limit_body">Kaldığın yerden devam etmek için dakika paketi al — dakikalar hesabına eklenir ve süresi asla dolmaz. Abonelik yok.</p>
+  </div>
+  <div class="mfoot">
+    <button class="btn btn-ghost" id="limit-dismiss" style="width:auto" data-i18n="limit_dismiss">Şimdilik kapat</button>
+    <span class="spacer"></span>
+    <button class="btn btn-primary" id="limit-cta" style="width:auto" data-i18n="limit_cta">Dakika al &rarr;</button>
+  </div>
+</div>
+
+<!-- soft ~80% warning (non-blocking, auto-dismiss) -->
+<div id="quota-toast" class="quota-toast" style="display:none" role="status" aria-live="polite"></div>
+
 <!-- ============ REPORT A PROBLEM ============ -->
 <div class="modal reportmodal" id="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-title">
   <div class="mhead">
@@ -1228,6 +1259,12 @@ const I18N = {
     save:"Kaydet", logout:"Çıkış", manage_plan:"Planı yönet", source:"Kaynak",
     quota_gate_msg:"Aylık çeviri kotanız doldu. Yeni oturum başlatmak için lisansınızı yükseltin.",
     upgrade_plan:"Planı yükselt →",
+    limit_title:"Bu ayki ücretsiz dakikaların doldu",
+    limit_stat_suffix:"ücretsiz dakika kullanıldı",
+    limit_body:"Ücretsiz dakikaların gelecek ay yenilenir. Beklemeden devam etmek için dakika paketi al — dakikalar hesabına eklenir ve süresi asla dolmaz.",
+    limit_cta:"Dakika al →",
+    limit_dismiss:"Şimdilik kapat",
+    limit_warn_prefix:"Ücretsiz çevirine ~",
     title_theme:"Tema değiştir", title_settings:"Ayarlar", title_min:"Simge durumuna küçült",
     title_max:"Büyüt", title_restore:"Eski boyut", title_close:"Kapat",
     err_need_credentials:"E-posta ve şifre gerekli.", err_login_failed:"Giriş başarısız. Bilgilerinizi kontrol edin.",
@@ -1249,7 +1286,7 @@ const I18N = {
     consent_p2:"Sesin kaydedilmesi veya çevirisi, bulunduğunuz yerde tüm katılımcıların rızasını gerektirebilir. Başlatmadan önce yürürlükteki yasalara ve toplantı kurallarına uyduğunuzdan emin olun.",
     consent_dontshow:"Bir daha gösterme", consent_cancel:"Vazgeç", consent_accept:"Anladım, başlat",
     onboard_title:"Voxis'e hoş geldiniz",
-    onboard_video:"Sistem sesini tek yönlü olarak kendi dilinize canlı çevirir.",
+    onboard_video:"Sistem sesini tek yönlü canlı çevirir — kurulum ya da kablo gerekmez, hemen başlayın. Çevirinin tekrar çevrilmemesi için kulaklık kullanmanız önerilir.",
     onboard_meeting:"İki yönlü: karşıyı dinler, konuşmanızı sanal mikrofon ile karşıya iletir.",
     onboard_routing:"Çevirinin uygulamalara ulaşması için ses yönlendirmesi gerekir. Toplantı modu, çevirinizi karşıya iletmek için bir sanal mikrofon kullanır.",
     onboard_done:"Başlayalım",
@@ -1327,6 +1364,12 @@ const I18N = {
     save:"Save", logout:"Log out", manage_plan:"Manage plan", source:"Source",
     quota_gate_msg:"Your monthly translation quota is used up. Upgrade your license to start a new session.",
     upgrade_plan:"Upgrade plan →",
+    limit_title:"You've used this month's free minutes",
+    limit_stat_suffix:"free minutes used",
+    limit_body:"Your free minutes renew next month. To keep going now, add a minute pack — minutes are added to your account and never expire.",
+    limit_cta:"Get more minutes →",
+    limit_dismiss:"Not now",
+    limit_warn_prefix:"Heads up — about ",
     title_theme:"Toggle theme", title_settings:"Settings", title_min:"Minimize",
     title_max:"Maximize", title_restore:"Restore", title_close:"Close",
     err_need_credentials:"Email and password are required.", err_login_failed:"Login failed. Check your details.",
@@ -1348,7 +1391,7 @@ const I18N = {
     consent_p2:"Recording or translating audio may require the consent of all participants where you are. Make sure you comply with applicable laws and meeting rules before starting.",
     consent_dontshow:"Don't show again", consent_cancel:"Cancel", consent_accept:"Got it, start",
     onboard_title:"Welcome to Voxis",
-    onboard_video:"Translates system audio one-way into your language, live.",
+    onboard_video:"Translates system audio one-way into your language, live — no setup or cable needed, just click and go. Headphones are recommended so the translation doesn't loop back and get re-translated.",
     onboard_meeting:"Two-way: listens to the other party and sends your speech back through a virtual microphone.",
     onboard_routing:"Audio routing is required for the translation to reach apps. Meeting mode uses a virtual microphone to deliver your translation to the other side.",
     onboard_done:"Let's go",
@@ -1447,7 +1490,7 @@ const I18N = {
     consent_p2:"Das Aufzeichnen oder Übersetzen von Audio kann die Einwilligung aller Teilnehmer erfordern. Stelle sicher, dass du die geltenden Gesetze und Meeting-Regeln einhältst.",
     consent_dontshow:"Nicht mehr anzeigen", consent_cancel:"Abbrechen", consent_accept:"Verstanden, starten",
     onboard_title:"Willkommen bei Voxis",
-    onboard_video:"Übersetzt Systemton einwegig live in deine Sprache.",
+    onboard_video:"Übersetzt Systemton einwegig live in deine Sprache — keine Einrichtung oder Kabel nötig, einfach loslegen. Kopfhörer werden empfohlen, damit die Übersetzung nicht zurückgeschleift und erneut übersetzt wird.",
     onboard_meeting:"Zweiwegig: hört der anderen Partei zu und sendet deine Sprache über ein virtuelles Mikrofon zurück.",
     onboard_routing:"Audiorouting ist erforderlich, damit die Übersetzung Apps erreicht. Der Meeting-Modus verwendet ein virtuelles Mikrofon.",
     onboard_done:"Los geht's",
@@ -1532,7 +1575,7 @@ const I18N = {
     consent_p2:"Enregistrer ou traduire de l'audio peut nécessiter le consentement de tous les participants. Assurez-vous de respecter les lois applicables et les règles de réunion.",
     consent_dontshow:"Ne plus afficher", consent_cancel:"Annuler", consent_accept:"Compris, démarrer",
     onboard_title:"Bienvenue sur Voxis",
-    onboard_video:"Traduit l'audio système en sens unique dans votre langue, en direct.",
+    onboard_video:"Traduit l'audio système en sens unique dans votre langue, en direct — aucune installation ni câble nécessaire, il suffit de cliquer. Le casque est recommandé pour éviter que la traduction ne soit renvoyée et retraduite.",
     onboard_meeting:"Bidirectionnel : écoute l'autre partie et envoie votre parole via un microphone virtuel.",
     onboard_routing:"Le routage audio est nécessaire pour que la traduction atteigne les applications. Le mode réunion utilise un microphone virtuel.",
     onboard_done:"C'est parti",
@@ -1617,7 +1660,7 @@ const I18N = {
     consent_p2:"Grabar o traducir audio puede requerir el consentimiento de todos los participantes. Asegúrate de cumplir con las leyes aplicables y las normas de la reunión.",
     consent_dontshow:"No mostrar de nuevo", consent_cancel:"Cancelar", consent_accept:"Entendido, iniciar",
     onboard_title:"Bienvenido a Voxis",
-    onboard_video:"Traduce el audio del sistema en un solo sentido a tu idioma, en vivo.",
+    onboard_video:"Traduce el audio del sistema en un solo sentido a tu idioma, en vivo — no necesita instalación ni cable, solo haz clic. Se recomienda usar auriculares para que la traducción no vuelva a traducirse.",
     onboard_meeting:"Bidireccional: escucha a la otra parte y envía tu voz de vuelta a través de un micrófono virtual.",
     onboard_routing:"Se requiere enrutamiento de audio para que la traducción llegue a las aplicaciones. El modo reunión usa un micrófono virtual.",
     onboard_done:"Vamos",
@@ -1702,7 +1745,7 @@ const I18N = {
     consent_p2:"Gravar ou traduzir áudio pode exigir o consentimento de todos os participantes. Certifique-se de cumprir as leis aplicáveis e as regras da reunião.",
     consent_dontshow:"Não mostrar novamente", consent_cancel:"Cancelar", consent_accept:"Entendido, iniciar",
     onboard_title:"Bem-vindo ao Voxis",
-    onboard_video:"Traduz o áudio do sistema em um único sentido para o seu idioma, ao vivo.",
+    onboard_video:"Traduz o áudio do sistema em um único sentido para o seu idioma, ao vivo — sem instalação nem cabo, é só clicar. Recomendamos usar fones de ouvido para que a tradução não seja retraduzida.",
     onboard_meeting:"Bidirecional: ouve a outra parte e envia sua fala de volta através de um microfone virtual.",
     onboard_routing:"O roteamento de áudio é necessário para que a tradução chegue aos aplicativos. O modo reunião usa um microfone virtual.",
     onboard_done:"Vamos lá",
@@ -1787,7 +1830,7 @@ const I18N = {
     consent_p2:"音声の録音または翻訳には、参加者全員の同意が必要な場合があります。開始前に適用される法律と会議ルールを確認してください。",
     consent_dontshow:"今後表示しない", consent_cancel:"キャンセル", consent_accept:"了解、開始",
     onboard_title:"Voxisへようこそ",
-    onboard_video:"システム音声をリアルタイムであなたの言語に一方向翻訳します。",
+    onboard_video:"システム音声をリアルタイムであなたの言語に一方向翻訳します — セットアップやケーブルは不要、クリックするだけです。翻訳が再度翻訳されないよう、ヘッドホンの使用をおすすめします。",
     onboard_meeting:"双方向：相手の音声を聞き、仮想マイクを通じてあなたの音声を相手に送信します。",
     onboard_routing:"翻訳をアプリに届けるにはオーディオルーティングが必要です。ミーティングモードは仮想マイクを使用します。",
     onboard_done:"始めましょう",
@@ -1872,7 +1915,7 @@ const I18N = {
     consent_p2:"오디오 녹음 또는 번역은 모든 참가자의 동의가 필요할 수 있습니다. 시작 전에 관련 법률과 회의 규칙을 준수하는지 확인하세요.",
     consent_dontshow:"다시 표시 안 함", consent_cancel:"취소", consent_accept:"알겠습니다, 시작",
     onboard_title:"Voxis에 오신 것을 환영합니다",
-    onboard_video:"시스템 오디오를 실시간으로 당신의 언어로 단방향 번역합니다.",
+    onboard_video:"시스템 오디오를 실시간으로 당신의 언어로 단방향 번역합니다 — 설정이나 케이블이 필요 없이 바로 클릭하면 됩니다. 번역이 다시 번역되지 않도록 헤드폰 사용을 권장합니다.",
     onboard_meeting:"양방향: 상대방 음성을 듣고 가상 마이크를 통해 당신의 음성을 상대방에게 전달합니다.",
     onboard_routing:"번역이 앱에 도달하려면 오디오 라우팅이 필요합니다. 미팅 모드는 가상 마이크를 사용합니다.",
     onboard_done:"시작하기",
@@ -1957,7 +2000,7 @@ const I18N = {
     consent_p2:"Запись или перевод аудио может требовать согласия всех участников. Убедитесь в соблюдении применимых законов и правил встречи.",
     consent_dontshow:"Больше не показывать", consent_cancel:"Отмена", consent_accept:"Понятно, начать",
     onboard_title:"Добро пожаловать в Voxis",
-    onboard_video:"Переводит системный звук в одностороннем режиме на ваш язык в реальном времени.",
+    onboard_video:"Переводит системный звук в одностороннем режиме на ваш язык в реальном времени — не требует настройки или кабеля, просто нажмите и начните. Рекомендуется использовать наушники, чтобы перевод не переводился повторно.",
     onboard_meeting:"Двусторонний: слушает другую сторону и передаёт вашу речь обратно через виртуальный микрофон.",
     onboard_routing:"Для передачи перевода приложениям требуется маршрутизация аудио. Режим встречи использует виртуальный микрофон.",
     onboard_done:"Поехали",
@@ -2042,7 +2085,7 @@ const I18N = {
     consent_p2:"录制或翻译音频可能需要所有参与者的同意。开始前请确保您遵守适用的法律和会议规则。",
     consent_dontshow:"不再显示", consent_cancel:"取消", consent_accept:"明白，开始",
     onboard_title:"欢迎使用 Voxis",
-    onboard_video:"将系统音频实时单向翻译成您的语言。",
+    onboard_video:"将系统音频实时单向翻译成您的语言 — 无需设置或线缆，点击即可开始。建议使用耳机，以避免翻译被再次翻译。",
     onboard_meeting:"双向：收听对方并通过虚拟麦克风将您的语音发送回去。",
     onboard_routing:"翻译需要音频路由才能到达应用程序。会议模式使用虚拟麦克风。",
     onboard_done:"开始吧",
@@ -2127,7 +2170,7 @@ const I18N = {
     consent_p2:"Nagrywanie lub tłumaczenie dźwięku może wymagać zgody wszystkich uczestników. Upewnij się, że przestrzegasz obowiązujących przepisów i zasad spotkania.",
     consent_dontshow:"Nie pokazuj ponownie", consent_cancel:"Anuluj", consent_accept:"Rozumiem, zaczynam",
     onboard_title:"Witaj w Voxis",
-    onboard_video:"Tłumaczy dźwięk systemowy jednostronnie na Twój język, na żywo.",
+    onboard_video:"Tłumaczy dźwięk systemowy jednostronnie na Twój język, na żywo — bez konfiguracji i kabla, wystarczy kliknąć. Zaleca się słuchawki, aby tłumaczenie nie zostało ponownie przetłumaczone.",
     onboard_meeting:"Dwukierunkowy: słucha drugiej strony i przesyła Twoją mowę z powrotem przez wirtualny mikrofon.",
     onboard_routing:"Routing audio jest wymagany, aby tłumaczenie dotarło do aplikacji. Tryb spotkania używa wirtualnego mikrofonu.",
     onboard_done:"Zaczynajmy",
@@ -2212,7 +2255,7 @@ const I18N = {
     consent_p2:"Registrare o tradurre audio potrebbe richiedere il consenso di tutti i partecipanti. Assicurati di rispettare le leggi vigenti e le regole della riunione.",
     consent_dontshow:"Non mostrare più", consent_cancel:"Annulla", consent_accept:"Capito, inizia",
     onboard_title:"Benvenuto in Voxis",
-    onboard_video:"Traduce l'audio di sistema in modo unidirezionale nella tua lingua, in tempo reale.",
+    onboard_video:"Traduce l'audio di sistema in modo unidirezionale nella tua lingua, in tempo reale — nessuna configurazione o cavo necessario, basta un clic. Si consiglia l'uso delle cuffie per evitare che la traduzione venga ritradotta.",
     onboard_meeting:"Bidirezionale: ascolta l'altra parte e invia la tua voce tramite un microfono virtuale.",
     onboard_routing:"Il routing audio è necessario affinché la traduzione raggiunga le app. La modalità riunione usa un microfono virtuale.",
     onboard_done:"Iniziamo",
@@ -2297,7 +2340,7 @@ const I18N = {
     consent_p2:"Merekam atau menerjemahkan audio mungkin memerlukan persetujuan semua peserta. Pastikan Anda mematuhi hukum yang berlaku dan aturan rapat.",
     consent_dontshow:"Jangan tampilkan lagi", consent_cancel:"Batal", consent_accept:"Mengerti, mulai",
     onboard_title:"Selamat datang di Voxis",
-    onboard_video:"Menerjemahkan audio sistem satu arah ke bahasa Anda, secara langsung.",
+    onboard_video:"Menerjemahkan audio sistem satu arah ke bahasa Anda, secara langsung — tanpa perlu pengaturan atau kabel, cukup klik. Disarankan menggunakan headphone agar terjemahan tidak diterjemahkan ulang.",
     onboard_meeting:"Dua arah: mendengarkan pihak lain dan mengirim ucapan Anda kembali melalui mikrofon virtual.",
     onboard_routing:"Perutean audio diperlukan agar terjemahan sampai ke aplikasi. Mode rapat menggunakan mikrofon virtual.",
     onboard_done:"Ayo mulai",
@@ -2382,7 +2425,7 @@ const I18N = {
     consent_p2:"Het opnemen of vertalen van audio kan de toestemming van alle deelnemers vereisen. Zorg dat je voldoet aan de geldende wet- en regelgeving.",
     consent_dontshow:"Niet meer tonen", consent_cancel:"Annuleren", consent_accept:"Begrepen, starten",
     onboard_title:"Welkom bij Voxis",
-    onboard_video:"Vertaalt systeemaudio eenrichting live naar jouw taal.",
+    onboard_video:"Vertaalt systeemaudio eenrichting live naar jouw taal — geen installatie of kabel nodig, gewoon klikken. Een koptelefoon wordt aanbevolen zodat de vertaling niet opnieuw wordt vertaald.",
     onboard_meeting:"Tweerichtings: luistert naar de andere partij en stuurt je spraak terug via een virtuele microfoon.",
     onboard_routing:"Audio-routing is vereist om de vertaling naar apps te sturen. Vergadermodus gebruikt een virtuele microfoon.",
     onboard_done:"Aan de slag",
@@ -2467,7 +2510,7 @@ const I18N = {
     consent_p2:"Việc ghi âm hoặc dịch âm thanh có thể yêu cầu sự đồng ý của tất cả người tham gia. Đảm bảo bạn tuân thủ các luật hiện hành và quy tắc cuộc họp.",
     consent_dontshow:"Không hiển thị lại", consent_cancel:"Hủy", consent_accept:"Đã hiểu, bắt đầu",
     onboard_title:"Chào mừng đến với Voxis",
-    onboard_video:"Dịch âm thanh hệ thống một chiều sang ngôn ngữ của bạn, trực tiếp.",
+    onboard_video:"Dịch âm thanh hệ thống một chiều sang ngôn ngữ của bạn, trực tiếp — không cần cài đặt hay cáp, chỉ cần nhấp là xong. Nên dùng tai nghe để bản dịch không bị dịch lại.",
     onboard_meeting:"Hai chiều: nghe bên kia và gửi giọng nói của bạn trở lại qua micrô ảo.",
     onboard_routing:"Cần định tuyến âm thanh để bản dịch đến được các ứng dụng. Chế độ họp sử dụng micrô ảo.",
     onboard_done:"Bắt đầu thôi",
@@ -2552,7 +2595,7 @@ const I18N = {
     consent_p2:"การบันทึกหรือแปลเสียงอาจต้องได้รับความยินยอมจากผู้เข้าร่วมทุกคน ตรวจสอบให้แน่ใจว่าคุณปฏิบัติตามกฎหมายและกฎการประชุมที่บังคับใช้",
     consent_dontshow:"ไม่ต้องแสดงอีก", consent_cancel:"ยกเลิก", consent_accept:"เข้าใจแล้ว เริ่มเลย",
     onboard_title:"ยินดีต้อนรับสู่ Voxis",
-    onboard_video:"แปลเสียงระบบแบบทิศทางเดียวเป็นภาษาของคุณแบบสด",
+    onboard_video:"แปลเสียงระบบแบบทิศทางเดียวเป็นภาษาของคุณแบบสด — ไม่ต้องตั้งค่าหรือใช้สายเคเบิล แค่คลิกก็เริ่มได้ทันที แนะนำให้ใช้หูฟังเพื่อไม่ให้คำแปลถูกแปลซ้ำ",
     onboard_meeting:"สองทิศทาง: ฟังอีกฝ่ายและส่งเสียงพูดของคุณกลับผ่านไมโครโฟนเสมือน",
     onboard_routing:"ต้องมีการกำหนดเส้นทางเสียงเพื่อให้การแปลไปถึงแอป โหมดประชุมใช้ไมโครโฟนเสมือน",
     onboard_done:"ไปเลย",
@@ -2755,7 +2798,10 @@ async function doLogin(){
 $('#login-btn').onclick = doLogin;
 $('#login-pw').onkeydown  = e => { if(e.key==='Enter') doLogin(); };
 $('#terms-link').onclick  = e => { e.preventDefault(); try{api().open_url('https://voxislive.com');}catch(_){} };
-$('#quota-upgrade-link').onclick = e => { e.preventDefault(); try{api().open_url('https://voxislive.com/pricing');}catch(_){} };
+const PACKS_URL='https://voxislive.com/account?panel=billing';  // ?panel survives the login bounce (auth.js drops #hash)
+$('#quota-upgrade-link').onclick = e => { e.preventDefault(); try{api().open_url(PACKS_URL);}catch(_){} };
+$('#limit-cta').onclick = () => { try{api().open_url(PACKS_URL);}catch(_){} };
+$('#limit-dismiss').onclick = e => { e.preventDefault(); closeLimitModal(); };
 
 // Login-only card: build the create-account / forgot links (sign-up & reset
 // run on the website, opened in the system browser). TR/EN per LANG.
@@ -2849,7 +2895,22 @@ function rejectQuota(tile){
   if(tile){ tile.classList.remove('denypulse'); void tile.offsetWidth; tile.classList.add('denypulse'); }
 }
 async function refreshQuotaAfterSession(){
-  try{ const q = await api().voxis_quota(); if(q){ QUOTA=q; renderQuotaBadge(q); applyQuotaGate(q); } } catch(e){}
+  try{ const q = await api().voxis_quota(); if(q){ QUOTA=q; renderQuotaBadge(q); applyQuotaGate(q); checkQuotaSoftWarn(q); } } catch(e){}
+}
+// Soft ~80% warning: a non-blocking, auto-dismissing toast fired once per live
+// session (pure JS from the 6s-refreshed QUOTA; never touches the transcript).
+function checkQuotaSoftWarn(q){
+  if(!SESSION_LIVE || !q || q.unlimited) return;
+  const allowed = q.allowed_minutes || 0;
+  const rem = q.remaining ?? Math.max(0, allowed - (q.used_minutes||0));
+  const pct = allowed>0 ? (allowed-rem)/allowed : 0;
+  if(pct>=0.8 && rem>0 && !warn80Shown){
+    warn80Shown=true;
+    const el=$('#quota-toast'); if(!el) return;
+    el.textContent = T('limit_warn_prefix') + Math.round(rem) + T('min_left');
+    el.style.display='flex';
+    clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.display='none'; }, 6500);
+  }
 }
 
 /* ---------- init ---------- */
@@ -3145,6 +3206,17 @@ $('#scrim').onclick = ()=>{ if(modalOnEsc) modalOnEsc(); else closeDrawer(); };
 /* ---------- consent + onboarding modals ---------- */
 function openConsent(){ $('#scrim').classList.add('open'); $('#consent-modal').classList.add('open'); openModal($('#consent-modal'), closeConsent, $('#m-meeting')); }
 function closeConsent(){ $('#consent-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
+
+// Free-limit paywall card (SaaS only — OSS builds never hit a server quota wall).
+let SESSION_LIVE=false, limitShown=false, warn80Shown=false;
+function openLimitModal(){ $('#scrim').classList.add('open'); $('#limit-modal').classList.add('open'); openModal($('#limit-modal'), closeLimitModal, null); }
+function closeLimitModal(){ $('#limit-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
+function showPaywallCard(){
+  if(limitShown) return; limitShown=true;   // once per session; re-armed on session start
+  const cap = (QUOTA && QUOTA.allowed_minutes) ? Math.round(QUOTA.allowed_minutes) : 15;
+  const el=$('#limit-min'); if(el) el.textContent=String(cap);
+  openLimitModal();
+}
 $('#consent-cancel').onclick = closeConsent;
 $('#consent-accept').onclick = async()=>{
   if($('#consent-dontshow').checked){
@@ -3157,14 +3229,13 @@ $('#consent-accept').onclick = async()=>{
   api().start('meeting', true);
 };
 // Each step points the spotlight at a real element (sel); sel:null = a centered
-// welcome/closing step (full dim, no ring). cable:true adds the VB-CABLE note.
+// welcome/closing step (full dim, no ring). Kept to 3 steps so a new user reaches
+// "Get started" in seconds. The VB-CABLE note is intentionally NOT here — it only
+// makes sense once the user actually opens Meeting, where openCable() shows it;
+// surfacing it earlier scared people off the (cable-free) driverless video path.
 const TOUR_STEPS = [
   {sel:null,         titleKey:'onboard_title',  textKey:'onboard_welcome'},
   {sel:'#m-video',   titleKey:'video_t1',       textKey:'onboard_video'},
-  {sel:'#m-meeting', titleKey:'meeting_t1',     textKey:'onboard_meeting', cable:true},
-  {sel:'.langgroup', titleKey:'tour_lang_t',    textKey:'tour_lang_d'},
-  {sel:'#profile',   titleKey:'tour_profile_t', textKey:'tour_profile_d'},
-  {sel:'#out',       titleKey:'tour_audio_t',   textKey:'tour_audio_d'},
   {sel:null,         titleKey:'tour_ready_t',   textKey:'tour_ready_d'},
 ];
 let onboardStep=0;
@@ -3634,10 +3705,13 @@ async function poll(){
       else if(ev[0]==='trans'){ onTrans(ev[1], ev[2]); }
       else if(ev[0]==='src'){ onSrc(ev[1]); }
       else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
+      else if(ev[0]==='quota_wall'){ showPaywallCard(); }
     });
     $('#badge').textContent = p.badge.text;
     setPillState(p);
     const liveSession = !!p.mode;
+    if(liveSession && !SESSION_LIVE){ limitShown=false; warn80Shown=false; }  // new session → re-arm paywall + toast
+    SESSION_LIVE = liveSession;
     targetLevel = p.level || 0;
     $('#vad').classList.toggle('live', liveSession);
     const vadLabel = p.vad ? T('vad_speaking') : (p.mode ? T('vad_silent') : T('waiting_signal'));
