@@ -105,49 +105,93 @@ class SileroVAD:
 class SpeechGate:
     """Translates per-frame VAD probabilities into send/drop decisions.
 
-    - min_speech_ms: speech must persist this long before the gate opens (rejects short transients).
-    - preroll_ms: when opening, a buffer of previous frames is emitted so the first word is not cut.
-    - hangover_ms: gate stays open this long after speech stops so brief pauses do not close it.
+    Mirrors Silero's reference state machine (VADIterator / get_speech_timestamps)
+    rather than a bespoke one, because the bespoke onset logic misfired on
+    consonant-dense languages:
+
+    - threshold / neg_threshold: HYSTERESIS. Speech is triggered on a single frame
+      >= threshold; it is only released below neg_threshold (= threshold - 0.15 by
+      default, per Silero). A single threshold for both open and close chops
+      naturally-modulating speech into "silence" mid-utterance.
+    - min_speech_ms: an onset must accumulate this much *cumulative* (NOT
+      consecutive) above-threshold speech before the gate commits — rejects short
+      clicks/transients without demanding an unbroken voiced run. The earlier
+      "N consecutive frames, reset on any dip" rule meant that Czech (frequent
+      unvoiced fricatives/stops dip the VAD probability every ~100 ms) rarely
+      reached the consecutive count, so the gate never opened and entire spoken
+      stretches were emitted as silence. English, with longer voiced runs, hid it.
+    - preroll_ms: on commit, a buffer of previous frames is emitted so the first
+      word is not cut (past audio — zero forward latency).
+    - hangover_ms: frames below neg_threshold must persist this long before the
+      gate closes, so brief intra-sentence pauses do not end the segment.
     """
 
-    def __init__(self, threshold=0.5, min_speech_ms=200, hangover_ms=800, preroll_ms=300):
+    def __init__(self, threshold=0.5, min_speech_ms=200, hangover_ms=800,
+                 preroll_ms=300, neg_threshold=None):
         self.vad = SileroVAD()
         self.threshold = threshold
+        # Release hysteresis: default 0.15 below the trigger, matching Silero.
+        self.neg_threshold = (threshold - 0.15) if neg_threshold is None else neg_threshold
         self.min_speech = max(1, round(min_speech_ms / FRAME_MS))
         self.hangover = max(1, round(hangover_ms / FRAME_MS))
         self.preroll = collections.deque(maxlen=max(1, round(preroll_ms / FRAME_MS)))
         self.active = False
-        self._onset = 0
-        self._silence = 0
+        self._above = 0       # cumulative above-threshold frames since the trigger
+        self._silence = 0     # consecutive frames below neg_threshold
         self._pending: list[np.ndarray] = []
+
+    def _abort_onset(self) -> None:
+        """A tentative onset turned out to be a transient: recycle its buffered
+        frames into the preroll ring and return to idle."""
+        for f in self._pending:
+            self.preroll.append(f)
+        self._pending = []
+        self._above = 0
+        self._silence = 0
 
     def process(self, frame: np.ndarray) -> tuple[bool, list[np.ndarray]]:
         """Processes one 512-sample frame; returns (speech_active, frames_to_send)."""
         p = self.vad.prob(frame)
         send: list[np.ndarray] = []
-        if not self.active:
-            if p >= self.threshold:
-                self._onset += 1
-                self._pending.append(frame)
-                if self._onset >= self.min_speech:
-                    self.active = True
-                    self._silence = 0
-                    send = list(self.preroll) + self._pending
-                    self._pending = []
-                    self.preroll.clear()
-            else:
-                for f in self._pending:
-                    self.preroll.append(f)
-                self._pending = []
-                self._onset = 0
-                self.preroll.append(frame)
-        else:
+
+        if self.active:
             send = [frame]
-            if p >= self.threshold:
-                self._silence = 0
-            else:
+            if p < self.neg_threshold:
                 self._silence += 1
                 if self._silence >= self.hangover:
                     self.active = False
-                    self._onset = 0
-        return self.active, send
+                    self._above = 0
+                    self._silence = 0
+                    self._pending = []
+            else:
+                self._silence = 0
+            return self.active, send
+
+        # Inactive. A frame >= threshold triggers / advances a tentative onset;
+        # dips no longer reset it — only a sustained drop below neg_threshold does.
+        if p >= self.threshold:
+            self._pending.append(frame)
+            self._above += 1
+            self._silence = 0
+            if self._above >= self.min_speech:
+                self.active = True
+                send = list(self.preroll) + self._pending
+                self._pending = []
+                self.preroll.clear()
+                self._above = 0
+            return self.active, send
+
+        if self._above > 0:
+            # Mid-onset but this frame is sub-threshold: hold it, and only abort
+            # if we stay below the release threshold for a full hangover.
+            self._pending.append(frame)
+            if p < self.neg_threshold:
+                self._silence += 1
+                if self._silence >= self.hangover:
+                    self._abort_onset()
+            # Between neg_threshold and threshold: ambiguous — keep waiting.
+            return False, []
+
+        # Idle: keep the preroll ring primed with recent context.
+        self.preroll.append(frame)
+        return False, []
