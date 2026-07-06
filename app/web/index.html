@@ -480,12 +480,16 @@ body.resizing,body.resizing *{user-select:none!important}
 /* ============ TRANSCRIPT HISTORY MODAL ============ */
 /* .modal (defined below) shares specificity — compound the selector so the
    wider history layout survives source order. */
-.modal.historymodal{width:760px}
-.historymodal .mhead{padding:22px 24px 8px}
-.histsearchwrap{margin:0 0 12px}
+/* Flex column so the footer is always a solid bar BELOW the scroll area,
+   never overlapping the transcript panes on a short window. */
+.modal.historymodal{width:760px;display:flex;flex-direction:column;max-height:88vh;overflow:hidden}
+.historymodal .mhead{padding:22px 24px 8px;flex:none}
+.historymodal .mbody{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.historymodal .mfoot{flex:none;border-top:1px solid var(--border)}
+.histsearchwrap{margin:0 0 12px;flex:none}
 .histsearchwrap input{width:100%;box-sizing:border-box;padding:9px 12px;border-radius:var(--r-ctl);
   border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:13px}
-.histpanes{display:grid;grid-template-columns:260px 1fr;gap:14px;min-height:300px;max-height:52vh}
+.histpanes{display:grid;grid-template-columns:260px 1fr;grid-template-rows:minmax(0,1fr);gap:14px;flex:1;min-height:0}
 .histlist{overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-card);padding:6px}
 .histrow{display:block;width:100%;text-align:left;padding:9px 11px;border-radius:var(--r-ctl);cursor:pointer;
   border:1px solid transparent;background:transparent;color:var(--text);font-size:12.5px;line-height:1.4}
