@@ -47,6 +47,35 @@ def test_opens_after_min_speech_and_emits_preroll(gate):
     assert len(send) == 4
 
 
+def test_choppy_speech_opens_non_consecutively(gate):
+    """Regression (Ivo/CZ): consonant-dense speech dips the VAD probability
+    between voiced frames, so the two above-threshold frames that open the gate
+    are NOT consecutive. The old "N consecutive, reset on any dip" rule never
+    opened here and emitted the whole utterance as silence."""
+    g, fake = gate
+    # 0.9 (above), 0.2 (dip, but not a sustained release), 0.9 (above) -> opens.
+    fake.probs = [0.9, 0.2, 0.9]
+    active, _ = g.process(_frame())
+    assert not active                       # onset 1/2
+    active, _ = g.process(_frame())
+    assert not active                       # dip held, onset preserved (not reset)
+    active, send = g.process(_frame())
+    assert active                           # 2nd above-threshold frame commits
+    assert len(send) == 3                   # the two onset frames + the held dip
+
+
+def test_stays_open_through_modulated_speech(gate):
+    """Once open, frames that dip below threshold but stay above neg_threshold
+    (0.35 here) must NOT count toward closing — hysteresis keeps the segment
+    alive through natural speech modulation."""
+    g, fake = gate
+    fake.probs = [0.9, 0.9, 0.4, 0.4, 0.4]  # 0.4 is < threshold(0.5) but > neg(0.35)
+    g.process(_frame()); g.process(_frame())  # opens
+    for _ in range(3):
+        active, send = g.process(_frame())
+        assert active and len(send) == 1
+
+
 def test_stays_open_through_short_pause(gate):
     g, fake = gate
     fake.probs = [0.9, 0.9, 0.0, 0.9]
@@ -69,8 +98,10 @@ def test_closes_after_hangover(gate):
 
 
 def test_transient_blip_never_opens(gate):
+    """A lone spike followed by sustained silence (below neg_threshold) is a
+    click/transient, not speech — the onset must abort without opening."""
     g, fake = gate
-    fake.probs = [0.9, 0.0, 0.9, 0.0]  # never 2 consecutive speech frames
+    fake.probs = [0.9, 0.0, 0.0, 0.0]  # single spike, then a full hangover of silence
     for _ in range(4):
         active, send = g.process(_frame())
         assert not active and send == []
