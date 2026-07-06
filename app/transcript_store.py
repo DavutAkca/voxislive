@@ -161,12 +161,24 @@ def _cue_text(turn, *, bilingual: bool) -> str:
     return text
 
 
-def render_txt(record: dict) -> str:
-    """Plain-text dump: one translation line per turn (parity with the legacy
-    .txt export)."""
-    lines = [t.get("text", "").strip()
-             for t in record.get("turns", []) if t.get("text", "").strip()]
-    return "\n".join(lines) + ("\n" if lines else "")
+def render_txt(record: dict, *, bilingual: bool = False) -> str:
+    """Plain-text dump. Mono (default): one translation line per turn (parity with
+    the legacy .txt export). Bilingual: each turn as its source line above the
+    translation, turns separated by a blank line — for localization/dubbing work
+    where both languages side by side beats a translated-only export."""
+    turns = record.get("turns", [])
+    if not bilingual:
+        lines = [t.get("text", "").strip()
+                 for t in turns if t.get("text", "").strip()]
+        return "\n".join(lines) + ("\n" if lines else "")
+    blocks = []
+    for t in turns:
+        text = t.get("text", "").strip()
+        if not text:
+            continue
+        src = t.get("src", "").strip()
+        blocks.append(f"{src}\n{text}" if src else text)
+    return "\n\n".join(blocks) + ("\n" if blocks else "")
 
 
 def render_srt(record: dict, *, bilingual: bool = True) -> str:
@@ -203,12 +215,14 @@ def render_vtt(record: dict, *, bilingual: bool = True) -> str:
 _RENDERERS = {"txt": render_txt, "srt": render_srt, "vtt": render_vtt}
 
 
-def export(record: dict, fmt: str) -> tuple[str, str]:
+def export(record: dict, fmt: str, *, bilingual: bool = True) -> tuple[str, str]:
     """Render `record` to `fmt` ('txt'|'srt'|'vtt').
 
-    Returns (content, extension). Raises ValueError on an unknown format.
+    `bilingual` keeps the source line alongside the translation (default) or, when
+    False, emits a translated-only export. Returns (content, extension). Raises
+    ValueError on an unknown format.
     """
     fmt = (fmt or "").lower()
     if fmt not in _RENDERERS:
         raise ValueError(f"unknown export format: {fmt!r}")
-    return _RENDERERS[fmt](record), fmt
+    return _RENDERERS[fmt](record, bilingual=bilingual), fmt

@@ -1147,6 +1147,7 @@ body.resizing,body.resizing *{user-select:none!important}
   </div>
   <div class="mfoot">
     <span class="histexportlbl" data-i18n="history_export">Dışa aktar:</span>
+    <label class="histexportlbl" style="cursor:pointer;user-select:none"><input type="checkbox" id="hist-bilingual" checked style="vertical-align:middle;margin-right:5px"><span data-i18n="history_bilingual">Çift dilli</span></label>
     <button class="btn btn-ghost" id="hist-export-txt" style="width:auto" disabled data-i18n="history_fmt_txt">TXT</button>
     <button class="btn btn-ghost" id="hist-export-srt" style="width:auto" disabled data-i18n="history_fmt_srt">SRT</button>
     <button class="btn btn-ghost" id="hist-export-vtt" style="width:auto" disabled data-i18n="history_fmt_vtt">VTT</button>
@@ -2685,6 +2686,10 @@ Object.keys(I18N_REPORT).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18
    exist, so this merge overrides rather than fills). */
 const I18N_FIX = { "fr":{"show_tour":"Revoir la visite guidée"}, "es":{"show_tour":"Ver el tour de nuevo"}, "pt":{"show_tour":"Ver o tour novamente"}, "ja":{"show_tour":"ツアーをもう一度表示"} };
 Object.keys(I18N_FIX).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_FIX[l]; for(var k in s) I18N[l][k]=s[k]; });
+/* Bilingual-export toggle label (History footer). Fill-if-undefined so a locale
+   that never defined it falls back cleanly. */
+const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา" };
+Object.keys(I18N_BILINGUAL).forEach(function(l){ if(!I18N[l]) I18N[l]={}; if(I18N[l]["history_bilingual"]===undefined) I18N[l]["history_bilingual"]=I18N_BILINGUAL[l]; });
 // Detect the boot language from the OS locale so the very first paint is not a
 // hardcoded Turkish flash: tr only when the locale starts with 'tr', else en.
 function detectLang(){
@@ -3520,7 +3525,8 @@ function renderHistoryTurns(){
 }
 async function exportSession(fmt){
   if(!HIST_CUR_FILE) return;
-  let r=null; try{ r=await api().export_session(HIST_CUR_FILE, fmt); }catch(_){}
+  const bi = !!($('#hist-bilingual')||{}).checked;
+  let r=null; try{ r=await api().export_session(HIST_CUR_FILE, fmt, bi); }catch(_){}
   // Keep History open and reveal the exported file so the user sees where it
   // landed (the folder is also one click away via #hist-open-folder).
   if(r && r.ok && r.file){ try{ api().reveal_transcript(r.file); }catch(_){} }
