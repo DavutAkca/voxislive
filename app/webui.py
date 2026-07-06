@@ -109,6 +109,9 @@ class Bridge:
         self._user_id: str | None = None
         # Last license/quota snapshot from verify; the paid-tier badge gate reads it.
         self._last_quota: dict | None = None
+        # One-shot guard for the app_launched funnel milestone (check_auth may run
+        # several times per process; the event should fire once).
+        self._launch_reported: bool = False
         i18n.set_language(cfg.get("ui_language", "tr"))
 
         # Bounded like every other queue in the engine: if the webview stops
@@ -820,6 +823,10 @@ class Bridge:
         self._last_quota = info
         # Per-account beta (Qwen) eligibility rides on the verify snapshot.
         self._beta_flag = bool(info.get("beta"))
+        # Activation funnel: the app is up AND authenticated. Fire once per process.
+        if not self._launch_reported:
+            self._launch_reported = True
+            voxis_client.report_event_async("app_launched")
         return {"authenticated": True, "quota": info,
                 "beta_allowed": self._beta_allowed()}
 

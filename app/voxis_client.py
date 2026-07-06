@@ -6,6 +6,7 @@ Used by the Python audio engine and the webui bridge:
     * Verify        → POST /auth/verify
     * Quota         → GET  /auth/quota
     * Usage report  → POST /usage/report (fire-and-forget on session end)
+    * Funnel event  → POST /usage/event  (fire-and-forget activation milestones)
 
 Return convention: (result, error_message) tuple - never (None, None).
 
@@ -597,6 +598,57 @@ def report_usage_async(session_id: str, delta_minutes: float, source: str,
         target=_run,
         daemon=True,
         name="voxis-usage-report",
+    ).start()
+
+
+def _post_event(event: str, session_id: Optional[str], meta: Optional[dict]) -> bool:
+    """One POST /usage/event attempt. Best-effort; True on 2xx/204."""
+    try:
+        resp = _http.post(
+            f"{_BASE_URL}/usage/event",
+            headers=_auth_headers(),
+            json={
+                "event":       event,
+                "session_id":  session_id or "",
+                "client":      _CLIENT_CHANNEL,
+                "app_version": APP_VERSION,
+                "meta":        meta or {},
+            },
+            timeout=_TIMEOUT,
+        )
+        return resp.status_code in (200, 201, 204)
+    except requests.RequestException as exc:
+        _log_detail("report_event", exc)
+        return False
+
+
+def report_event(event: str, session_id: Optional[str] = None, meta: Optional[dict] = None) -> None:
+    """Report a lightweight activation-funnel milestone (app_launched,
+    session_start / session_live / session_error, capture_lost) to auth-core.
+    Fire-and-forget; never raises.
+
+    Hard-gated off on the OSS/BYOK build (no network off-box), mirroring
+    report_usage / send_report so the "zero telemetry" claim holds. Carries NO
+    transcript, audio or PII — only the milestone name, a correlation session id,
+    the client channel, app version, and a small non-sensitive meta dict (mode,
+    engine, capture backend, coarse error class). A missing JWT is a no-op: the
+    funnel is per-user, attributed server-side from the bearer token.
+    """
+    if not IS_OFFICIAL_RELEASE:
+        return
+    if not _valid_jwt():
+        return
+    _post_event(event, session_id, meta)
+
+
+def report_event_async(event: str, session_id: Optional[str] = None, meta: Optional[dict] = None) -> None:
+    """Fire report_event on a daemon worker so the audio/UI thread never blocks on
+    the network (report_event may refresh the JWT). Instant no-op on OSS."""
+    if not IS_OFFICIAL_RELEASE:
+        return
+    threading.Thread(
+        target=report_event, args=(event, session_id, meta),
+        daemon=True, name="voxis-event",
     ).start()
 
 

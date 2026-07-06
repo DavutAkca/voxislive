@@ -642,6 +642,20 @@ def _stop_all(pipeline):
             pass
 
 
+def _event_error_class(exc: Exception) -> str:
+    """Coarse, PII-free label for a session-start failure, for the activation
+    funnel. Never carries the raw message (which may hold device names/paths)."""
+    msg = str(exc)
+    if "-9999" in msg or "PaError" in msg or "host error" in msg or "host API" in msg:
+        return "audio_device"
+    if isinstance(exc, (ImportError, OSError)):
+        return "os_import"
+    low = msg.lower()
+    if "timeout" in low or "ready" in low:
+        return "translator_timeout"
+    return "other"
+
+
 class ModeController:
     """Single-active-mode controller (video | meeting). start() implicitly stops
     any current session first."""
@@ -856,6 +870,8 @@ class ModeController:
             cap = getattr(p, "capture", None)
             if cap is not None and getattr(cap, "failed", False):
                 self._capture_dead_notified = True
+                voxis_client.report_event_async("capture_lost", self._session_id,
+                                                {"mode": self._session_mode})
                 try:
                     self.on_status(t("st_capture_lost"))
                 except Exception:
@@ -931,6 +947,10 @@ class ModeController:
                 self.cfg["capture_backend"] = _premium.resolve_capture_backend(self.cfg)
             except Exception:
                 pass
+        # Correlation id shared by this session's funnel milestones. Generated
+        # before the retry loop so session_start/live/error all carry the same id.
+        sid = uuid.uuid4().hex[:16]
+        voxis_client.report_event_async("session_start", sid, {"mode": mode})
         last_err: Exception | None = None
         for attempt in range(3):
             # Stale PortAudio device list is a known cause of WDM-KS -9999.
@@ -952,7 +972,7 @@ class ModeController:
                 # session state (connect/disconnect, key issuance), never trust
                 # this id or the reported delta as authoritative. See _consume /
                 # tail report for the matching client-side sanity clamp.
-                self._session_id = uuid.uuid4().hex[:16]
+                self._session_id = sid
                 self._session_start = time.monotonic()
                 self._last_report = self._session_start
                 self._session_mode = mode
@@ -977,6 +997,11 @@ class ModeController:
                 except Exception as e:
                     self.on_status(t("st_autoswitch_fail", e=e))
                 self.on_status(t("st_mode_started", mode=mode))
+                voxis_client.report_event_async("session_live", sid, {
+                    "mode": mode,
+                    "backend": self.cfg.get("capture_backend", "driverless"),
+                    "engine": self.current_engine() or "",
+                })
                 return
             except Exception as e:
                 for p in pipes:
@@ -987,12 +1012,20 @@ class ModeController:
                 last_err = e
                 msg = str(e)
                 if attempt == 2 or not ("-9999" in msg or "PaError" in msg or "host error" in msg):
+                    voxis_client.report_event_async("session_error", sid, {
+                        "mode": mode, "reason": _event_error_class(e),
+                        "attempt": attempt + 1,
+                    })
                     raise
                 if attempt == 1:
                     # Last attempt: drop the low-latency request entirely.
                     audio_io.LATENCY = None
                 self.on_status(t("st_audio_retry", n=attempt + 1))
                 time.sleep(0.6)
+        voxis_client.report_event_async("session_error", sid, {
+            "mode": mode, "reason": _event_error_class(last_err) if last_err else "other",
+            "attempt": 3,
+        })
         raise last_err
 
     def set_tts_volume(self, volume: float):
