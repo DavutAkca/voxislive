@@ -227,7 +227,10 @@ class Bridge:
             self._lines.append(finished)
             self._cur_line = ""
             # The turn that just ended pairs with the most recently completed
-            # source utterance (correct by ordering despite the few-second lag).
+            # source utterance (correct by ordering despite the few-second lag):
+            # a gap-completed utterance (_last_src) if one rolled over, else
+            # whatever source is still streaming in (_cur_src).
+            used_last = bool(self._last_src)
             src = (self._last_src or self._cur_src).strip()
             if src:
                 self._put_event(("src", src))
@@ -239,7 +242,17 @@ class Bridge:
                     "src": src,
                     "text": finished,
                 })
-            self._last_src = ""
+            # Consume the source we just paired so the next turn cannot re-emit it.
+            # Gemini's source stream pauses between utterances, so _cur_src rolls
+            # into _last_src (cleared here) and stays small. Qwen's ASR is
+            # CUMULATIVE and rarely pauses, so no LINE_GAP gap ever rolls _cur_src
+            # over — without clearing it, it grew unbounded and every turn re-paired
+            # the same leading segment (the "src repeated in every JSON entry"
+            # regression Ivo hit on the Qwen beta path).
+            if used_last:
+                self._last_src = ""
+            else:
+                self._cur_src = ""
         if not self._cur_line:
             # Mark when this (new) turn began so its cue start is the speech
             # onset, not the moment it finalized one LINE_GAP later.
@@ -1246,6 +1259,21 @@ class Bridge:
         with self._text_lock:
             tail = self._cur_line.strip()
             if not tail:
+                # No pending translation. If the whole session produced NO
+                # translation at all (Qwen can drop its text stream mid-session
+                # while source ASR keeps arriving), fold the captured source alone
+                # so the session is still saved — a bilingual QA user relies on the
+                # source side to inspect segmentation even when the translation is
+                # lossy — instead of being reported as "nothing to save" and lost.
+                # A normal session already has turns/lines, so this never adds a
+                # spurious trailing source-only turn to it.
+                pend_src = (self._last_src or self._cur_src).strip()
+                if pend_src and not self._turns and not self._lines:
+                    if not self._session_start:
+                        self._session_start = time.time()
+                    self._turns.append({
+                        "t": 0.0, "dir": "out", "src": pend_src, "text": "",
+                    })
                 return
             if self._turns and self._turns[-1].get("text") == tail:
                 return
