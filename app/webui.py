@@ -1493,21 +1493,28 @@ class Bridge:
         except OSError:
             return False
 
-    def export_session(self, file: str, fmt: str) -> dict:
-        """Render a saved session to TXT/SRT/VTT next to its JSON. Returns
-        {ok, path?, file?, error?}. No tier gating — available on every build."""
+    def export_session(self, file: str, fmt: str, bilingual: bool = True) -> dict:
+        """Render a saved session to TXT/SRT/VTT next to its JSON. `bilingual`
+        keeps the source line alongside the translation (default) or emits a
+        translated-only file. Returns {ok, path?, file?, error?}. No tier gating —
+        available on every build."""
         if not file or os.path.basename(file) != file or not file.endswith(".json"):
             return {"ok": False, "error": "not_found"}
         src_path = self._find_transcript(file)
         record = self.load_session(file)
         if record is None or src_path is None:
             return {"ok": False, "error": "not_found"}
+        bilingual = bool(bilingual)
         try:
-            content, ext = transcript_store.export(record, fmt)
+            content, ext = transcript_store.export(record, fmt, bilingual=bilingual)
         except ValueError:
             return {"ok": False, "error": "bad_format"}
         # Write the export beside its source JSON (wherever that turned out to be).
-        out_path = os.path.join(os.path.dirname(src_path), file[:-len(".json")] + "." + ext)
+        # Bilingual and translated-only variants get distinct names so exporting
+        # both formats of the same session never overwrites the other.
+        suffix = "_bilingual" if bilingual else ""
+        out_path = os.path.join(os.path.dirname(src_path),
+                                file[:-len(".json")] + suffix + "." + ext)
         try:
             with open(out_path, "w", encoding="utf-8") as f:
                 f.write(content)
