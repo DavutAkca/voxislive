@@ -112,18 +112,19 @@ class LiveTranslator(BaseTranslator):
             "translation_config": {
                 "target_language_code": self.target_lang,
                 # echo_target_language=False = "stay silent if the input is already
-                # in the target language." The model's source detection is biased
-                # toward its default language (English), so genuinely non-English
-                # audio is frequently mis-judged "already English" when the target
-                # is "en" — silently suppressing ALL output (the target=en bug).
-                # Echo for "en" so real translation never gets false-suppressed;
-                # the cost is that truly-English input is parroted rather than
-                # muted, which is the safer failure for an English target.
-                # NOTE: this must be == "en" (echo ONLY for the English target).
-                # It shipped inverted for a while — echo off for en (the very
-                # false-suppression this comment describes) and echo ON for all
-                # other targets. Caught in the 2026-07-04 audit.
-                "echo_target_language": self.target_lang == "en",
+                # in the target language." The model's source-language detection
+                # can mis-judge input as "already the target language" and then
+                # suppress ALL output — total silence with no self-recovery. This
+                # was first seen for target=en (the model's English bias), but Ivo
+                # hit it on a Czech target too: after a Qwen->Gemini switch Gemini
+                # latched silent mid-movie and never resumed. Silence is the worst
+                # failure for a translation app, so ALWAYS echo: a mis-detected
+                # already-target line is parroted (audible, recoverable) instead of
+                # muted. True translation (input != target) is unaffected — echo
+                # only changes the input==target case. Pairs with the self-heal
+                # fresh-reconnect fix in base_translator (dropping the resume
+                # handle on a watchdog rotation) so a latch can't persist either.
+                "echo_target_language": True,
             },
             # Locked prebuilt voice — the strongest stability setting the client
             # API exposes for the translate-preview model.

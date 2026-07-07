@@ -42,7 +42,21 @@ from .i18n import t
 
 class _Rotate(Exception):
     """Signals a planned reconnect ahead of the session ceiling (or a watchdog
-    trip / GoAway). Never treated as a transient error."""
+    trip / GoAway). Never treated as a transient error.
+
+    heal=True marks a SELF-HEAL rotation (a watchdog trip: stall, or input with
+    no output). The reconnect must then start a FRESH session — see
+    _run_session — because the reason we are reconnecting is that the CURRENT
+    session stopped producing output. Resuming it (Gemini's session_resumption
+    handle) carries the stuck state straight back, so the self-heal never heals:
+    that is the Qwen->Gemini "translation stops and never resumes until you
+    toggle the engine" report (Gemini can latch into silent false-suppression;
+    only a truly fresh session escapes it). A planned ceiling rotation or a
+    server GoAway is heal=False — resuming there is seamless and correct."""
+
+    def __init__(self, heal: bool = False):
+        super().__init__()
+        self.heal = heal
 
 
 # HTTP-style status codes that mean "retrying with the same key cannot succeed".
@@ -422,8 +436,14 @@ class BaseTranslator(threading.Thread):
             receiver = asyncio.create_task(self._receive_loop(conn))
             done, pending = await asyncio.wait(
                 {sender, receiver}, return_when=asyncio.FIRST_COMPLETED)
-            rotating = any(isinstance(tsk.exception(), _Rotate)
-                           for tsk in done if not tsk.cancelled())
+            rotating = heal = False
+            for tsk in done:
+                if tsk.cancelled():
+                    continue
+                exc = tsk.exception()
+                if isinstance(exc, _Rotate):
+                    rotating = True
+                    heal = heal or exc.heal
             if rotating and not self._stopping.is_set():
                 # Overlap-and-drain: keep the old receiver alive briefly so the
                 # in-flight model_turn plays out, THEN snapshot the unsent queue so
@@ -440,6 +460,11 @@ class BaseTranslator(threading.Thread):
                 exc = tsk.exception()
                 if exc and not isinstance(exc, _Rotate):
                     raise exc
+        # A self-heal rotation reconnects because the session went output-dead;
+        # drop any resume handle (done AFTER drain captured the tail) so the next
+        # connect is a genuinely fresh session instead of resuming the stuck one.
+        if heal:
+            self._reset_reconnect_state()
         return rotating
 
     # --- carryover (shared) -------------------------------------------------
@@ -490,7 +515,7 @@ class BaseTranslator(threading.Thread):
                 self._sent_since_recv = 0.0
                 self.on_status("translator: no server events for %ds of sent "
                                "audio — reconnecting" % int(self.STALL_ROTATE_SECONDS))
-                raise _Rotate()
+                raise _Rotate(heal=True)
             # No-output watchdog: input transcription recently but no output.
             # Warn once, then SELF-HEAL — force a reconnect if the stall persists,
             # instead of streaming into a black hole until the user toggles the
@@ -510,7 +535,7 @@ class BaseTranslator(threading.Thread):
                     self._watchdog_rotations += 1
                     self.on_status("translator: no translation for %ds — "
                                    "reconnecting" % int(self.NO_OUTPUT_ROTATE_SECONDS))
-                    raise _Rotate()
+                    raise _Rotate(heal=True)
             # Voice watchdog: translated TEXT is flowing (recently) but translated
             # AUDIO is absent — subtitles with no voice. Gated on recent text so a
             # normal end-of-speech (audio + text stop together) never trips it, and

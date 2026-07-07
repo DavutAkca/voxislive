@@ -19,7 +19,8 @@ def _bare_bridge():
     no window — so the pure text-pairing logic can be driven directly."""
     b = object.__new__(Bridge)
     b._text_lock = threading.RLock()
-    b._cur_src = b._last_src = ""
+    b._src_buf = ""
+    b._src_done = []
     b._last_src_t = 0.0
     b._cur_line = ""
     b._last_t = 0.0
@@ -90,6 +91,33 @@ def test_gemini_paused_source_still_pairs_per_turn():
     assert texts == ["Merhaba oradaki.", "Nasilsin?"]
     assert srcs[0] == "Hello there."
     assert srcs[1] == "How are you?"
+
+
+def test_two_sources_complete_before_one_turn_keep_both():
+    """Two source utterances both pause-complete (>LINE_GAP) before a single
+    translation turn finalizes. The old single-slot _last_src overwrote the first
+    with the second, so its JSON `src` was lost and later turns went blank (the
+    Gemini-on-a-movie regression Ivo reported on 1.0.27). The FIFO must preserve
+    both and hand them to their turns in order — neither src is ever empty."""
+    b = _bare_bridge()
+    # Two speakers, each source separated by a real >LINE_GAP pause, BEFORE the
+    # (lagging) translations for either arrive.
+    _feed(b, "in", "Alice speaks.", 0.0)
+    _feed(b, "in", "Bob replies.", 5.0)          # >LINE_GAP after Alice -> queued
+    _feed(b, "in", "Alice again.", 10.0)         # >LINE_GAP after Bob   -> queued
+    # Now the three translation turns finalize, each opening after a LINE_GAP gap.
+    _feed(b, "out", "T-Alice.", 11.0)
+    _feed(b, "out", "T-Bob.", 11.1 + LINE_GAP)
+    _feed(b, "out", "T-Alice2.", 11.2 + 2 * LINE_GAP)
+    b._flush_turns()
+
+    srcs = [t["src"] for t in b._turns]
+    texts = [t["text"] for t in b._turns]
+    assert texts == ["T-Alice.", "T-Bob.", "T-Alice2."]
+    # Every turn carries a non-empty, correctly-ordered source — no overwrite, no
+    # blank src.
+    assert "" not in srcs
+    assert srcs == ["Alice speaks.", "Bob replies.", "Alice again."]
 
 
 def test_flush_saves_source_when_translation_stream_dropped():
