@@ -6,6 +6,7 @@ OutgoingPipeline routes the user's microphone to the translator and pipes the
 translation into the virtual microphone consumed by Teams/Zoom/etc.
 """
 import collections
+import logging
 import threading
 import time
 import uuid
@@ -14,6 +15,8 @@ import numpy as np
 
 from . import audio_io
 from . import voxis_client
+
+_log = logging.getLogger("voxis")
 
 # Open-Core hook: optional premium package resolved once at import time.
 # Absence is the normal OSS path.
@@ -278,6 +281,8 @@ class IncomingPipeline:
         self._sducker = None
         self.capture = None
         self._source = None
+        self._recorder = None
+        self._mode = mode
         vad_cfg = gate_params(cfg)
         # Playback target: fall back to the system default (with a warning) when
         # the configured device is absent — a config carried over from another
@@ -327,6 +332,8 @@ class IncomingPipeline:
             a = np.frombuffer(data, dtype=np.int16)
             audible = a.size > 0 and int(np.abs(a).max()) > 512
             self._rtt.mark_tts(audible=audible)
+            if self._recorder is not None:
+                self._recorder.feed_translated(data)
             if self._stager is not None:
                 self._stager.feed(data)
             else:
@@ -369,6 +376,8 @@ class IncomingPipeline:
                 if lvl < 0.95:
                     # Compensate the lowered source so VAD/Gemini do not pump.
                     chunk = np.clip(chunk / max(lvl, 0.15), -1.0, 1.0)
+                if self._recorder is not None:
+                    self._recorder.feed_source(chunk)
                 self._source.feed(chunk)
                 self.input_level = _rms_level(self.input_level, chunk)
                 # Mark speech onset here too (the spatial path does it in vbcable
@@ -438,6 +447,8 @@ class IncomingPipeline:
 
             def on_chunk(chunk: np.ndarray):
                 mono = chunk.mean(axis=1) if chunk.ndim > 1 else chunk
+                if self._recorder is not None:
+                    self._recorder.feed_source(mono)
                 self._source.feed(mono)
                 self.input_level = _rms_level(self.input_level, mono)
                 active = self._source.speech_active
@@ -489,6 +500,22 @@ class IncomingPipeline:
             )
         )
 
+        # Opt-in dual-track recorder (default OFF). Created here so the source WAV
+        # rate matches the capture's true rate (self.capture.rate — the rate the
+        # source-tap chunks are delivered at, on both the driverless and vbcable
+        # paths). Any failure is non-fatal: a broken recorder must never stop a
+        # translation session.
+        if cfg.get("record_audio"):
+            try:
+                from .audio_recorder import DualTrackRecorder  # noqa: PLC0415
+                from . import paths  # noqa: PLC0415
+                self._recorder = DualTrackRecorder(
+                    paths.transcripts_dir(cfg), source_rate=self.capture.rate,
+                    tag=self._mode or "video", on_status=on_status)
+            except Exception:
+                self._recorder = None
+                _log.exception("audio recorder init failed — continuing without it")
+
     def _teardown_resources(self):
         """Release whatever resources were acquired. Safe to call with partial
         init: each handle is closed independently and best-effort. Includes the
@@ -509,7 +536,7 @@ class IncomingPipeline:
             except Exception:
                 pass
             self._sducker = None
-        for attr in ("_stager", "player", "translator"):
+        for attr in ("_stager", "player", "translator", "_recorder"):
             comp = getattr(self, attr, None)
             if comp is not None:
                 try:
@@ -618,7 +645,7 @@ def _stop_all(pipeline):
     if src is not None:
         src.closed = True
     fns = []
-    for attr in ("capture", "_stager", "player", "translator"):
+    for attr in ("capture", "_stager", "player", "translator", "_recorder"):
         comp = getattr(pipeline, attr, None)
         if comp is not None:
             fns.append(comp.stop)

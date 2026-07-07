@@ -110,6 +110,39 @@ def test_qwen_delta_cumulative_to_increments():
     assert tr._delta("_out_acc", "Bye") == " Bye"
 
 
+def test_qwen_duplicate_audio_detection():
+    import numpy as np
+    tr = _make(qwen.QwenTranslator)
+
+    def pcm(seed, n=400):
+        rng = np.arange(n) + seed
+        return (np.sin(rng) * 8000).astype(np.int16).tobytes()
+
+    a = pcm(0)
+    b = pcm(9999)
+    # First delta: nothing to compare against.
+    assert tr._detect_dup_audio(a) is None
+    # Distinct next delta → not a duplicate.
+    assert tr._detect_dup_audio(b) is None
+    # Exact repeat of the previous delta.
+    assert tr._detect_dup_audio(b) == "exact-repeat"
+    # Cumulative: previous audio + more.
+    assert tr._detect_dup_audio(b) == "exact-repeat"   # b again resets prev=b
+    assert tr._detect_dup_audio(b + a) == "cumulative-prefix"
+    # Overlap tail: a shorter chunk that is a prefix of the previous one.
+    assert tr._detect_dup_audio(b) == "overlap-tail"
+    assert tr._dup_audio_count == 4
+    assert tr._dup_audio_warned is True
+
+
+def test_qwen_silence_never_flagged_as_duplicate():
+    tr = _make(qwen.QwenTranslator)
+    silence = b"\x00\x00" * 400
+    assert tr._detect_dup_audio(silence) is None
+    assert tr._detect_dup_audio(silence) is None   # identical silence is normal
+    assert tr._dup_audio_count == 0
+
+
 def test_qwen_constructor_normalizes_target_and_clamps_knobs():
     tr = qwen.QwenTranslator("k", "zh-Hans", on_audio=_noop, on_text=_noop,
                              on_status=_noop, clone="bogus", vad_silence_ms=250)
@@ -193,6 +226,42 @@ def test_ws_main_terminal_error_breaks_without_retry(cls):
     tr.join(timeout=6.0)
     assert not tr.is_alive()
     assert len(connects) == 1  # terminal → no reconnect spin
+
+
+def test_no_output_watchdog_self_heals_by_reconnecting():
+    # Input transcription is flowing but the engine emits NO output — the
+    # Beta-off→Gemini "translation stops" failure. The watchdog must escalate
+    # from warn-only to a forced reconnect (self-heal), not sit dead. Thresholds
+    # shrunk so the stall trips in one sender tick.
+    connects = []
+    first = _FakeWS(['{"type":"conversation.item.input_audio_transcription.'
+                     'completed","transcript":"hola"}'])
+
+    class _Driven(qwen.QwenTranslator):
+        NO_OUTPUT_WARN_SECONDS = 0.05
+        NO_OUTPUT_ROTATE_SECONDS = 0.1
+        INPUT_RECENT_SECONDS = 100.0
+
+        async def _connect(self):
+            connects.append(1)
+            # Only the first socket carries input; the healed session is idle, so
+            # the watchdog disarms and does not spin further reconnects.
+            return first if len(connects) == 1 else _FakeWS()
+
+    events = []
+    tr = _Driven("k", "en", on_audio=_noop, on_text=_noop,
+                 on_status=lambda s: events.append(s))
+    tr.start()
+    try:
+        deadline = time.monotonic() + 8.0
+        while time.monotonic() < deadline and len(connects) < 2:
+            time.sleep(0.05)
+        assert len(connects) >= 2  # the stall forced a reconnect
+        assert any("reconnecting" in e for e in events)
+    finally:
+        tr.stop()
+        tr.join(timeout=5.0)
+    assert not tr.is_alive()
 
 
 @pytest.mark.parametrize("cls", [oai.OpenAITranslator, qwen.QwenTranslator])
