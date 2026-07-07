@@ -134,7 +134,19 @@ class Bridge:
         self._lines, self._cur_line = [], ""
         self._last_t = 0.0
         # Source-transcription stream, paired to translation turns best-effort.
-        self._cur_src, self._last_src = "", ""
+        # Source (input-transcription) pairing state. _src_buf accumulates the
+        # in-flight source utterance's deltas; a completed utterance (segmented by
+        # a >LINE_GAP pause in the source stream, as Gemini produces) is queued in
+        # _src_done until the translation turn it produced finalizes and pops it.
+        # A FIFO — not a single slot — so two source utterances completing before
+        # one translation turn finalizes cannot overwrite each other (the old
+        # two-slot _last_src/_cur_src scheme dropped the first, and its per-turn
+        # _cur_src clear wiped source belonging to a later turn, blanking the JSON
+        # `src` field localization/dubbing relies on — Ivo, 1.0.27). Qwen streams
+        # source continuously with no pause, so nothing ever queues and each turn
+        # simply consumes _src_buf — no repeated leading segment.
+        self._src_buf = ""
+        self._src_done: list[str] = []
         self._last_src_t = 0.0
         self._session_file = None
         # Path of the transcript auto-saved by the most recent stop(). Unlike
@@ -213,10 +225,13 @@ class Bridge:
             # so a completed source can be paired with the translation turn it
             # produced. No UI event here — the source caption is attached when the
             # matching translation turn finalizes.
-            if self._cur_src and (now - self._last_src_t) > LINE_GAP:
-                self._last_src = self._cur_src.strip()
-                self._cur_src = ""
-            self._cur_src += text
+            if self._src_buf and (now - self._last_src_t) > LINE_GAP:
+                # A speech pause completed this source utterance — queue it for the
+                # translation turn it produced. Source leads the translation by the
+                # model's ear-voice lag, so it is queued before that turn finalizes.
+                self._src_done.append(self._src_buf.strip())
+                self._src_buf = ""
+            self._src_buf += text
             self._last_src_t = now
             return
         # direction == "out": the translated text stream.
@@ -229,12 +244,9 @@ class Bridge:
             finished = self._cur_line.strip()
             self._lines.append(finished)
             self._cur_line = ""
-            # The turn that just ended pairs with the most recently completed
-            # source utterance (correct by ordering despite the few-second lag):
-            # a gap-completed utterance (_last_src) if one rolled over, else
-            # whatever source is still streaming in (_cur_src).
-            used_last = bool(self._last_src)
-            src = (self._last_src or self._cur_src).strip()
+            # The turn that just ended pairs with — and consumes — its source
+            # (correct by ordering despite the few-second lag).
+            src = self._pop_source()
             if src:
                 self._put_event(("src", src))
             # Record the finalized turn with its start offset and paired source.
@@ -245,17 +257,6 @@ class Bridge:
                     "src": src,
                     "text": finished,
                 })
-            # Consume the source we just paired so the next turn cannot re-emit it.
-            # Gemini's source stream pauses between utterances, so _cur_src rolls
-            # into _last_src (cleared here) and stays small. Qwen's ASR is
-            # CUMULATIVE and rarely pauses, so no LINE_GAP gap ever rolls _cur_src
-            # over — without clearing it, it grew unbounded and every turn re-paired
-            # the same leading segment (the "src repeated in every JSON entry"
-            # regression Ivo hit on the Qwen beta path).
-            if used_last:
-                self._last_src = ""
-            else:
-                self._cur_src = ""
         if not self._cur_line:
             # Mark when this (new) turn began so its cue start is the speech
             # onset, not the moment it finalized one LINE_GAP later.
@@ -266,6 +267,27 @@ class Bridge:
         self._overlay_until = now + FADE_MS
         self._obs_write(self._cur_line.strip())
         self._put_event(("trans", text, newline))
+
+    def _pop_source(self) -> str:
+        """Source text for the translation turn that just finalized: the oldest
+        completed source utterance if one is queued (Gemini's paused stream),
+        else whatever is still accumulating (Qwen's gapless stream) — consumed so
+        the next turn cannot re-emit it. Caller holds _text_lock."""
+        while self._src_done:
+            src = self._src_done.pop(0).strip()
+            if src:
+                return src
+        src = self._src_buf.strip()
+        self._src_buf = ""
+        return src
+
+    def _pending_source(self) -> str:
+        """All source not yet paired to a turn (queue + in-flight buffer), for the
+        stop-time flush of a source-only session. Caller holds _text_lock."""
+        parts = [s for s in self._src_done if s.strip()]
+        if self._src_buf.strip():
+            parts.append(self._src_buf.strip())
+        return " ".join(parts).strip()
 
     def _emit_status(self, msg, level="info"):
         """Push a status line to the UI.
@@ -1247,7 +1269,7 @@ class Bridge:
                 self._turn_start = 0.0
                 self._session_file = None
                 self._lines, self._cur_line = [], ""
-                self._cur_src, self._last_src = "", ""
+                self._src_buf, self._src_done = "", []
         # Tell the user where the auto-saved transcript went and offer open/reveal
         # actions, so pressing Stop confirms the save instead of leaving them to
         # click "Save transcript" and hit "nothing to save". Remember the path so
@@ -1274,7 +1296,7 @@ class Bridge:
                 # lossy — instead of being reported as "nothing to save" and lost.
                 # A normal session already has turns/lines, so this never adds a
                 # spurious trailing source-only turn to it.
-                pend_src = (self._last_src or self._cur_src).strip()
+                pend_src = self._pending_source()
                 if pend_src and not self._turns and not self._lines:
                     if not self._session_start:
                         self._session_start = time.time()
@@ -1290,7 +1312,7 @@ class Bridge:
             self._turns.append({
                 "t": max(0.0, start - self._session_start),
                 "dir": "out",
-                "src": (self._last_src or self._cur_src).strip(),
+                "src": self._pop_source(),
                 "text": tail,
             })
 
