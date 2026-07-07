@@ -160,6 +160,13 @@ class Bridge:
         self._turns = []
         self._session_start = 0.0
         self._turn_start = 0.0
+        # Per-session output folder, decided at start so the transcript JSON, its
+        # caption exports, and the optional dual-track WAVs all land together in
+        # one self-contained directory (Ivo, 1.0.28). _session_dirname is the bare
+        # folder name (voxis_<stamp>); _session_dir is its full path under the
+        # active transcripts dir. Both cleared on stop.
+        self._session_dir = None
+        self._session_dirname = None
         self._overlay_win = None
         self._overlay_text = ""
         self._overlay_until = 0.0
@@ -1214,7 +1221,15 @@ class Bridge:
                 # Fresh session: drop the previous stop's auto-saved file so a
                 # post-stop Save on the NEW session can't re-surface a stale one.
                 self._last_saved_file = None
-                self.controller.start(mode)
+                # Decide this session's self-contained output folder up front (from
+                # the wall-clock start) so the recorder's WAVs and the transcript
+                # JSON saved on stop share one folder + stamp. The folder itself is
+                # created lazily on first write (recorder / save_txt), so a blocked
+                # Documents dir can't fail the start here.
+                self._session_dirname = transcript_store.session_dir_name(time.time())
+                self._session_dir = os.path.join(self._transcript_dir(),
+                                                 self._session_dirname)
+                self.controller.start(mode, session_dir=self._session_dir)
                 self._badge = (t("badge_active", mode=self._mode_name(mode)), "#34d399", "on")
             except Exception as e:
                 # Log the raw exception; surface a localized message to the UI
@@ -1267,6 +1282,8 @@ class Bridge:
                 self._turns = []
                 self._session_start = 0.0
                 self._turn_start = 0.0
+                self._session_dir = None
+                self._session_dirname = None
                 self._session_file = None
                 self._lines, self._cur_line = [], ""
                 self._src_buf, self._src_done = "", []
@@ -1348,10 +1365,13 @@ class Bridge:
             return False
         record = self._build_record()
         primary = self._transcript_dir()
+        # Save into this session's own folder (same one the recorder wrote its WAVs
+        # into), so the whole session stays self-contained. subdir may be None for a
+        # save with no active session — save_record then derives it from the record.
+        subdir = self._session_dirname
         path = None
         try:
-            os.makedirs(primary, exist_ok=True)
-            path = transcript_store.save_record(primary, record)
+            path = transcript_store.save_record(primary, record, subdir=subdir)
         except OSError:
             # Documents can be blocked (Controlled Folder Access) or unwritable —
             # never lose a transcript: retry into the legacy AppData dir and report
@@ -1359,8 +1379,7 @@ class Bridge:
             _log.exception("transcript save to %s failed; retrying legacy dir", primary)
             legacy = legacy_transcripts_dir()
             try:
-                os.makedirs(legacy, exist_ok=True)
-                path = transcript_store.save_record(legacy, record)
+                path = transcript_store.save_record(legacy, record, subdir=subdir)
             except OSError:
                 _log.exception("transcript save failed")
                 if not silent:
@@ -1397,13 +1416,29 @@ class Bridge:
 
     def _find_transcript(self, file: str) -> str | None:
         """Full path of a saved file, searched across the active + legacy dirs.
-        Returns None if the name is unsafe or the file does not exist."""
+        Returns None if the name is unsafe or the file does not exist.
+
+        Handles both the per-session-folder layout (`voxis_<stamp>/<file>`, current)
+        and the legacy flat layout (`<file>` directly in the dir). `file` stays a
+        bare basename (traversal-guarded); the session subfolder is resolved here,
+        never trusted from the caller."""
         if not self._safe_transcript_name(file):
             return None
         for d in self._transcript_dirs():
             path = os.path.join(d, file)
             if os.path.isfile(path):
-                return path
+                return path  # legacy flat
+            # Nested: scan this dir's per-session folders for the file.
+            try:
+                subs = os.listdir(d)
+            except OSError:
+                continue
+            for sub in subs:
+                if not sub.startswith("voxis_"):
+                    continue
+                cand = os.path.join(d, sub, file)
+                if os.path.isfile(cand):
+                    return cand
         return None
 
     def _migrate_transcripts(self):
@@ -1544,8 +1579,21 @@ class Bridge:
         path = self._find_transcript(file)
         if not path:
             return False
+        parent = os.path.dirname(path)
+        # A self-contained session folder (voxis_<stamp>/ directly under a
+        # transcripts dir) is removed whole — JSON + WAVs + caption exports —
+        # so deleting a session leaves nothing orphaned. Legacy flat records
+        # remove just the single JSON. The grandparent==root check keeps rmtree
+        # from ever escaping a known transcripts directory.
         try:
-            os.remove(path)
+            roots = {os.path.normcase(os.path.abspath(d))
+                     for d in self._transcript_dirs()}
+            grandparent = os.path.normcase(os.path.abspath(os.path.dirname(parent)))
+            if os.path.basename(parent).startswith("voxis_") and grandparent in roots:
+                import shutil
+                shutil.rmtree(parent)
+            else:
+                os.remove(path)
             return True
         except OSError:
             return False

@@ -7,6 +7,7 @@ translation into the virtual microphone consumed by Teams/Zoom/etc.
 """
 import collections
 import logging
+import os
 import threading
 import time
 import uuid
@@ -273,7 +274,8 @@ class _GatedSource:
 
 
 class IncomingPipeline:
-    def __init__(self, cfg: dict, resolve, mode: str, on_text, on_status):
+    def __init__(self, cfg: dict, resolve, mode: str, on_text, on_status,
+                 session_dir: str | None = None):
         # Default the premium flag before either capture branch so callers and
         # teardown can always read it, even on the driverless path that never
         # probes premium hardware.
@@ -283,6 +285,9 @@ class IncomingPipeline:
         self._source = None
         self._recorder = None
         self._mode = mode
+        # Per-session output folder (transcript + WAVs share it); None → the
+        # recorder falls back to the flat transcripts root.
+        self._session_dir = session_dir
         vad_cfg = gate_params(cfg)
         # Playback target: fall back to the system default (with a warning) when
         # the configured device is absent — a config carried over from another
@@ -505,13 +510,28 @@ class IncomingPipeline:
         # source-tap chunks are delivered at, on both the driverless and vbcable
         # paths). Any failure is non-fatal: a broken recorder must never stop a
         # translation session.
-        if cfg.get("record_audio"):
+        # Recording is a VIDEO/GAME-mode capability only. In meeting mode the
+        # source track is another person's live voice, which recording without
+        # their consent is legally fraught (all-party-consent jurisdictions), so
+        # we never record it — regardless of the opt-in toggle. The toggle's UI
+        # hint states this; here we just skip + log so the behavior is traceable.
+        if cfg.get("record_audio") and self._mode == "meeting":
+            _log.info("audio recording skipped in meeting mode (two-party consent)")
+        if cfg.get("record_audio") and self._mode != "meeting":
             try:
                 from .audio_recorder import DualTrackRecorder  # noqa: PLC0415
                 from . import paths  # noqa: PLC0415
+                # Write into this session's own folder (so the WAVs sit beside the
+                # transcript JSON and share its stamp); fall back to the flat root
+                # when no session folder was supplied (non-webui callers).
+                out_dir = self._session_dir or paths.transcripts_dir(cfg)
+                stamp = None
+                if self._session_dir:
+                    base = os.path.basename(self._session_dir.rstrip("\\/"))
+                    stamp = base[len("voxis_"):] if base.startswith("voxis_") else base
                 self._recorder = DualTrackRecorder(
-                    paths.transcripts_dir(cfg), source_rate=self.capture.rate,
-                    tag=self._mode or "video", on_status=on_status)
+                    out_dir, source_rate=self.capture.rate,
+                    tag=self._mode or "video", stamp=stamp, on_status=on_status)
             except Exception:
                 self._recorder = None
                 _log.exception("audio recorder init failed — continuing without it")
@@ -791,11 +811,14 @@ class ModeController:
 
     def _build(self, mode: str) -> list:
         resolve = self.resolve
+        session_dir = getattr(self, "_session_dir_out", None)
         if mode == "video":
-            return [IncomingPipeline(self.cfg, resolve, mode, self.on_text, self.on_status)]
+            return [IncomingPipeline(self.cfg, resolve, mode, self.on_text,
+                                     self.on_status, session_dir=session_dir)]
         if mode == "meeting":
             pipes = [IncomingPipeline(self.cfg, resolve, "meeting",
-                                      self.on_text, self.on_status)]
+                                      self.on_text, self.on_status,
+                                      session_dir=session_dir)]
             try:
                 # Outbound direction requires a virtual microphone driver. If
                 # none is installed, the meeting gracefully falls back to
@@ -962,10 +985,13 @@ class ModeController:
         except Exception:
             pass
 
-    def start(self, mode: str):
+    def start(self, mode: str, session_dir: str | None = None):
         self.stop()
         if self.resolve is None:
             raise RuntimeError(t("st_no_key"))
+        # Per-session output folder decided by the caller (webui) so the recorder's
+        # WAVs land beside the transcript JSON in one self-contained folder.
+        self._session_dir_out = session_dir
         # Premium auto-routing: when a virtual cable is present, run the
         # music-preserving spatial (vbcable) path; otherwise driverless. The user
         # never chooses. No-op on the OSS build (premium absent → stays driverless).
