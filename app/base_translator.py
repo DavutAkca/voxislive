@@ -100,6 +100,14 @@ class BaseTranslator(threading.Thread):
     # on RECENT input so a genuine quiet stretch can never trip it.
     NO_OUTPUT_WARN_SECONDS = 12.0
     INPUT_RECENT_SECONDS = 4.0
+    # Self-heal escalation: once input-with-no-output has persisted this long,
+    # the warning alone is not enough (the Beta-off→Gemini "translation stops"
+    # report left the session dead until the user toggled engines by hand) —
+    # force a reconnect. Bounded per session by WATCHDOG_ROTATE_MAX so a
+    # genuinely output-less account can't spin an endless reconnect loop; the
+    # budget refills the moment healthy output resumes.
+    NO_OUTPUT_ROTATE_SECONDS = 22.0
+    WATCHDOG_ROTATE_MAX = 3
     # Voice watchdog: translated TEXT is flowing but NO translated AUDIO for this
     # long — the user sees subtitles with no voice (a text-only engine tier, or a
     # broken audio leg). Distinct from NO_OUTPUT above, which needs BOTH absent.
@@ -143,6 +151,10 @@ class BaseTranslator(threading.Thread):
         self._last_input_ts = 0.0
         self._last_output_ts = 0.0
         self._no_output_warned = False
+        # Self-heal reconnect budget (per translator lifetime, NOT reset by
+        # _reset_watchdogs on each reconnect — that would defeat the loop guard).
+        # Refilled to 0 in the sender when fresh output is observed.
+        self._watchdog_rotations = 0
         # Voice watchdog state: audio vs text output tracked separately so
         # "captions flowing, no voice" is distinguishable from "no output at all".
         self._last_audio_ts = 0.0
@@ -480,13 +492,25 @@ class BaseTranslator(threading.Thread):
                                "audio — reconnecting" % int(self.STALL_ROTATE_SECONDS))
                 raise _Rotate()
             # No-output watchdog: input transcription recently but no output.
+            # Warn once, then SELF-HEAL — force a reconnect if the stall persists,
+            # instead of streaming into a black hole until the user toggles the
+            # engine by hand (the Beta-off→Gemini "translation stops" report).
             now = time.monotonic()
-            if self._last_input_ts > 0.0 and not self._no_output_warned:
-                if now - self._last_input_ts <= self.INPUT_RECENT_SECONDS:
-                    last_out = self._last_output_ts if self._last_output_ts > 0.0 else started
-                    if now - last_out >= self.NO_OUTPUT_WARN_SECONDS:
-                        self._no_output_warned = True
-                        self.on_status(t("st_no_output_warning"))
+            if (self._last_input_ts > 0.0
+                    and now - self._last_input_ts <= self.INPUT_RECENT_SECONDS):
+                last_out = self._last_output_ts if self._last_output_ts > 0.0 else started
+                stalled = now - last_out
+                if stalled < self.NO_OUTPUT_WARN_SECONDS:
+                    self._watchdog_rotations = 0  # output is fresh — refill budget
+                elif not self._no_output_warned:
+                    self._no_output_warned = True
+                    self.on_status(t("st_no_output_warning"))
+                if (stalled >= self.NO_OUTPUT_ROTATE_SECONDS
+                        and self._watchdog_rotations < self.WATCHDOG_ROTATE_MAX):
+                    self._watchdog_rotations += 1
+                    self.on_status("translator: no translation for %ds — "
+                                   "reconnecting" % int(self.NO_OUTPUT_ROTATE_SECONDS))
+                    raise _Rotate()
             # Voice watchdog: translated TEXT is flowing (recently) but translated
             # AUDIO is absent — subtitles with no voice. Gated on recent text so a
             # normal end-of-speech (audio + text stop together) never trips it, and

@@ -127,6 +127,10 @@ DEFAULTS = {
     # Where session transcripts are saved. Empty = the built-in default
     # (Documents\Voxis\Transcripts on a frozen build); a non-empty path overrides.
     "transcript_dir": "",
+    # Opt-in dual-track audio export: save the source + translated audio as two
+    # separate WAV files beside the transcript. OFF by default — the source track
+    # captures real human voice (a consent step up over a text transcript).
+    "record_audio": False,
     # Qwen audio-output tier (see QWEN_AUDIO_LANGS); server-overridable so a model
     # update that adds/removes voiced languages doesn't need a client release.
     "qwen_audio_langs": list(QWEN_AUDIO_LANGS),

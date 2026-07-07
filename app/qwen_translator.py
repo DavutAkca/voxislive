@@ -254,6 +254,16 @@ class QwenTranslator(BaseTranslator):
         self._out_acc = ""
         self._in_acc = ""
         self._last_done_id = None
+        # Duplicate-audio instrumentation (Ivo's "doubled audio" report). We do
+        # NOT dedupe blind: the doubling may live in the user's capture/loopback
+        # chain rather than our stream — the Voxis-less control recording tells
+        # us which. This log-only counter proves whether the SERVER emits
+        # overlapping/cumulative audio deltas (the caption stream already does),
+        # so the next field report is root-causable. Lifetime counter; the
+        # previous-delta buffer resets per session.
+        self._prev_audio = b""
+        self._dup_audio_count = 0
+        self._dup_audio_warned = False
 
     # ---- session config ---------------------------------------------------
     def _session_update(self) -> str:
@@ -302,6 +312,7 @@ class QwenTranslator(BaseTranslator):
         self._out_acc = ""
         self._in_acc = ""
         self._last_done_id = None
+        self._prev_audio = b""
 
     async def _sender_frame(self, conn, item):
         await conn.send(json.dumps({
@@ -325,6 +336,40 @@ class QwenTranslator(BaseTranslator):
         setattr(self, acc_attr, txt)
         return (" " if acc else "") + txt
 
+    def _detect_dup_audio(self, pcm: bytes) -> str | None:
+        """Flag a translated-audio delta that duplicates the one before it.
+
+        Returns the duplication kind (or None). Log-only, warns once per
+        translator lifetime; near-silent chunks are skipped (identical silence
+        padding is normal and would false-positive). Comparison is against the
+        immediately-preceding delta only — enough to catch the two shapes we
+        care about: the server re-sending the same block (exact-repeat) or
+        re-sending prior audio plus more (cumulative-prefix, the shape the
+        caption stream already uses)."""
+        prev = self._prev_audio
+        a = np.frombuffer(pcm, dtype=np.int16)
+        # <10 ms or near-silent — remember it but never treat as a duplicate.
+        if a.size < 160 or int(np.abs(a).max()) < 256:
+            self._prev_audio = pcm
+            return None
+        kind = None
+        if pcm == prev:
+            kind = "exact-repeat"
+        elif prev and len(pcm) > len(prev) and pcm[:len(prev)] == prev:
+            kind = "cumulative-prefix"
+        elif prev and len(prev) > len(pcm) and prev[:len(pcm)] == pcm:
+            kind = "overlap-tail"
+        self._prev_audio = pcm
+        if kind:
+            self._dup_audio_count += 1
+            if not self._dup_audio_warned:
+                self._dup_audio_warned = True
+                _log.warning(
+                    "qwen duplicate audio delta (%s, %d bytes) — first "
+                    "occurrence; server may be emitting overlapping/cumulative "
+                    "audio. Counting the rest silently.", kind, len(pcm))
+        return kind
+
     async def _receive_loop(self, conn):
         async for raw in conn:
             if self._stopping.is_set():
@@ -339,6 +384,7 @@ class QwenTranslator(BaseTranslator):
                 b64 = ev.get("delta") or ev.get("audio")
                 if b64:
                     pcm = base64.b64decode(b64)
+                    self._detect_dup_audio(pcm)  # log-only instrumentation
                     self.on_audio(pcm)
                     self._record_usage("out_sec", len(pcm) / (OUT_RATE * 2))
                     self._mark_audio_output()
