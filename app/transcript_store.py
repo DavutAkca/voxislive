@@ -39,9 +39,19 @@ MIN_CUE_S = 1.6
 MAX_CUE_S = 7.0
 
 
+def session_dir_name(started: float) -> str:
+    """Canonical per-session FOLDER name keyed on the session start time.
+
+    Each session is self-contained in its own directory (transcript JSON, caption
+    exports, and the optional dual-track WAVs all share this folder + stamp), so a
+    whole session can be archived or copied as one unit and file names never
+    collide across sessions. Ivo's request, 1.0.28."""
+    return time.strftime("voxis_%Y-%m-%d_%H-%M-%S", time.localtime(started))
+
+
 def session_filename(started: float) -> str:
     """Canonical per-session JSON filename keyed on the session start time."""
-    return time.strftime("voxis_%Y-%m-%d_%H-%M-%S.json", time.localtime(started))
+    return session_dir_name(started) + ".json"
 
 
 def build_record(started, turns, *, app_version="", mode="",
@@ -70,10 +80,23 @@ def build_record(started, turns, *, app_version="", mode="",
     }
 
 
-def save_record(directory: str, record: dict) -> str:
-    """Persist a record JSON under `directory`, returning the written path."""
-    os.makedirs(directory, exist_ok=True)
-    path = os.path.join(directory, session_filename(record.get("started", time.time())))
+def save_record(directory: str, record: dict, *, subdir: str | None = None) -> str:
+    """Persist a record JSON inside its own per-session folder under `directory`
+    (the transcripts root), returning the written path.
+
+    Layout: `<directory>/voxis_<stamp>/voxis_<stamp>.json`. The folder + file share
+    one stamp so the JSON, its caption exports, and the optional WAVs form a
+    self-contained, copy-as-one-unit set.
+
+    `subdir` lets the caller pin the folder name (e.g. the live session already
+    created it at start, so the recorder's WAVs and this JSON land together);
+    otherwise it is derived from the record's start time. The JSON filename always
+    matches the folder stamp so all of a session's files share it."""
+    started = record.get("started", time.time())
+    name = subdir or session_dir_name(started)
+    session_dir = os.path.join(directory, name)
+    os.makedirs(session_dir, exist_ok=True)
+    path = os.path.join(session_dir, name + ".json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(record, f, ensure_ascii=False, indent=2)
     return path
@@ -84,17 +107,38 @@ def load_record(path: str) -> dict:
         return json.load(f)
 
 
+def _iter_record_paths(directory: str):
+    """Yield full paths of every session JSON under `directory`, covering both the
+    per-session-folder layout (`voxis_<stamp>/voxis_<stamp>.json`, current) and the
+    legacy flat layout (`voxis_<stamp>.json` directly in the root, pre-1.0.28)."""
+    try:
+        names = os.listdir(directory)
+    except OSError:
+        return
+    for name in names:
+        if not name.startswith("voxis_"):
+            continue
+        full = os.path.join(directory, name)
+        if name.endswith(".json") and os.path.isfile(full):
+            yield full  # legacy flat record
+        elif os.path.isdir(full):
+            try:
+                inner = os.listdir(full)
+            except OSError:
+                continue
+            for m in inner:
+                if m.startswith("voxis_") and m.endswith(".json"):
+                    fp = os.path.join(full, m)
+                    if os.path.isfile(fp):
+                        yield fp
+
+
 def list_records(directory: str) -> list[dict]:
     """Return a newest-first summary list of saved sessions. Each entry carries
     enough metadata for the history list without loading every turn body."""
     out = []
-    try:
-        names = [n for n in os.listdir(directory)
-                 if n.startswith("voxis_") and n.endswith(".json")]
-    except OSError:
-        return out
-    for name in names:
-        path = os.path.join(directory, name)
+    for path in _iter_record_paths(directory):
+        name = os.path.basename(path)
         try:
             rec = load_record(path)
         except (OSError, ValueError):

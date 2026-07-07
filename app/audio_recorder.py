@@ -7,7 +7,10 @@ translated track for dubbing / video editing — Ivo's localization request.
 Opt-in (cfg['record_audio'], default OFF) on purpose: the source track captures
 real human voice, a consent/biometric step up over a text transcript, whereas
 the translated track is our own synthetic TTS. Recording only happens while a
-session is active and the user has turned it on.
+session is active and the user has turned it on — and ONLY in Video/Game mode.
+Meeting mode never records: there the source is another person's live voice, and
+recording it without consent is legally fraught (all-party-consent regimes), so
+the pipeline skips the recorder in that mode regardless of the toggle.
 
 Streams straight to disk via stdlib `wave` (no whole-session memory buffer).
 Thread-safe by track: source frames arrive on the capture-callback thread and
@@ -60,9 +63,12 @@ class _Track:
 
 class DualTrackRecorder:
     def __init__(self, out_dir: str, source_rate: int, translated_rate: int = 24000,
-                 tag: str = "video", on_status=None):
+                 tag: str = "video", stamp: str | None = None, on_status=None):
         os.makedirs(out_dir, exist_ok=True)
-        base = "voxis_%s_%s" % (time.strftime("%Y%m%d_%H%M%S"), tag)
+        # `stamp` (the session-folder stamp) is passed by the live pipeline so the
+        # WAVs share the transcript JSON's stamp inside the same self-contained
+        # session folder; fall back to a fresh stamp for standalone use.
+        base = "voxis_%s_%s" % (stamp or time.strftime("%Y-%m-%d_%H-%M-%S"), tag)
         self._source = _Track(os.path.join(out_dir, base + "_source.wav"),
                               source_rate)
         self._translated = _Track(os.path.join(out_dir, base + "_translated.wav"),
