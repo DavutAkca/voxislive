@@ -75,7 +75,15 @@ def _cap_subtitle(text: str, limit: int = SUBTITLE_MAX) -> str:
 def _autofill_meeting_devices(cfg):
     """Auto-select an installed virtual cable for the two-way meeting path so the
     user never has to hand-edit config.json. Only fills a field that is unset or
-    no longer resolves to a present device — a deliberate, valid choice is kept."""
+    no longer resolves to a present device — a deliberate, valid choice is kept.
+
+    `system_capture` (the vbcable-backend incoming capture device, pipeline.py
+    `_acquire_capture`) is the same physical endpoint as `meeting_virtual_mic`
+    (both are the cable's recording/output side) and must be kept in sync with
+    it — a user whose only virtual cable is VoiceMeeter (not VB-CABLE) would
+    otherwise have `meeting_virtual_mic` autofilled correctly while
+    `system_capture` stays on the hardcoded VB-CABLE-only default, crashing
+    both video mode (feedback guard) and meeting mode (device not found)."""
     devs = cfg.setdefault("devices", {})
 
     def resolves(name, kind):
@@ -89,7 +97,8 @@ def _autofill_meeting_devices(cfg):
 
     play_ok = resolves(devs.get("meeting_mic_playback", ""), "output")
     rec_ok = resolves(devs.get("meeting_virtual_mic", ""), "input")
-    if play_ok and rec_ok:
+    capture_ok = resolves(devs.get("system_capture", ""), "input")
+    if play_ok and rec_ok and capture_ok:
         return
     found = detect_virtual_cable()
     if not found:
@@ -99,6 +108,8 @@ def _autofill_meeting_devices(cfg):
         devs["meeting_mic_playback"] = play
     if not rec_ok:
         devs["meeting_virtual_mic"] = rec
+    if not capture_ok:
+        devs["system_capture"] = rec
     save_config(cfg)
 
 
@@ -1240,10 +1251,16 @@ class Bridge:
 
     def _start_error_message(self, exc) -> str:
         """Map a start failure to a localized, user-actionable message. A
-        RuntimeError we raised already carries a localized string; anything else
-        is an unexpected fault and gets a generic localized line."""
+        RuntimeError we raised already carries a localized string. A ValueError
+        comes from device resolution (audio_io.find_device / the CABLE feedback
+        guard in pipeline.py) — actionable in English but not localized, so map
+        it to a generic "check your audio device setup" line instead of losing
+        the signal in the fully generic fallback. Anything else is an
+        unexpected fault and gets that generic localized line."""
         if isinstance(exc, RuntimeError) and str(exc):
             return str(exc)
+        if isinstance(exc, ValueError) and str(exc):
+            return t("err_device_config")
         return t("err_start_failed")
 
     def stop(self):

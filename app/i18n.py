@@ -104,6 +104,7 @@ STRINGS = {
         "err_consent_required": "Toplantı modu için önce bilgilendirmeyi onaylaman gerekir.",
         "err_quota_exhausted": "Çeviri kotan doldu — yeni oturum başlatılamıyor.",
         "err_start_failed": "Oturum başlatılamadı. Lütfen tekrar dene.",
+        "err_device_config": "Ses cihazı ayarında bir sorun var (gerekli sanal kablo bulunamadı veya yanlış yapılandırılmış). Ayarlar → Ses cihazlarını kontrol edip Voxis'i yeniden başlatın.",
         "err_cable_required": "Toplantı modu, çevrilmiş sesini görüşmeye iletmek için "
                               "VB-CABLE sanal mikrofonunu gerektirir; lütfen kullanmak için "
                               "VB-CABLE'ı kur.",
@@ -206,6 +207,7 @@ STRINGS = {
         "err_consent_required": "Meeting mode needs you to acknowledge the notice first.",
         "err_quota_exhausted": "Your translation quota is used up — cannot start a new session.",
         "err_start_failed": "Could not start the session. Please try again.",
+        "err_device_config": "There's a problem with your audio device setup (a required virtual cable is missing or misconfigured). Check Settings → Audio devices, then restart Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -306,6 +308,7 @@ STRINGS = {
         "err_consent_required": "Meeting-Modus erfordert zuerst die Bestätigung des Hinweises.",
         "err_quota_exhausted": "Ihr Übersetzungskontingent ist aufgebraucht — neue Sitzung nicht möglich.",
         "err_start_failed": "Sitzung konnte nicht gestartet werden. Bitte erneut versuchen.",
+        "err_device_config": "Es gibt ein Problem mit deiner Audiogeräte-Einrichtung (ein benötigtes virtuelles Kabel fehlt oder ist falsch konfiguriert). Prüfe Einstellungen → Audiogeräte und starte Voxis neu.",
         "err_cable_required": "Der Meeting-Modus benötigt das virtuelle Mikrofon VB-CABLE, "
                               "um deine übersetzte Stimme in den Anruf zu senden; bitte "
                               "installiere VB-CABLE, um ihn zu nutzen.",
@@ -406,6 +409,7 @@ STRINGS = {
         "err_consent_required": "Le mode Réunion nécessite d'abord de valider l'avis.",
         "err_quota_exhausted": "Votre quota de traduction est épuisé — impossible de démarrer une nouvelle session.",
         "err_start_failed": "Impossible de démarrer la session. Veuillez réessayer.",
+        "err_device_config": "Un problème affecte la configuration de votre périphérique audio (un câble virtuel requis est manquant ou mal configuré). Vérifiez Paramètres → Périphériques audio, puis redémarrez Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -506,6 +510,7 @@ STRINGS = {
         "err_consent_required": "El modo Reunión requiere aceptar el aviso primero.",
         "err_quota_exhausted": "Tu cuota de traducción está agotada — no se puede iniciar una nueva sesión.",
         "err_start_failed": "No se pudo iniciar la sesión. Por favor, inténtalo de nuevo.",
+        "err_device_config": "Hay un problema con la configuración de tu dispositivo de audio (falta un cable virtual necesario o está mal configurado). Revisa Configuración → Dispositivos de audio y reinicia Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -605,6 +610,7 @@ STRINGS = {
         "err_consent_required": "O modo Reunião requer que você aceite o aviso primeiro.",
         "err_quota_exhausted": "Sua cota de tradução foi esgotada — não é possível iniciar uma nova sessão.",
         "err_start_failed": "Não foi possível iniciar a sessão. Por favor, tente novamente.",
+        "err_device_config": "Há um problema com a configuração do seu dispositivo de áudio (um cabo virtual necessário está ausente ou mal configurado). Verifique Configurações → Dispositivos de áudio e reinicie o Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -704,6 +710,7 @@ STRINGS = {
         "err_consent_required": "ミーティングモードを使用するには、先に注意事項に同意してください。",
         "err_quota_exhausted": "翻訳クォータが使い切られました — 新しいセッションを開始できません。",
         "err_start_failed": "セッションを開始できませんでした。もう一度試してください。",
+        "err_device_config": "オーディオデバイスの設定に問題があります(必要な仮想ケーブルが見つからないか、設定が正しくありません)。設定→オーディオデバイスを確認し、Voxisを再起動してください。",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -803,6 +810,7 @@ STRINGS = {
         "err_consent_required": "미팅 모드를 사용하려면 먼저 안내에 동의해야 합니다.",
         "err_quota_exhausted": "번역 할당량이 소진되었습니다 — 새 세션을 시작할 수 없습니다.",
         "err_start_failed": "세션을 시작할 수 없습니다. 다시 시도해 주세요.",
+        "err_device_config": "오디오 장치 설정에 문제가 있습니다(필요한 가상 케이블이 없거나 잘못 구성되었습니다). 설정 → 오디오 장치를 확인한 후 Voxis를 다시 시작하세요.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -903,6 +911,7 @@ STRINGS = {
         "err_consent_required": "Режим Совещание требует сначала подтвердить уведомление.",
         "err_quota_exhausted": "Квота перевода исчерпана — невозможно начать новый сеанс.",
         "err_start_failed": "Не удалось запустить сеанс. Пожалуйста, попробуйте ещё раз.",
+        "err_device_config": "Проблема с настройкой аудиоустройства (требуемый виртуальный кабель отсутствует или настроен неверно). Проверьте Настройки → Аудиоустройства и перезапустите Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -1002,6 +1011,7 @@ STRINGS = {
         "err_consent_required": "使用会议模式前请先确认通知。",
         "err_quota_exhausted": "翻译配额已用尽 — 无法启动新会话。",
         "err_start_failed": "无法启动会话。请重试。",
+        "err_device_config": "音频设备设置存在问题(所需的虚拟声卡缺失或配置有误)。请检查设置→音频设备,然后重启 Voxis。",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -1102,6 +1112,7 @@ STRINGS = {
         "err_consent_required": "Tryb Spotkanie wymaga najpierw potwierdzenia informacji.",
         "err_quota_exhausted": "Twój limit tłumaczeń został wyczerpany — nie można rozpocząć nowej sesji.",
         "err_start_failed": "Nie można uruchomić sesji. Spróbuj ponownie.",
+        "err_device_config": "Wystąpił problem z konfiguracją urządzenia audio (wymagany wirtualny kabel jest niedostępny lub źle skonfigurowany). Sprawdź Ustawienia → Urządzenia audio i uruchom ponownie Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -1202,6 +1213,7 @@ STRINGS = {
         "err_consent_required": "La modalità Riunione richiede di confermare l'avviso prima.",
         "err_quota_exhausted": "La quota di traduzione è esaurita — impossibile avviare una nuova sessione.",
         "err_start_failed": "Impossibile avviare la sessione. Riprova.",
+        "err_device_config": "C'è un problema con la configurazione del dispositivo audio (manca un cavo virtuale richiesto o è configurato in modo errato). Controlla Impostazioni → Dispositivi audio, poi riavvia Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -1301,6 +1313,7 @@ STRINGS = {
         "err_consent_required": "Mode Rapat memerlukan Anda mengakui pemberitahuan terlebih dahulu.",
         "err_quota_exhausted": "Kuota terjemahan Anda habis — tidak dapat memulai sesi baru.",
         "err_start_failed": "Tidak dapat memulai sesi. Silakan coba lagi.",
+        "err_device_config": "Ada masalah dengan pengaturan perangkat audio Anda (kabel virtual yang diperlukan hilang atau salah konfigurasi). Periksa Pengaturan → Perangkat audio, lalu mulai ulang Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -1400,6 +1413,7 @@ STRINGS = {
         "err_consent_required": "Vergaderingsmodus vereist dat u eerst de kennisgeving bevestigt.",
         "err_quota_exhausted": "Uw vertaalquotum is op — kan geen nieuwe sessie starten.",
         "err_start_failed": "Kon de sessie niet starten. Probeer het opnieuw.",
+        "err_device_config": "Er is een probleem met je audioapparaat-instellingen (een vereiste virtuele kabel ontbreekt of is verkeerd geconfigureerd). Controleer Instellingen → Audioapparaten en start Voxis opnieuw.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -1499,6 +1513,7 @@ STRINGS = {
         "err_consent_required": "Chế độ Cuộc họp yêu cầu bạn xác nhận thông báo trước.",
         "err_quota_exhausted": "Hạn mức dịch của bạn đã hết — không thể bắt đầu phiên mới.",
         "err_start_failed": "Không thể bắt đầu phiên. Vui lòng thử lại.",
+        "err_device_config": "Có sự cố với cấu hình thiết bị âm thanh của bạn (thiếu cáp ảo cần thiết hoặc cấu hình sai). Kiểm tra Cài đặt → Thiết bị âm thanh, sau đó khởi động lại Voxis.",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
@@ -1598,6 +1613,7 @@ STRINGS = {
         "err_consent_required": "โหมดประชุมต้องการให้คุณยืนยันแจ้งเตือนก่อน",
         "err_quota_exhausted": "โควต้าการแปลของคุณหมดแล้ว — ไม่สามารถเริ่มเซสชันใหม่ได้",
         "err_start_failed": "ไม่สามารถเริ่มเซสชันได้ กรุณาลองใหม่อีกครั้ง",
+        "err_device_config": "การตั้งค่าอุปกรณ์เสียงของคุณมีปัญหา (ไม่พบสายเคเบิลเสมือนที่จำเป็นหรือกำหนดค่าไม่ถูกต้อง) ตรวจสอบ การตั้งค่า → อุปกรณ์เสียง แล้วรีสตาร์ท Voxis",
         "err_cable_required": "Meeting mode requires the VB-CABLE virtual microphone to "
                               "send your translated voice into the call; please install "
                               "VB-CABLE to use it.",
