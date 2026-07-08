@@ -15,6 +15,7 @@ user data dir with a current-user-only ACL; a legacy cleartext .env token is
 imported once then re-wrapped. User-facing errors stay generic ("could not reach
 the server") - URL / proxy / TLS detail is logged locally only.
 """
+import hashlib
 import logging
 import os
 import threading
@@ -650,6 +651,42 @@ def report_event_async(event: str, session_id: Optional[str] = None, meta: Optio
         target=report_event, args=(event, session_id, meta),
         daemon=True, name="voxis-event",
     ).start()
+
+
+def _device_hash() -> str:
+    """Stable, one-way per-device id for anonymous app_opened dedup. Hashes the
+    raw hardware fingerprint so no raw identifier ever leaves the device — the
+    server only sees an opaque hash, preserving the 'no PII' guarantee."""
+    try:
+        from . import device_id
+        fp = device_id.fingerprint()
+    except Exception:
+        return ""
+    parts = "|".join(f"{k}={fp[k]}" for k in sorted(fp) if fp.get(k))
+    if not parts:
+        return ""
+    return hashlib.sha256(parts.encode("utf-8")).hexdigest()[:32]
+
+
+def report_app_opened() -> None:
+    """Anonymous top-of-funnel milestone, fired on every app open BEFORE login.
+    app_launched only fires once a user is authenticated, so it cannot see people
+    who open the app and never sign in — the biggest suspected activation leak.
+    No JWT required: the server attributes this by a hashed device id, not a user
+    (a bearer is still sent when one exists, linking the open to the account).
+    Hard-gated off on the OSS/BYOK build (zero telemetry). Carries no PII —
+    only a one-way device hash."""
+    if not IS_OFFICIAL_RELEASE:
+        return
+    _post_event("app_opened", None, {"device": _device_hash()})
+
+
+def report_app_opened_async() -> None:
+    """Fire report_app_opened on a daemon worker — the device fingerprint runs
+    blocking WMI queries, so it must never touch the UI thread. No-op on OSS."""
+    if not IS_OFFICIAL_RELEASE:
+        return
+    threading.Thread(target=report_app_opened, daemon=True, name="voxis-open").start()
 
 
 def send_report(payload: dict) -> dict:

@@ -40,7 +40,11 @@ ASSETS_DIR = LAYOUT_DIR / "Assets"
 IDENTITY_NAME = "Voxis.Voxis"
 PUBLISHER = "CN=B793784D-B600-465E-9306-01ACA6831D2A"
 PUBLISHER_DISPLAY = "Voxis"
-APP_DISPLAY = "Voxis"
+# Store listing title = MSIX manifest <DisplayName>. Must exactly match a name
+# reserved in Partner Center. Keyword-forward for MS Store search discovery
+# (brand-only "Voxis" ranked for nothing); competitors anchor on
+# "real-time" + "voice translator", both head terms here.
+APP_DISPLAY = "Voxis — Real-Time Voice Translator"
 APP_DESCRIPTION = (
     "Real-time voice translation for Windows — translate any video, game, or "
     "meeting and hear it in your own language, live."
