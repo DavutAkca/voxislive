@@ -123,6 +123,10 @@ class Bridge:
         # One-shot guard for the app_launched funnel milestone (check_auth may run
         # several times per process; the event should fire once).
         self._launch_reported: bool = False
+        # One-shot guard for the anonymous app_opened milestone. Distinct from
+        # app_launched: this fires on the FIRST check_auth regardless of login,
+        # so the funnel can see opens that never reach authentication.
+        self._opened_reported: bool = False
         i18n.set_language(cfg.get("ui_language", "tr"))
 
         # Bounded like every other queue in the engine: if the webview stops
@@ -847,6 +851,12 @@ class Bridge:
         if not IS_OFFICIAL_RELEASE:
             return {"authenticated": True, "quota": None}
         from . import voxis_client
+        # Top-of-funnel: the app is open. Fire once per process BEFORE the JWT
+        # gate below, so users who launch but never sign in are still counted
+        # (app_launched only fires post-auth). Anonymous, device-hash attributed.
+        if not self._opened_reported:
+            self._opened_reported = True
+            voxis_client.report_app_opened_async()
         jwt = voxis_client.get_jwt()
         if not jwt:
             return {"authenticated": False, "quota": None}

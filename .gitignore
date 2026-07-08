@@ -68,6 +68,9 @@ Thumbs.db
 
 # --- AI session memory (stays local) ---
 .claude/
+# Third-party Agent Skills installed via `npx skills add` (universal copies + lockfile) — not part of the OSS engine
+.agents/
+skills-lock.json
 
 # --- Internal strategy/roadmap (private planning — never publish) ---
 ROADMAP.md
@@ -100,3 +103,5 @@ brand-set/
 
 # --- Private working notes (outreach, responses, pricing plans) — moved in from Desktop 2026-07-05 ---
 notes/
+# Local ops dashboard (gitignored — carries host IP, business data, secrets)
+panel/
