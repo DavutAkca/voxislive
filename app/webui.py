@@ -1009,6 +1009,125 @@ class Bridge:
         self._last_quota = info
         return {"ok": True, "quota": info, "error": None}
 
+    def google_login(self) -> dict:
+        """Browser-relay Google/email sign-in (D1). Google blocks OAuth inside
+        embedded webviews, and passwordless Google users have no password for
+        /auth/login — so the sign-in runs in the SYSTEM browser on
+        voxislive.com/app-login (PocketBase mints the token natively), and that
+        page relays the PB token back to a single-use 127.0.0.1 listener guarded
+        by a random nonce. No new Google Cloud config; reuses the live web flow."""
+        if not IS_OFFICIAL_RELEASE:
+            return {"ok": False, "quota": None, "error": "Login is disabled in developer builds."}
+        import http.server
+        import secrets
+        import webbrowser
+        import json as _json
+        from urllib.parse import quote
+
+        nonce = secrets.token_urlsafe(24)
+        captured: dict = {}
+        done = threading.Event()
+
+        class _Handler(http.server.BaseHTTPRequestHandler):
+            def _cors(self):
+                origin = self.headers.get("Origin", "") or "*"
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Vary", "Origin")
+                self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type")
+                # Chrome/Edge Private Network Access: a public HTTPS page fetching
+                # a loopback address gets a preflight that must be answered with
+                # this header or the POST is blocked.
+                self.send_header("Access-Control-Allow-Private-Network", "true")
+
+            def do_OPTIONS(self):
+                self.send_response(204)
+                self._cors()
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+            def do_GET(self):
+                # Redirect fallback: if the page's fetch(POST) is blocked (CORS /
+                # Private-Network-Access), app-login navigates here with the token
+                # in the query instead. Same nonce gate.
+                from urllib.parse import urlparse, parse_qs
+                q = parse_qs(urlparse(self.path).query)
+                token = (q.get("token") or [""])[0]
+                ok = bool(token) and (q.get("nonce") or [""])[0] == nonce
+                if ok and "token" not in captured:
+                    captured["token"] = token
+                self.send_response(200)
+                self._cors()
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(
+                    b"<!doctype html><meta charset=utf-8><title>Voxis</title>"
+                    b"<body style=\"font-family:Segoe UI,system-ui,sans-serif;background:#050507;"
+                    b"color:#fafafa;display:flex;min-height:100vh;align-items:center;justify-content:center\">"
+                    b"<div style=\"text-align:center\"><h2>Signed in</h2>"
+                    b"<p style=\"color:#a1a1aa\">You can close this tab and return to Voxis.</p></div>")
+                if ok:
+                    done.set()
+
+            def do_POST(self):
+                try:
+                    length = int(self.headers.get("Content-Length", 0) or 0)
+                    body = self.rfile.read(length) if length else b""
+                    data = _json.loads(body.decode("utf-8") or "{}")
+                except Exception:
+                    data = {}
+                token = data.get("token") if isinstance(data, dict) else None
+                ok = bool(token) and data.get("nonce") == nonce
+                if ok and "token" not in captured:
+                    captured["token"] = token
+                self.send_response(200 if ok else 400)
+                self._cors()
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok":true}' if ok else b'{"ok":false}')
+                if ok:
+                    done.set()
+
+            def log_message(self, *a):  # silence default stderr access log
+                pass
+
+        from . import voxis_client
+        try:
+            httpd = http.server.HTTPServer(("127.0.0.1", 0), _Handler)
+        except OSError as exc:
+            voxis_client._log_detail("google_login bind", exc)
+            return {"ok": False, "quota": None, "error": t("err_start_failed")}
+        port = httpd.server_address[1]
+        srv = threading.Thread(target=httpd.serve_forever, daemon=True)
+        srv.start()
+
+        url = f"https://voxislive.com/app-login?port={port}&nonce={quote(nonce)}"
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
+
+        done.wait(timeout=300)
+        try:
+            httpd.shutdown()
+            httpd.server_close()
+        except Exception:
+            pass
+
+        token = captured.get("token")
+        if not token:
+            return {"ok": False, "quota": None, "error": t("auth_browser_timeout")}
+
+        voxis_client.set_jwt(token)
+        self._user_id = voxis_client.user_id_from_jwt()
+        info, verr = voxis_client.verify_session()
+        if not info:
+            voxis_client.clear_jwt()
+            return {"ok": False, "quota": None, "error": verr or t("err_start_failed")}
+        self._last_quota = info
+        self._beta_flag = bool(info.get("beta"))
+        return {"ok": True, "quota": info, "error": None}
+
     def voxis_quota(self) -> dict | None:
         if not IS_OFFICIAL_RELEASE:
             return None
