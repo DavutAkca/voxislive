@@ -1,7 +1,9 @@
 """pywebview bridge between the web UI and the Python audio engine.
 
 JavaScript invokes Bridge methods through `window.pywebview.api`; the UI polls
-`poll()` every 150 ms to drain status, translation and telemetry events.
+`poll()` to drain status, translation and telemetry events — every 70 ms while
+a session is live (the caption is the fastest user-visible signal, so the poll
+cadence is part of the latency budget), relaxing to 250 ms when idle.
 """
 import logging
 import os
@@ -46,7 +48,15 @@ LANGS = [
     "uz", "zu",
 ]
 LINE_GAP = 2.5
+# When a speaker change has been detected, the translated stream is split at
+# the next micro-pause this long — far below LINE_GAP, so back-to-back
+# speakers still land in separate, separately-labeled turns.
+SPK_GAP = 0.7
 FADE_MS = 6.0
+# Prefetched session-key freshness window (seconds). Short on purpose: the
+# server issues ephemeral tokens, so a stale entry must fall back to the
+# normal synchronous fetch rather than risk connecting with a dead token.
+KEY_PREFETCH_TTL = 240.0
 # Overlay/OBS subtitle width cap on a word boundary so a runaway turn never
 # produces an unbounded single line in the overlay window or the OBS file.
 SUBTITLE_MAX = 260
@@ -144,6 +154,7 @@ class Bridge:
             on_usage_reported=self._on_usage_reported,
             on_quota_exceeded=self._on_quota_exceeded,
             on_session_failed=self._on_session_failed,
+            on_speaker=self._on_speaker,
         )
 
         self._lines, self._cur_line = [], ""
@@ -161,8 +172,19 @@ class Bridge:
         # source continuously with no pause, so nothing ever queues and each turn
         # simply consumes _src_buf — no repeated leading segment.
         self._src_buf = ""
-        self._src_done: list[str] = []
+        self._src_done: list[tuple[int | None, str]] = []  # (speaker, text)
         self._last_src_t = 0.0
+        # Speaker labeling (local tracker, incoming direction). _cur_spk is the
+        # label the tracker believes is talking NOW; _src_spk is the label the
+        # in-flight source buffer STARTED under (the buffer finalizes on the
+        # next arrival, by which time _cur_spk may already be the next voice).
+        # Labels are anonymous session-scoped ints rendered as "S1"/"S2" —
+        # deliberately language-neutral, like professional subtitle tags, so
+        # exports read the same regardless of UI language.
+        self._cur_spk: int | None = None
+        self._src_spk: int | None = None
+        self._spk_seen: set[int] = set()
+        self._pending_spk_break = False
         self._session_file = None
         # Path of the transcript auto-saved by the most recent stop(). Unlike
         # _session_file it SURVIVES the stop-time buffer clear, so a user who
@@ -212,6 +234,13 @@ class Bridge:
         # report's diagnostics. Bounded so it can never grow unbounded.
         self._status_log: list[str] = []
         self._last_error_code = ""
+        # Prefetched /auth/session-key result per incoming target (official
+        # build): warmed in the background at login / target change / session
+        # stop so pressing Start skips the issuance round-trip (~200-400 ms).
+        # Single-use + short TTL — on any miss the start does its normal
+        # synchronous fetch, so failures cost nothing.
+        self._key_cache: dict[str, tuple] = {}
+        self._key_cache_lock = threading.Lock()
         # One-time move of transcripts from the old (virtualized) AppData location
         # to the user-facing default. Best-effort; never blocks startup.
         self._migrate_transcripts()
@@ -240,6 +269,39 @@ class Bridge:
         with self._text_lock:
             self._on_text_locked(direction, text)
 
+    def _on_speaker(self, label: int):
+        """Speaker-change event from the local tracker (its worker thread).
+
+        Splits the in-flight source utterance at the change so its words stay
+        with the voice that (mostly — detection lags the true boundary by a
+        couple of seconds) said them, tags subsequent source with the new
+        label, and arms a soft break on the translated stream so back-to-back
+        speakers stop merging into one caption line (see _on_text_locked)."""
+        with self._text_lock:
+            if label == self._cur_spk:
+                return
+            prev = self._cur_spk
+            self._cur_spk = label
+            self._spk_seen.add(label)
+            if prev is None:
+                return  # first assignment — nothing to split yet
+            buf = self._src_buf.strip()
+            if buf:
+                self._src_done.append((self._src_spk, buf))
+                self._src_buf = ""
+            self._pending_spk_break = True
+
+    def _peek_spk(self) -> int | None:
+        """Best-effort label for the translation line streaming NOW: the oldest
+        unpaired source utterance's speaker (FIFO pairing), else the in-flight
+        buffer's. Only meaningful once ≥2 speakers were seen. Caller holds
+        _text_lock."""
+        if len(self._spk_seen) < 2:
+            return None
+        if self._src_done:
+            return self._src_done[0][0]
+        return self._src_spk if self._src_buf else self._cur_spk
+
     def _on_text_locked(self, direction, text):
         now = time.time()
         if direction == "in":
@@ -251,8 +313,13 @@ class Bridge:
                 # A speech pause completed this source utterance — queue it for the
                 # translation turn it produced. Source leads the translation by the
                 # model's ear-voice lag, so it is queued before that turn finalizes.
-                self._src_done.append(self._src_buf.strip())
+                # Tagged with the label the buffer STARTED under: this finalize
+                # runs on the NEXT utterance's first token, by which time
+                # _cur_spk may already be the next voice.
+                self._src_done.append((self._src_spk, self._src_buf.strip()))
                 self._src_buf = ""
+            if not self._src_buf:
+                self._src_spk = self._cur_spk
             self._src_buf += text
             self._last_src_t = now
             return
@@ -261,52 +328,81 @@ class Bridge:
             # First translated token of the session anchors the timeline; turn
             # offsets are measured from here (approximate caption sync).
             self._session_start = now
-        newline = bool(self._cur_line) and (now - self._last_t) > LINE_GAP
+        gap = now - self._last_t
+        # An armed speaker break fires at the next micro-pause: the model gives
+        # no word timestamps, so the change cannot split the stream exactly —
+        # the short output pause between the two voices' translations is the
+        # best available seam.
+        newline = bool(self._cur_line) and (
+            gap > LINE_GAP or (self._pending_spk_break and gap > SPK_GAP))
         if newline:
             finished = self._cur_line.strip()
-            self._lines.append(finished)
             self._cur_line = ""
             # The turn that just ended pairs with — and consumes — its source
             # (correct by ordering despite the few-second lag).
-            src = self._pop_source()
+            spk, src = self._pop_source()
             if src:
-                self._put_event(("src", src))
+                # The label rides along only in a genuinely multi-speaker
+                # session (same ≥2 gate as _peek_spk), so a lone speaker is
+                # never tagged "S1" on screen. The JSON turn keeps the raw
+                # label either way — export renderers apply the same gate.
+                self._put_event(("src", src,
+                                 spk if len(self._spk_seen) >= 2 else None))
+            # Engine re-speak guard: after an internal reconnect Gemini can
+            # re-emit the tail utterance, producing two identical consecutive
+            # turns (field transcript 2026-07-10, t=39s). A long turn that
+            # exactly repeats the previous one is that artifact, not real
+            # speech — keep the first, drop the echo. Short exact repeats
+            # ("Evet." twice) are plausible dialogue and stay.
+            dup = (len(finished) >= 20 and self._turns
+                   and self._turns[-1].get("text") == finished)
             # Record the finalized turn with its start offset and paired source.
-            if finished:
-                self._turns.append({
+            if finished and not dup:
+                self._lines.append(finished)
+                turn = {
                     "t": max(0.0, self._turn_start - self._session_start),
                     "dir": "out",
                     "src": src,
                     "text": finished,
-                })
+                }
+                if spk is not None:
+                    turn["spk"] = spk
+                self._turns.append(turn)
         if not self._cur_line:
             # Mark when this (new) turn began so its cue start is the speech
-            # onset, not the moment it finalized one LINE_GAP later.
+            # onset, not the moment it finalized one LINE_GAP later. A fresh
+            # turn boundary also satisfies any armed speaker break.
             self._turn_start = now
+            self._pending_spk_break = False
         self._cur_line += text
         self._last_t = now
-        self._overlay_text = self._cur_line.strip()
+        line = self._cur_line.strip()
+        hint = self._peek_spk()
+        if hint is not None:
+            line = f"S{hint}: {line}"
+        self._overlay_text = line
         self._overlay_until = now + FADE_MS
-        self._obs_write(self._cur_line.strip())
-        self._put_event(("trans", text, newline))
+        self._obs_write(line)
+        self._put_event(("trans", text, newline, hint))
 
-    def _pop_source(self) -> str:
-        """Source text for the translation turn that just finalized: the oldest
-        completed source utterance if one is queued (Gemini's paused stream),
-        else whatever is still accumulating (Qwen's gapless stream) — consumed so
-        the next turn cannot re-emit it. Caller holds _text_lock."""
+    def _pop_source(self) -> tuple[int | None, str]:
+        """(speaker, text) for the translation turn that just finalized: the
+        oldest completed source utterance if one is queued (Gemini's paused
+        stream), else whatever is still accumulating (Qwen's gapless stream) —
+        consumed so the next turn cannot re-emit it. Caller holds _text_lock."""
         while self._src_done:
-            src = self._src_done.pop(0).strip()
+            spk, src = self._src_done.pop(0)
+            src = src.strip()
             if src:
-                return src
+                return spk, src
         src = self._src_buf.strip()
         self._src_buf = ""
-        return src
+        return (self._src_spk if src else self._cur_spk), src
 
     def _pending_source(self) -> str:
         """All source not yet paired to a turn (queue + in-flight buffer), for the
         stop-time flush of a source-only session. Caller holds _text_lock."""
-        parts = [s for s in self._src_done if s.strip()]
+        parts = [s for _, s in self._src_done if s.strip()]
         if self._src_buf.strip():
             parts.append(self._src_buf.strip())
         return " ".join(parts).strip()
@@ -353,6 +449,10 @@ class Bridge:
         thread under the session lock, so calling it here is safe."""
         self._last_error_code = "st_quota_exceeded"
         self._emit_status(t("st_quota_exceeded"), "warn")
+        # A key prefetched before the quota ran out must not let the next Start
+        # sail past the paywall — drop it so the start re-asks the server.
+        with self._key_cache_lock:
+            self._key_cache.clear()
         self._put_event(("quota_refresh", None))
         # Raise the in-app paywall card at the mid-session cutoff (the highest-
         # intent moment) instead of a silent stop. JS reads the live QUOTA global
@@ -424,37 +524,19 @@ class Bridge:
             "official_release": IS_OFFICIAL_RELEASE,
             "badge_removable": self._badge_removable(),
             "onboarding_done": bool(self.cfg.get("onboarding_done", False)),
-            "beta_allowed": self._beta_allowed(),
-            "beta": dict(self.cfg.get("beta") or {}),
             "cfg": self._cfg_view(outs, mics),
         }
 
     def _beta_allowed(self) -> bool:
         """Beta (Qwen) eligibility. Dev builds: always. Official: the server's
-        per-account flag, refreshed by check_auth/verify — the client renders
-        the tab from this, and the server re-checks on session-key anyway."""
+        per-account flag, refreshed by check_auth/verify. The Beta TAB was
+        removed in 1.0.33 (Qwen graduated to the standard server-routed primary
+        engine); the cfg["beta"] opt-in remains config-file-driven — the dev
+        A/B path and older field builds keep working, and the server re-checks
+        eligibility on session-key anyway."""
         if not IS_OFFICIAL_RELEASE:
             return True
         return bool(getattr(self, "_beta_flag", False))
-
-    def set_beta(self, beta) -> dict:
-        """Persist the Beta tab settings; a running session restarts to apply."""
-        cur = dict(self.cfg.get("beta") or {})
-        if isinstance(beta, dict):
-            if not self._beta_allowed():
-                beta = {**beta, "enabled": False}  # belt-and-braces client gate
-            cur.update({
-                "enabled": bool(beta.get("enabled", cur.get("enabled", False))),
-                "source_lang": str(beta.get("source_lang", cur.get("source_lang", "auto")) or "auto"),
-                "clone": beta.get("clone") if beta.get("clone") in ("off", "once", "always")
-                         else cur.get("clone", "off"),
-                "hotwords": str(beta.get("hotwords", cur.get("hotwords", "")))[:4000],
-                "vad_ms": int(beta.get("vad_ms", cur.get("vad_ms", 500)) or 0),
-            })
-        self.cfg["beta"] = cur
-        save_config(self.cfg)
-        self._maybe_restart()
-        return {"ok": True, "beta": cur}
 
     def _quality_options(self):
         """End-user build sees two friendly choices (smooth vs savings); the
@@ -470,8 +552,9 @@ class Bridge:
         """Engine choices for the selector. Keys only — the per-locale benefit
         labels resolve from the JS I18N dict (app/i18n.py is TR/EN-only).
         OpenAI is an official-build feature; the OSS/BYOK build is Gemini-only.
-        Qwen is EXCLUDED here on purpose: it is a beta engine reachable only
-        through the server-gated Beta tab, never the engine selector."""
+        Qwen is EXCLUDED here on purpose: it is served by the SERVER's
+        per-target routing (primary engine for its voiced targets), never a
+        user-facing selector choice."""
         from .config import VALID_ENGINES, ENGINE_GEMINI, ENGINE_QWEN
         if IS_OFFICIAL_RELEASE:
             return [e for e in VALID_ENGINES if e != ENGINE_QWEN]
@@ -540,6 +623,10 @@ class Bridge:
                      "target_language_outgoing", "gemini_voice", "engine"):
             if key == "quality_preset":
                 self._mark_custom()
+            if key == "target_language_incoming":
+                # New target = new per-target engine routing: warm its key so
+                # the next Start (or the restart below) skips the issuance RTT.
+                self._prefetch_session_key()
             self._maybe_restart()
         return self._save_cfg()
 
@@ -877,8 +964,10 @@ class Bridge:
         if not self._launch_reported:
             self._launch_reported = True
             voxis_client.report_event_async("app_launched")
-        return {"authenticated": True, "quota": info,
-                "beta_allowed": self._beta_allowed()}
+        # Warm the session key in the background so the first Start after
+        # opening the app skips the issuance round-trip.
+        self._prefetch_session_key()
+        return {"authenticated": True, "quota": info}
 
     def win_resize(self, width, height, anchor="br") -> bool:
         """Resize the frameless main window from the custom JS edge/corner grips
@@ -1007,6 +1096,7 @@ class Bridge:
             voxis_client.clear_jwt()
             return {"ok": False, "quota": None, "error": verr or t("err_start_failed")}
         self._last_quota = info
+        self._prefetch_session_key()
         return {"ok": True, "quota": info, "error": None}
 
     def google_login(self) -> dict:
@@ -1126,6 +1216,7 @@ class Bridge:
             return {"ok": False, "quota": None, "error": verr or t("err_start_failed")}
         self._last_quota = info
         self._beta_flag = bool(info.get("beta"))
+        self._prefetch_session_key()
         return {"ok": True, "quota": info, "error": None}
 
     def voxis_quota(self) -> dict | None:
@@ -1251,6 +1342,51 @@ class Bridge:
             return False
         return True
 
+    def _prefetch_session_key(self):
+        """Warm the session-key cache for the current incoming target (official
+        build only). Fire-and-forget on a daemon thread: any error just leaves
+        the cache cold and the next session start does its normal synchronous
+        fetch. The beta (Qwen) resolver never reads this cache."""
+        if not IS_OFFICIAL_RELEASE:
+            return
+        target = self.cfg.get("target_language_incoming", "")
+        if not target:
+            return
+
+        def work():
+            try:
+                from . import voxis_client  # noqa: PLC0415
+                key, engine, model, quality, quota, workspace, _err = voxis_client.get_session_key(
+                    target=target, caps="engine-routing")
+                if key:
+                    with self._key_cache_lock:
+                        self._key_cache[target] = (time.time(), engine, key,
+                                                   model, quality, workspace)
+                    if isinstance(quota, dict):
+                        self._last_quota = quota
+            except Exception:
+                pass  # cold cache == old behavior
+
+        threading.Thread(target=work, daemon=True,
+                         name="voxis-key-prefetch").start()
+
+    def _pop_prefetched_key(self, target):
+        """Single-use cache take — ephemeral tokens are not reused across
+        sessions. Returns (engine, key, model, quality, workspace) or None
+        (stale/miss)."""
+        with self._key_cache_lock:
+            hit = self._key_cache.pop(target, None)
+        if hit and time.time() - hit[0] < KEY_PREFETCH_TTL:
+            return hit[1:]
+        return None
+
+    def _apply_qwen_workspace(self, engine, workspace):
+        """Adopt the server-issued DashScope workspace id (workspace-scoped
+        sk-ws-… keys need it for the MAAS WS host — see make_translator).
+        Server-controlled so a workspace change never needs a client release."""
+        if engine == "qwen" and workspace:
+            self.cfg["qwen_workspace"] = str(workspace)
+
     def _build_engine_resolver(self):
         """Returns resolve(target) -> (engine, key, model), called once per pipeline.
 
@@ -1302,21 +1438,23 @@ class Bridge:
                 # Skip Qwen entirely for a target it can't voice (text-only tier):
                 # the standard engine gives translated speech, not just subtitles.
                 if qwen_can_voice(self.cfg, target):
-                    key, engine, model, quality, quota, err = voxis_client.get_session_key(
+                    key, engine, model, quality, quota, workspace, err = voxis_client.get_session_key(
                         target=target, caps="engine-routing", engine="qwen")
                     if key and engine == "qwen":
                         if isinstance(quota, dict):
                             self._last_quota = quota
+                        self._apply_qwen_workspace(engine, workspace)
                         return engine, key, (model or resolve_model(self.cfg, engine))
                 else:
                     _log.info("Qwen beta has no voice for target %r; using standard routing", target)
-                key, engine, model, quality, quota, err2 = voxis_client.get_session_key(
+                key, engine, model, quality, quota, workspace, err2 = voxis_client.get_session_key(
                     target=target, caps="engine-routing")
                 if key:
                     if isinstance(quota, dict):
                         self._last_quota = quota
                     if quality:
                         self.cfg["quality_preset"] = quality
+                    self._apply_qwen_workspace(engine, workspace)
                     return engine, key, (model or resolve_model(self.cfg, engine))
                 raise RuntimeError(err or err2 or t("st_no_key"))
             return resolve
@@ -1326,17 +1464,27 @@ class Bridge:
         # the key, so the old verify → quota → session-key sequence (3 RTTs on a
         # slow link) collapses into this one call. Auth/quota/license failures
         # surface as localized errors from get_session_key itself.
+        # Zero-round-trip start: a fresh prefetched key (warmed at login /
+        # target change / previous stop) skips even that one call.
         def resolve(target):
-            key, engine, model, quality, quota, err = voxis_client.get_session_key(
+            pre = self._pop_prefetched_key(target)
+            if pre:
+                engine, key, model, quality, workspace = pre
+                if quality:
+                    self.cfg["quality_preset"] = quality
+                self._apply_qwen_workspace(engine, workspace)
+                return engine, key, (model or resolve_model(self.cfg, engine))
+            key, engine, model, quality, quota, workspace, err = voxis_client.get_session_key(
                 target=target, caps="engine-routing")
             if key:
                 if isinstance(quota, dict):
                     self._last_quota = quota  # keeps the paid-badge gate fresh
                 if quality:
                     self.cfg["quality_preset"] = quality  # server-controlled default
+                self._apply_qwen_workspace(engine, workspace)
                 return engine, key, (model or resolve_model(self.cfg, engine))
-            # OpenAI unavailable (503) → fall back to Gemini via the legacy path.
-            key, engine, model, quality, quota, err2 = voxis_client.get_session_key()
+            # Routed engine unavailable (503) → fall back to Gemini via the legacy path.
+            key, engine, model, quality, quota, workspace, err2 = voxis_client.get_session_key()
             if key:
                 if quality:
                     self.cfg["quality_preset"] = quality
@@ -1433,6 +1581,9 @@ class Bridge:
                 self._session_file = None
                 self._lines, self._cur_line = [], ""
                 self._src_buf, self._src_done = "", []
+                self._cur_spk, self._src_spk = None, None
+                self._spk_seen = set()
+                self._pending_spk_break = False
         # Tell the user where the auto-saved transcript went and offer open/reveal
         # actions, so pressing Stop confirms the save instead of leaving them to
         # click "Save transcript" and hit "nothing to save". Remember the path so
@@ -1441,6 +1592,9 @@ class Bridge:
             self._last_saved_file = saved["path"]
             self._emit_status(t("saved_to", path=saved["path"]))
             self._put_event(("saved", saved["file"]))
+        # Re-warm the session key for the (likely same-target) next start — the
+        # previous one was consumed by this session's resolver.
+        self._prefetch_session_key()
 
     def _flush_turns(self):
         """Fold the in-progress turn into the structured log so a session that is
@@ -1472,12 +1626,16 @@ class Bridge:
             if not self._session_start:
                 self._session_start = time.time()
             start = self._turn_start or self._session_start
-            self._turns.append({
+            spk, src = self._pop_source()
+            turn = {
                 "t": max(0.0, start - self._session_start),
                 "dir": "out",
-                "src": self._pop_source(),
+                "src": src,
                 "text": tail,
-            })
+            }
+            if spk is not None:
+                turn["spk"] = spk
+            self._turns.append(turn)
 
     def _build_record(self):
         return transcript_store.build_record(
@@ -2072,7 +2230,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#131518;
 </div>
 <script>
 const txt=document.getElementById('txt'); const brand=document.getElementById('brand');
-let vis=false, lastH=0, lastBrand=null;
+let vis=false, lastH=0, lastBrand=null, fast=false;
 function fit(){
   txt.scrollTop = txt.scrollHeight;
   const h=Math.ceil(document.getElementById('bar').scrollHeight);
@@ -2085,12 +2243,15 @@ async function p(){
     const b=(r&&r.badge)||'';
     if(b!==lastBrand){ lastBrand=b; brand.textContent=b||''; brand.style.display=b?'block':'none'; requestAnimationFrame(fit); }
     const x=(r&&r.text)||'';
+    fast = !!x;
     if(x){
       if(txt.textContent!==x){ txt.textContent=x; requestAnimationFrame(fit); }
       if(!vis){ vis=true; window.pywebview.api.overlay_show(); }
     } else if(vis){ vis=false; window.pywebview.api.overlay_hide(); }
   }catch(e){}
-  setTimeout(p,150);
+  // Adaptive: 70 ms while a caption is on screen (subtitle sync is part of the
+  // latency budget), 200 ms while blank.
+  setTimeout(p, fast?70:200);
 }
 window.addEventListener('pywebviewready',p);setTimeout(p,400);
 </script></body></html>"""

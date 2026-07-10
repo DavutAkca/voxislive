@@ -272,9 +272,12 @@ class QwenTranslator(BaseTranslator):
             "input_audio_format": "pcm",
             "output_audio_format": "pcm",
             # The ASR model unlocks the source-transcription stream ('in'
-            # captions / WER) at no measured latency cost.
+            # captions / WER) at no measured latency cost. fun-asr-realtime is
+            # Alibaba's designated replacement for qwen3-asr-flash-realtime,
+            # whose dated snapshots retire 2026-10-10 (A/B 2026-07-10: session
+            # behavior identical between the two).
             "input_audio_transcription": {"language": self.source_lang,
-                                          "model": "qwen3-asr-flash-realtime"},
+                                          "model": "fun-asr-realtime"},
             "translation": {"language": self.target_lang},
         }
         if self.vad_silence_ms > 0:
