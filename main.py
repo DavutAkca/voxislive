@@ -44,17 +44,27 @@ def _acquire_single_instance() -> bool:
             _INSTANCE_MUTEX = handle  # hold for process lifetime
             return True
         k32.CloseHandle(handle)
-        # Bring the running instance to the front (best-effort).
+        # Bring the running instance to the front (best-effort). If the mutex is
+        # held but NO window exists, the "instance" is a headless zombie from a
+        # wedged shutdown (see webui.run's hard-exit note) — blocking startup on
+        # it would make the app unopenable until the user finds Task Manager, so
+        # fail open and start anyway (the guard's own contract: a working
+        # install must never be blocked by the guard itself).
         try:
             u = ctypes.windll.user32
             hwnd = u.FindWindowW(None, i18n.t("app_title"))
             if hwnd:
                 u.ShowWindow(hwnd, 9)  # SW_RESTORE
                 u.SetForegroundWindow(hwnd)
+                logging.getLogger("voxis").info(
+                    "second instance blocked; focused existing window")
+                return False
         except Exception:
-            pass
-        logging.getLogger("voxis").info("second instance blocked; focused existing window")
-        return False
+            return False  # couldn't probe: assume a real instance, stay safe
+        logging.getLogger("voxis").warning(
+            "single-instance mutex held but no window found — stale zombie "
+            "process; starting anyway")
+        return True
     except Exception:
         return True
 

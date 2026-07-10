@@ -2170,7 +2170,16 @@ class Bridge:
                 # tid with CO_E_NOTINITIALIZED.
                 self._start_thread(mode, True)
 
-        threading.Timer(0.4, run).start()
+        # daemon: threading.Timer threads are non-daemon by default, and this
+        # one's callback runs a FULL session start (network + PortAudio + COM).
+        # A user who changed a setting and closed the window inside the debounce
+        # left that thread alive after webview.start() returned — a headless
+        # zombie process holding the Voxis.SingleInstance mutex, which made the
+        # next launch silently refuse to open until the zombie was killed in
+        # Task Manager (field report, 2026-07-10).
+        t = threading.Timer(0.4, run)
+        t.daemon = True
+        t.start()
 
     def _register_hotkeys(self):
         try:
@@ -2366,9 +2375,27 @@ def run(cfg):
         # Older pywebview without the icon parameter.
         webview.start()
     # When the main window is destroyed (X or Alt+F4) ensure any active session
-    # is stopped so the final usage report reaches the server.
+    # is stopped so the final usage report reaches the server — then GUARANTEE
+    # process death. The stop path crosses COM (endpoint restore), PortAudio
+    # teardown and the network; any of those wedging after the window is gone
+    # would leave a headless zombie that still holds the Voxis.SingleInstance
+    # mutex, so the app "won't reopen until killed in Task Manager" (field
+    # report, 2026-07-10). Run the cleanup on a watchdog thread with a bounded
+    # grace, then hard-exit: normal interpreter shutdown would also wait on any
+    # straggler non-daemon thread, and a blocked main thread never reaches it.
+    def _final_cleanup():
+        try:
+            if bridge.controller.mode:
+                bridge.controller.stop()
+        except Exception:
+            pass
+
+    cleanup = threading.Thread(target=_final_cleanup, daemon=True,
+                               name="voxis-final-cleanup")
+    cleanup.start()
+    cleanup.join(8.0)  # final heartbeat + endpoint restore normally take <2 s
     try:
-        if bridge.controller.mode:
-            bridge.controller.stop()
+        logging.shutdown()  # flush voxis.log before the hard exit
     except Exception:
         pass
+    os._exit(0)
