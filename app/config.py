@@ -131,6 +131,12 @@ DEFAULTS = {
     # separate WAV files beside the transcript. OFF by default — the source track
     # captures real human voice (a consent step up over a text transcript).
     "record_audio": False,
+    # Local speaker-change detection (app/speaker_id): splits + tags caption
+    # turns as S1/S2 when different voices alternate. ON by default — it is
+    # fully local (no extra cloud calls), fails soft, and single-speaker
+    # sessions render exactly as before (labels only appear once a second
+    # voice is detected).
+    "speaker_labels": True,
     # Qwen audio-output tier (see QWEN_AUDIO_LANGS); server-overridable so a model
     # update that adds/removes voiced languages doesn't need a client release.
     "qwen_audio_langs": list(QWEN_AUDIO_LANGS),

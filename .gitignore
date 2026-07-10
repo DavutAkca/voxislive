@@ -105,3 +105,8 @@ brand-set/
 notes/
 # Local ops dashboard (gitignored — carries host IP, business data, secrets)
 panel/
+
+# --- Speaker-embedding model (27 MB): too heavy for the public repo. It is
+# hash-verified + auto-downloaded on first use (app/speaker_id.py), and the
+# official build bundles the local copy via build_official's models/ add-data.
+models/speaker_campplus.onnx

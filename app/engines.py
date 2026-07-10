@@ -40,7 +40,7 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
         # language router never selects it), so Gemini/OpenAI paths are
         # untouched. Its knobs live under cfg["beta"].
         from .qwen_translator import QwenTranslator  # lazy: keep websockets off cold start
-        from .config import parse_hotwords  # noqa: PLC0415
+        from .config import QWEN_WORKSPACE, parse_hotwords  # noqa: PLC0415
         beta = cfg.get("beta") or {}
         tr = QwenTranslator(
             key, target_lang,
@@ -50,7 +50,11 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
             source_lang=beta.get("source_lang", "auto"),
             clone=beta.get("clone", "off"),
             hotwords=parse_hotwords(beta.get("hotwords", "")),
-            vad_silence_ms=int(beta.get("vad_ms", 500)))
+            vad_silence_ms=int(beta.get("vad_ms", 500)),
+            # DashScope intl keys are workspace-scoped (the WS host carries the
+            # workspace id) — a key from a different Model Studio account needs
+            # its own workspace here, or the handshake 401s.
+            workspace=cfg.get("qwen_workspace") or QWEN_WORKSPACE)
         tr.engine = engine
         return tr
 

@@ -325,6 +325,10 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 @keyframes caret{50%{opacity:0}}
 .turn .src{margin-top:5px;padding-left:16px;font-size:12px;color:var(--text-3);display:flex;gap:8px;animation:rise .3s var(--ease-out)}
 .turn .src .who{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);flex:none;padding-top:2px}
+/* Speaker tag ("S1"/"S2") on a turn — shown only once a 2nd voice is detected. */
+.turn .tr .spk{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.12em;
+  color:var(--amber);border:1px solid var(--border-strong);border-radius:4px;padding:1px 5px;
+  margin-right:8px;vertical-align:2px;user-select:none}
 .line.sys{font-family:var(--mono);font-size:10.5px;color:var(--text-3);padding-left:4px;animation:rise .3s var(--ease-out)}
 .line.sys::before{content:'› ';opacity:.6}
 
@@ -884,10 +888,6 @@ body.resizing,body.resizing *{user-select:none!important}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.4 5 5.6.8-4 3.9 1 5.5L12 19.8 6.9 22.2l1-5.5-4-3.9 5.6-.8z"/></svg>
         <span id="tab-lbl-membership" data-i18n="tab_membership">Üyelik</span>
       </button>
-      <button class="dtab" data-pane="beta" role="tab" aria-selected="false" id="tab-beta-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.3L4.7 18a2 2 0 0 0 1.7 3h11.2a2 2 0 0 0 1.7-3L14 9.3V3"/></svg>
-        <span data-i18n="tab_beta">Beta</span>
-      </button>
       <button class="dtab" data-pane="about" role="tab" aria-selected="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
         <span id="tab-lbl-about" data-i18n="tab_about">Hakkında</span>
@@ -940,6 +940,8 @@ body.resizing,body.resizing *{user-select:none!important}
           <div style="margin-top:18px">
             <label class="switch"><input type="checkbox" id="record-audio"><span class="track"></span><span data-i18n="record_audio">Sesi kaydet (kaynak + çeviri, ayrı dosyalar)</span></label>
             <div class="fieldhint" style="margin-top:6px" data-i18n="record_audio_hint">Her oturumun kaynak sesini ve çevrilmiş sesini iki ayrı WAV dosyası olarak transkript klasörüne kaydeder. Kaynak parça gerçek insan sesi içerdiğinden varsayılan olarak kapalıdır. Yalnızca Video/Oyun modunda çalışır — Toplantı modunda otomatik olarak kapanır, böylece karşı tarafın canlı sesi asla kaydedilmez.</div>
+            <label class="switch" style="margin-top:12px"><input type="checkbox" id="spk-labels"><span class="track"></span><span data-i18n="spk_labels">Konuşmacı etiketleri (S1/S2)</span></label>
+            <div class="fieldhint" style="margin-top:6px" data-i18n="spk_labels_hint">Farklı kişiler ard arda konuştuğunda ses değişimini cihazında algılar ve altyazı satırlarını S1/S2 olarak etiketler. Tamamen yerel çalışır — ek bulut çağrısı yoktur. Etiketler ancak ikinci bir ses duyulduğunda görünür; kaydedilen transkriptlere de yazılır. Sesli çeviri yine tek sesle konuşur.</div>
           </div>
         </div>
       </section>
@@ -960,40 +962,6 @@ body.resizing,body.resizing *{user-select:none!important}
           <button class="btn btn-ghost" id="manageplanbtn" style="display:none;width:auto" data-i18n="manage_plan">Planı yönet</button>
           <button class="btn btn-ghost" id="storebtn" style="width:auto;display:none" data-i18n="store_view">Microsoft Store'da görüntüle</button>
           <button class="btn btn-danger" id="logoutbtn" style="width:auto" data-i18n="logout">Çıkış</button>
-        </div>
-      </section>
-      <section class="dpane" data-pane="beta" role="tabpanel" hidden>
-        <div class="dsection">
-          <h3 data-i18n="beta_title">Beta motor</h3>
-          <div class="fieldhint" data-i18n="beta_hint">Deneysel çeviri motoru: konuşmacı sesi eşleme, kaynak dil algılama ve terim sözlüğü. Geri bildirimlerinizi bekliyoruz — sorun olursa kapatmanız yeterli.</div>
-          <div class="fieldhint" id="beta-locked-note" style="display:none;margin-top:6px">
-            <span style="color:var(--amber)" data-i18n="beta_locked">Bu bölüm yalnızca beta programı kullanıcılarına açıktır — hesabınız için henüz etkin değil.</span><br>
-            <a href="#" id="beta-apply-link" style="color:var(--accent)" data-i18n="beta_apply">Beta kullanıcısı olmak için e-posta gönderin →</a><br>
-            <span data-i18n="beta_apply_note">E-postayı, siteye kayıt olduğunuz adresten göndermeniz gerekir.</span>
-          </div>
-          <label class="switch" style="margin-top:8px"><input type="checkbox" id="beta-on"><span class="track"></span><span data-i18n="beta_enable">Beta motoru etkinleştir</span></label>
-        </div>
-        <div class="dsection" id="beta-opts">
-          <div class="fieldlabel" data-i18n="beta_source">Kaynak dil</div>
-          <div class="selectwrap"><select id="beta-source"></select></div>
-          <div class="fieldlabel" data-i18n="beta_target">Hedef dil</div>
-          <div class="selectwrap"><select id="beta-target"></select></div>
-          <div class="fieldlabel" data-i18n="beta_clone">Ses eşleme (klon)</div>
-          <div class="selectwrap"><select id="beta-clone">
-            <option value="off" data-i18n="beta_clone_off">Kapalı — tek ses, en düşük gecikme</option>
-            <option value="once" data-i18n="beta_clone_once">Bir kez — ilk konuşmacıdan</option>
-            <option value="always" data-i18n="beta_clone_always">Sürekli — konuşmacıya uyum sağlar</option>
-          </select></div>
-          <div class="fieldlabel" data-i18n="beta_vad">Segmentasyon</div>
-          <div class="selectwrap"><select id="beta-vad">
-            <option value="0" data-i18n="beta_vad_model">Model varsayılanı</option>
-            <option value="300">300 ms</option>
-            <option value="500" data-i18n="beta_vad_500">500 ms (önerilen)</option>
-            <option value="800">800 ms</option>
-          </select></div>
-          <div class="fieldlabel" data-i18n="beta_hotwords">Terim sözlüğü (satır başına terim=çeviri)</div>
-          <textarea id="beta-hotwords" rows="3" style="width:100%;resize:vertical" placeholder="Voxis=Voxis&#10;Alexandria=Alexandria"></textarea>
-          <div class="fieldhint" data-i18n="beta_hotwords_hint">Özel isimlerin/terimlerin doğru çevrilmesini sabitler (en fazla 50 satır).</div>
         </div>
       </section>
       <section class="dpane" data-pane="about" role="tabpanel" hidden>
@@ -2666,46 +2634,6 @@ const I18N_AUTH = {
   th:{auth_google:"ดำเนินการต่อด้วย Google",auth_or:"หรือ",auth_browser_wait:"ทำการเข้าสู่ระบบให้เสร็จในเบราว์เซอร์ของคุณ…",mem_invite:"ชวนเพื่อน"}
 };
 Object.keys(I18N_AUTH).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_AUTH[l]; for(var k in s) I18N[l][k]=s[k]; });
-/* Beta (Qwen) tab strings — en+tr only; other locales resolve via the en fallback. */
-const I18N_BETA = {
-  en: {
-    tab_beta:"Beta", beta_title:"Beta engine",
-    beta_hint:"Experimental translation engine: speaker voice matching, source-language auto-detect and a term glossary. If anything misbehaves, just switch it off.",
-    beta_locked:"This section is for beta program users only — not yet enabled for your account.",
-    beta_apply:"Email us to become a beta user →",
-    beta_apply_note:"Please send the email from the address you registered with on the site.",
-    beta_mail_body:"Hello, I would like to join the Voxis beta program. My account email is this address.",
-    beta_enable:"Enable beta engine",
-    beta_source:"Source language", beta_target:"Target language",
-    beta_clone:"Voice matching (clone)",
-    beta_clone_off:"Off — single voice, lowest latency",
-    beta_clone_once:"Once — from the first speaker",
-    beta_clone_always:"Continuous — adapts to each speaker",
-    beta_vad:"Segmentation", beta_vad_model:"Model default", beta_vad_500:"500 ms (recommended)",
-    beta_hotwords:"Term glossary (one term=translation per line)",
-    beta_hotwords_hint:"Pins proper nouns/terms to a fixed translation (max 50 lines).",
-    beta_auto:"Auto-detect", beta_queue:"queue", beta_speed:"speed", beta_skipped:"skipped",
-  },
-  tr: {
-    tab_beta:"Beta", beta_title:"Beta motor",
-    beta_hint:"Deneysel çeviri motoru: konuşmacı sesi eşleme, kaynak dil algılama ve terim sözlüğü. Sorun olursa kapatmanız yeterli.",
-    beta_locked:"Bu bölüm yalnızca beta programı kullanıcılarına açıktır — hesabınız için henüz etkin değil.",
-    beta_apply:"Beta kullanıcısı olmak için e-posta gönderin →",
-    beta_apply_note:"E-postayı, siteye kayıt olduğunuz adresten göndermeniz gerekir.",
-    beta_mail_body:"Merhaba, Voxis beta programına katılmak istiyorum. Hesap e-postam bu adrestir.",
-    beta_enable:"Beta motoru etkinleştir",
-    beta_source:"Kaynak dil", beta_target:"Hedef dil",
-    beta_clone:"Ses eşleme (klon)",
-    beta_clone_off:"Kapalı — tek ses, en düşük gecikme",
-    beta_clone_once:"Bir kez — ilk konuşmacıdan",
-    beta_clone_always:"Sürekli — konuşmacıya uyum sağlar",
-    beta_vad:"Segmentasyon", beta_vad_model:"Model varsayılanı", beta_vad_500:"500 ms (önerilen)",
-    beta_hotwords:"Terim sözlüğü (satır başına terim=çeviri)",
-    beta_hotwords_hint:"Özel isimlerin/terimlerin çevirisini sabitler (en fazla 50 satır).",
-    beta_auto:"Otomatik algıla", beta_queue:"kuyruk", beta_speed:"hız", beta_skipped:"atlanan",
-  },
-};
-Object.keys(I18N_BETA).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_BETA[l]; for(var k in s) I18N[l][k]=s[k]; });
 /* Report-a-problem modal strings — only en/tr shipped in I18N_EXTRA, so every
    other locale fell back to English. Fill the store languages here (merge is
    non-destructive: never overrides a key a locale already defines). */
@@ -2726,6 +2654,29 @@ Object.keys(I18N_FIX).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_F
    that never defined it falls back cleanly. */
 const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา" };
 Object.keys(I18N_BILINGUAL).forEach(function(l){ if(!I18N[l]) I18N[l]={}; if(I18N[l]["history_bilingual"]===undefined) I18N[l]["history_bilingual"]=I18N_BILINGUAL[l]; });
+/* Speaker-label toggle strings (local speaker-change detection). The on-screen
+   tags themselves are deliberately language-neutral ("S1"/"S2", like
+   professional subtitle conventions) so exports read the same everywhere —
+   only the Settings toggle + hint are localized. */
+const I18N_SPK = {
+  en:{spk_labels:"Speaker labels (S1/S2)",spk_labels_hint:"Detects voice changes on your device and tags caption turns as S1/S2 when different people speak back-to-back. Fully local — no extra cloud calls. Labels appear only once a second voice is heard, and saved transcripts include them. The spoken translation still uses one voice."},
+  tr:{spk_labels:"Konuşmacı etiketleri (S1/S2)",spk_labels_hint:"Farklı kişiler ard arda konuştuğunda ses değişimini cihazında algılar ve altyazı satırlarını S1/S2 olarak etiketler. Tamamen yerel çalışır — ek bulut çağrısı yoktur. Etiketler ancak ikinci bir ses duyulduğunda görünür; kaydedilen transkriptlere de yazılır. Sesli çeviri yine tek sesle konuşur."},
+  de:{spk_labels:"Sprecher-Labels (S1/S2)",spk_labels_hint:"Erkennt Stimmwechsel auf deinem Gerät und markiert Untertitelzeilen als S1/S2, wenn verschiedene Personen direkt nacheinander sprechen. Vollständig lokal — keine zusätzlichen Cloud-Aufrufe. Labels erscheinen erst, wenn eine zweite Stimme zu hören ist; gespeicherte Transkripte enthalten sie ebenfalls. Die gesprochene Übersetzung verwendet weiterhin eine Stimme."},
+  fr:{spk_labels:"Étiquettes de locuteur (S1/S2)",spk_labels_hint:"Détecte les changements de voix sur votre appareil et marque les sous-titres S1/S2 lorsque plusieurs personnes parlent à la suite. Entièrement local — aucun appel cloud supplémentaire. Les étiquettes n'apparaissent qu'à partir d'une deuxième voix ; les transcriptions enregistrées les incluent. La traduction parlée garde une seule voix."},
+  es:{spk_labels:"Etiquetas de hablante (S1/S2)",spk_labels_hint:"Detecta cambios de voz en tu dispositivo y etiqueta las líneas de subtítulos como S1/S2 cuando varias personas hablan seguidas. Totalmente local: sin llamadas adicionales a la nube. Las etiquetas aparecen solo al oírse una segunda voz; las transcripciones guardadas las incluyen. La traducción hablada sigue usando una sola voz."},
+  pt:{spk_labels:"Etiquetas de falante (S1/S2)",spk_labels_hint:"Detecta mudanças de voz no seu dispositivo e marca as linhas de legenda como S1/S2 quando pessoas diferentes falam em sequência. Totalmente local — sem chamadas extras à nuvem. As etiquetas aparecem apenas quando uma segunda voz é ouvida; as transcrições salvas as incluem. A tradução falada continua com uma única voz."},
+  ja:{spk_labels:"話者ラベル (S1/S2)",spk_labels_hint:"デバイス上で声の変化を検出し、複数の人が続けて話すと字幕行に S1/S2 のタグを付けます。完全にローカルで動作し、追加のクラウド通信はありません。ラベルは2人目の声が聞こえたときにのみ表示され、保存された文字起こしにも含まれます。音声翻訳は引き続き1つの声で読み上げられます。"},
+  ko:{spk_labels:"화자 라벨 (S1/S2)",spk_labels_hint:"기기에서 목소리 변화를 감지해 서로 다른 사람이 연달아 말하면 자막 줄에 S1/S2 라벨을 붙입니다. 완전히 로컬로 동작하며 추가 클라우드 호출이 없습니다. 라벨은 두 번째 목소리가 들릴 때만 표시되고 저장된 대본에도 포함됩니다. 음성 번역은 여전히 한 가지 목소리로 재생됩니다."},
+  ru:{spk_labels:"Метки говорящих (S1/S2)",spk_labels_hint:"Определяет смену голоса на вашем устройстве и помечает строки субтитров как S1/S2, когда разные люди говорят друг за другом. Полностью локально — без дополнительных облачных запросов. Метки появляются только после второго голоса; сохранённые транскрипты их содержат. Озвученный перевод по-прежнему звучит одним голосом."},
+  zh:{spk_labels:"说话人标签 (S1/S2)",spk_labels_hint:"在你的设备上检测声音变化，当不同的人连续说话时，为字幕行标注 S1/S2。完全本地运行——不产生额外云端调用。只有听到第二个声音时才会显示标签，保存的转录文稿也会包含标签。语音翻译仍使用同一个声音。"},
+  pl:{spk_labels:"Etykiety mówców (S1/S2)",spk_labels_hint:"Wykrywa zmiany głosu na Twoim urządzeniu i oznacza linie napisów jako S1/S2, gdy różne osoby mówią jedna po drugiej. Działa w pełni lokalnie — bez dodatkowych wywołań chmury. Etykiety pojawiają się dopiero po usłyszeniu drugiego głosu; zapisane transkrypcje też je zawierają. Tłumaczenie głosowe nadal używa jednego głosu."},
+  it:{spk_labels:"Etichette del parlante (S1/S2)",spk_labels_hint:"Rileva i cambi di voce sul tuo dispositivo ed etichetta le righe dei sottotitoli come S1/S2 quando persone diverse parlano una dopo l'altra. Completamente locale — nessuna chiamata cloud aggiuntiva. Le etichette compaiono solo quando si sente una seconda voce; le trascrizioni salvate le includono. La traduzione vocale continua a usare una sola voce."},
+  id:{spk_labels:"Label pembicara (S1/S2)",spk_labels_hint:"Mendeteksi perubahan suara di perangkat Anda dan menandai baris takarir sebagai S1/S2 saat orang yang berbeda berbicara berurutan. Sepenuhnya lokal — tanpa panggilan cloud tambahan. Label hanya muncul setelah suara kedua terdengar; transkrip yang disimpan juga memuatnya. Terjemahan suara tetap menggunakan satu suara."},
+  nl:{spk_labels:"Sprekerlabels (S1/S2)",spk_labels_hint:"Detecteert stemwisselingen op je apparaat en markeert ondertitelregels als S1/S2 wanneer verschillende mensen direct na elkaar spreken. Volledig lokaal — geen extra cloudaanroepen. Labels verschijnen pas zodra een tweede stem te horen is; opgeslagen transcripties bevatten ze ook. De gesproken vertaling gebruikt nog steeds één stem."},
+  vi:{spk_labels:"Nhãn người nói (S1/S2)",spk_labels_hint:"Phát hiện thay đổi giọng nói trên thiết bị của bạn và gắn nhãn S1/S2 cho các dòng phụ đề khi nhiều người nói liên tiếp. Hoàn toàn cục bộ — không có lệnh gọi đám mây bổ sung. Nhãn chỉ xuất hiện khi nghe thấy giọng thứ hai; bản ghi đã lưu cũng bao gồm nhãn. Bản dịch giọng nói vẫn dùng một giọng."},
+  th:{spk_labels:"ป้ายผู้พูด (S1/S2)",spk_labels_hint:"ตรวจจับการเปลี่ยนเสียงบนอุปกรณ์ของคุณ และติดป้าย S1/S2 ให้บรรทัดคำบรรยายเมื่อคนละคนพูดต่อเนื่องกัน ทำงานในเครื่องทั้งหมด — ไม่มีการเรียกคลาวด์เพิ่มเติม ป้ายจะปรากฏเมื่อได้ยินเสียงที่สองเท่านั้น และบันทึกคำบรรยายที่บันทึกไว้ก็มีป้ายด้วย เสียงแปลยังคงใช้เสียงเดียว"}
+};
+Object.keys(I18N_SPK).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_SPK[l]; for(var k in s) if(I18N[l][k]===undefined) I18N[l][k]=s[k]; });
 // Detect the boot language from the OS locale so the very first paint is not a
 // hardcoded Turkish flash: tr only when the locale starts with 'tr', else en.
 function detectLang(){
@@ -3009,6 +2960,7 @@ async function init(){
   $('#overlay').checked = !!cfg.overlay_enabled;
   $('#obs').checked     = !!cfg.obs_subtitle_enabled;
   { const ra = $('#record-audio'); if(ra) ra.checked = !!cfg.record_audio; }
+  { const sl = $('#spk-labels'); if(sl) sl.checked = cfg.speaker_labels !== false; }
   // Badge removal is a paid perk: only an official build with a paid subscription
   // may turn it off. Everyone else (free official + OSS) gets a locked, forced-on
   // toggle with a "subscription required" tooltip on hover.
@@ -3049,53 +3001,9 @@ async function init(){
     $('#logoutbtn').style.display = 'none';
     bindByokHandlers();
   }
-  renderBeta();
   // First-run onboarding once the app is ready (gated by the bridge flag).
   if(!STATE.onboarding_done) openOnboard();
   poll();
-}
-
-/* ---------- Beta tab ---------- */
-function renderBeta(){
-  // The tab is always visible; without the server-side invite everything in it
-  // is inert (and the options stay inert until the master toggle is on).
-  const allowed = !!STATE.beta_allowed;
-  const b = STATE.beta || {};
-  const langs = (STATE.langs||[]).map(langPair);
-  opt($('#beta-source'), [['auto', T('beta_auto')||'Otomatik']].concat(langs), b.source_lang||'auto');
-  opt($('#beta-target'), langs, (STATE.cfg||{}).target_language_incoming);
-  $('#beta-on').checked = allowed && !!b.enabled;
-  $('#beta-clone').value = b.clone||'off';
-  $('#beta-vad').value = String(b.vad_ms ?? 500);
-  $('#beta-hotwords').value = b.hotwords||'';
-  { const n=$('#beta-locked-note'); if(n) n.style.display = allowed ? 'none' : ''; }
-  { const a=$('#beta-apply-link'); if(a) a.onclick = (e)=>{ e.preventDefault();
-      const mail = 'mailto:contact@voxislive.com?subject=' + encodeURIComponent('Beta User')
-        + '&body=' + encodeURIComponent(T('beta_mail_body')||'');
-      try{ api().open_url(mail); }catch(_){} }; }
-  const applyDim = ()=>{
-    $('#beta-on').disabled = !allowed;
-    const on = allowed && $('#beta-on').checked;
-    for (const id of ['beta-source','beta-target','beta-clone','beta-vad','beta-hotwords'])
-      { const el=$('#'+id); if(el) el.disabled = !on; }
-    { const o=$('#beta-opts'); if(o) o.style.opacity = on ? '' : '.5'; }
-  };
-  applyDim();
-  const saveBeta = ()=>{ STATE.beta = {
-      enabled: allowed && $('#beta-on').checked,
-      source_lang: $('#beta-source').value,
-      clone: $('#beta-clone').value,
-      vad_ms: parseInt($('#beta-vad').value,10)||0,
-      hotwords: $('#beta-hotwords').value,
-    }; applyDim(); try{ api().set_beta(STATE.beta); }catch(_){}}
-  $('#beta-on').onchange = saveBeta;
-  $('#beta-source').onchange = saveBeta;
-  $('#beta-clone').onchange = saveBeta;
-  $('#beta-vad').onchange = saveBeta;
-  $('#beta-hotwords').onchange = saveBeta;
-  // Target rides the normal config key so the main selector stays in sync.
-  $('#beta-target').onchange = e=>{ api().set_cfg('target_language_incoming', e.target.value);
-    const h=$('#hear'); if(h) h.value = e.target.value; };
 }
 
 /* ---------- kontroller ---------- */
@@ -3116,6 +3024,7 @@ $('#mic').onchange    = e=>api().set_device('mic', e.target.value);
 $('#subs').onchange   = e=>api().set_cfg('show_subtitles', e.target.checked);
 $('#obs').onchange    = e=>api().set_cfg('obs_subtitle_enabled', e.target.checked);
 { const ra = $('#record-audio'); if(ra) ra.onchange = e=>api().set_cfg('record_audio', e.target.checked); }
+{ const sl = $('#spk-labels'); if(sl) sl.onchange = e=>api().set_cfg('speaker_labels', e.target.checked); }
 $('#brandbadge').onchange = e=>api().set_cfg('branding_badge_enabled', e.target.checked);
 $('#overlay').onchange= e=>api().toggle_overlay(e.target.checked);
 $('#uilang').onchange = e=>{ applyI18n(e.target.value); try{api().set_cfg('ui_language', e.target.value);}catch(_){} };
@@ -3220,17 +3129,7 @@ document.addEventListener('keydown', e=>{
   else trapTab(e);
 });
 
-function openDrawer(){ $('#scrim').classList.add('open'); $('#drawer').classList.add('open'); localizeSettings(); renderMembership(); refreshBeta(); refreshTxDir(); switchSettingsTab('general'); openModal($('#drawer'), closeDrawer, $('#gear')); }
-// Re-check the server-side beta invite whenever Settings opens, so an admin
-// grant/revoke shows up without an app restart (bounded by the server's ~5 min
-// token cache). Dev builds return no beta_allowed field and stay always-on.
-function refreshBeta(){
-  try{ api().check_auth().then(a=>{
-    if(a && a.beta_allowed !== undefined && !!a.beta_allowed !== !!STATE.beta_allowed){
-      STATE.beta_allowed = !!a.beta_allowed; renderBeta();
-    }
-  }).catch(()=>{}); }catch(_){}
-}
+function openDrawer(){ $('#scrim').classList.add('open'); $('#drawer').classList.add('open'); localizeSettings(); renderMembership(); refreshTxDir(); switchSettingsTab('general'); openModal($('#drawer'), closeDrawer, $('#gear')); }
 function closeDrawer(){ $('#scrim').classList.remove('open'); $('#drawer').classList.remove('open'); closeModal(); }
 // Settings tabs (Genel / Kısayollar / Üyelik / Hakkında)
 function switchSettingsTab(pane){
@@ -3575,12 +3474,22 @@ function renderHistoryTurns(){
   const box=$('#history-turns'); if(!HIST_CUR){ box.innerHTML=''; return; }
   const q=($('#history-search').value||'').trim().toLowerCase();
   box.innerHTML='';
-  (HIST_CUR.turns||[]).forEach(turn=>{
+  // Speaker tags render only for a genuinely multi-speaker session, and only
+  // where the speaker CHANGES (same run-grouping rule as captions + exports).
+  // Prefixes are computed over the FULL turn list before the search filter so
+  // a filtered view still shows truthful labels.
+  const turns=HIST_CUR.turns||[];
+  const spks=new Set(turns.map(t=>t.spk).filter(s=>s!=null));
+  const multi=spks.size>=2;
+  let prevSpk=null;
+  turns.forEach(turn=>{
+    const pre=(multi && turn.spk!=null && turn.spk!==prevSpk) ? 'S'+turn.spk+': ' : '';
+    if(turn.spk!=null) prevSpk=turn.spk;
     if(q && !((turn.text||'').toLowerCase().includes(q) || (turn.src||'').toLowerCase().includes(q))) return;
     const d=document.createElement('div'); d.className='ht';
     const ts=document.createElement('div'); ts.className='ht-t'; ts.textContent=fmtOffset(turn.t); d.appendChild(ts);
-    if(turn.src){ const sc=document.createElement('div'); sc.className='ht-src'; sc.innerHTML=highlight(turn.src,q); d.appendChild(sc); }
-    const tx=document.createElement('div'); tx.className='ht-text'; tx.innerHTML=highlight(turn.text,q); d.appendChild(tx);
+    if(turn.src){ const sc=document.createElement('div'); sc.className='ht-src'; sc.innerHTML=(pre?escHtml(pre):'')+highlight(turn.src,q); d.appendChild(sc); }
+    const tx=document.createElement('div'); tx.className='ht-text'; tx.innerHTML=(pre?escHtml(pre):'')+highlight(turn.text,q); d.appendChild(tx);
     box.appendChild(d);
   });
 }
@@ -3697,23 +3606,52 @@ let curTurn=null, curBubble=null;
 function trimScroll(){ const sc=$('#scroll'); while(sc.children.length>90) sc.removeChild(sc.firstChild); }
 function scrollEnd(){ const sc=$('#scroll'); sc.scrollTop=sc.scrollHeight; }
 function removeEmpty(){ const e=$('#empty'); if(e) e.remove(); }
-function resetTranscript(){ $('#scroll').innerHTML=emptyHtml(); curTurn=null; curBubble=null; latencyNoteShown=false; }
+function resetTranscript(){ $('#scroll').innerHTML=emptyHtml(); curTurn=null; curBubble=null; latencyNoteShown=false; lastSpk=null; }
 
-function newTurn(){
+/* Speaker tag on a turn bubble. The Python side sends a label only for a
+   genuinely multi-speaker session (≥2 voices seen); here the tag renders only
+   where the speaker CHANGES vs the previous turn, so one person talking
+   across several turns reads as a single labeled run. lastSpk is the label of
+   the last finalized turn (definitive, from the src event); hints on a live
+   line are reconciled when it finalizes. */
+let lastSpk=null;
+function setSpkTag(bubble, spk, final){
+  if(!bubble) return;
+  if(final && spk!=null){
+    const show = spk!==lastSpk;
+    lastSpk = spk;
+    let tag=bubble.querySelector('.spk');
+    if(!show){ if(tag) tag.remove(); return; }
+    if(!tag){ tag=document.createElement('span'); tag.className='spk'; bubble.prepend(tag); }
+    tag.textContent='S'+spk;
+    return;
+  }
+  if(spk==null || spk===lastSpk) return;   // live hint: same speaker → no tag
+  let tag=bubble.querySelector('.spk');
+  if(!tag){ tag=document.createElement('span'); tag.className='spk'; bubble.prepend(tag); }
+  tag.textContent='S'+spk;
+}
+
+function newTurn(spk){
   removeEmpty();
   const turn=document.createElement('div'); turn.className='turn'; turn.setAttribute('role','group');
   const bubble=document.createElement('div'); bubble.className='tr active';
-  // Per-turn copy: copies the finalized translation text of this turn.
+  // Per-turn copy: copies the finalized translation text of this turn (the
+  // speaker tag is presentation, not content — stripped from the copy).
   const act=document.createElement('div'); act.className='turnact';
   const copy=document.createElement('button'); copy.type='button';
   copy.title=T('copy_turn'); copy.setAttribute('aria-label',T('copy_turn'));
   copy.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
-  copy.onclick=()=>{ try{ navigator.clipboard.writeText(bubble.textContent.trim()); }catch(_){} };
+  copy.onclick=()=>{ try{
+    const c=bubble.cloneNode(true); c.querySelectorAll('.spk').forEach(x=>x.remove());
+    navigator.clipboard.writeText(c.textContent.trim());
+  }catch(_){} };
   act.appendChild(copy);
   turn.appendChild(act);
   turn.appendChild(bubble);
   $('#scroll').appendChild(turn);
   curTurn=turn; curBubble=bubble; trimScroll();
+  setSpkTag(bubble, spk);
 }
 function appendWords(el, text){
   // Words get an animated inline-block span; whitespace stays a plain text node
@@ -3725,19 +3663,24 @@ function appendWords(el, text){
   });
 }
 let latencyNoteShown=false;
-function onTrans(text, newline){
+function onTrans(text, newline, spk){
   if(!$('#subs').checked) return;
   // Honest-latency: the caption renders the instant a token arrives, ahead of the
   // TTS audio. The first turn of a session also drops a one-time in-context note
   // explaining the model's inherent ~3s interpreter delay.
   if(!latencyNoteShown){ latencyNoteShown=true; addSys(T('latency_note')); }
-  if(newline || !curBubble){ if(curBubble) curBubble.classList.remove('active'); newTurn(); }
+  // spk is the LIVE hint for the streaming line (the definitive label lands
+  // with the src event when the turn finalizes).
+  if(newline || !curBubble){ if(curBubble) curBubble.classList.remove('active'); newTurn(spk); }
   appendWords(curBubble, text);
   scrollEnd();
 }
-function onSrc(text){
-  // Best-effort source caption beneath the turn that just finalized.
-  const turn=curTurn; if(!turn || !text) return;
+function onSrc(text, spk){
+  // Best-effort source caption beneath the turn that just finalized; also the
+  // turn's definitive speaker label (replaces the live hint if it differed).
+  const turn=curTurn; if(!turn) return;
+  if(spk!=null) setSpkTag(turn.querySelector('.tr'), spk, true);
+  if(!text) return;
   let cap=turn.querySelector('.src');
   if(!cap){ cap=document.createElement('div'); cap.className='src'; turn.appendChild(cap); }
   cap.textContent='';
@@ -3812,6 +3755,12 @@ function setPillState(p){
 }
 
 /* ---------- poll ---------- */
+// Adaptive cadence: the caption is the product's fastest signal, so during a
+// live session the poll runs at 70 ms (worst-case token→screen ≈ 70 ms vs the
+// old 150); idle it relaxes to 250 ms so a parked app costs less CPU. `var`
+// (not let) on purpose — the first poll() can run before a `let` here would
+// be initialized (TDZ) and the delay expression sits OUTSIDE poll's try.
+var pollFast=false;
 async function poll(){
   try{
     const p = await api().poll();
@@ -3822,8 +3771,8 @@ async function poll(){
     }
     p.events.forEach(ev=>{
       if(ev[0]==='status'){ addSys(ev[1], ev[2] && ev[2].level); }
-      else if(ev[0]==='trans'){ onTrans(ev[1], ev[2]); }
-      else if(ev[0]==='src'){ onSrc(ev[1]); }
+      else if(ev[0]==='trans'){ onTrans(ev[1], ev[2], ev[3]); }
+      else if(ev[0]==='src'){ onSrc(ev[1], ev[2]); }
       else if(ev[0]==='saved'){ addTranscriptActions(ev[1]); }
       else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
       else if(ev[0]==='quota_wall'){ showPaywallCard(); }
@@ -3833,6 +3782,7 @@ async function poll(){
     const liveSession = !!p.mode;
     if(liveSession && !SESSION_LIVE){ limitShown=false; warn80Shown=false; }  // new session → re-arm paywall + toast
     SESSION_LIVE = liveSession;
+    pollFast = liveSession;
     targetLevel = p.level || 0;
     $('#vad').classList.toggle('live', liveSession);
     const vadLabel = p.vad ? T('vad_speaking') : (p.mode ? T('vad_silent') : T('waiting_signal'));
@@ -3845,7 +3795,7 @@ async function poll(){
     if(RM){ $('#meterdb').textContent = liveSession ? dbText(targetLevel) : '−∞ dB'; }
     $('#sesstxt').textContent = p.session;
     $('#sess').classList.toggle('on', liveSession);
-    $('#streamhint').innerHTML = liveSession ? ('<span class="lv">●</span> '+T('live') + (p.engine==='qwen' ? ' · Beta' : '') + (p.latency ? (' · '+p.latency.toFixed(1)+T('behind_suffix')) : '')) : '';
+    $('#streamhint').innerHTML = liveSession ? ('<span class="lv">●</span> '+T('live') + (p.latency ? (' · '+p.latency.toFixed(1)+T('behind_suffix')) : '')) : '';
     document.querySelectorAll('.scenario').forEach(b=>{
       b.classList.toggle('active', b.dataset.mode===p.mode);
       // Only hard-disable while a session is active. Quota-blocked tiles stay
@@ -3855,7 +3805,7 @@ async function poll(){
     });
     $('#stopbtn').disabled = !p.mode;
   }catch(e){}
-  setTimeout(poll, 150);
+  setTimeout(poll, pollFast ? 70 : 250);
 }
 
 /* ── BOOT ────────────────────────────────────────────────────────────────── */

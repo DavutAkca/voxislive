@@ -182,11 +182,16 @@ class _GatedSource:
     """
 
     def __init__(self, in_rate: int, gate, send_fn, suppress_when=None,
-                 always_send=False, smart=False, send_rate=16000):
+                 always_send=False, smart=False, send_rate=16000,
+                 speech_tap=None):
         self._resample = _make_resampler(in_rate, 16000)
         self._gate = gate
         self._send = send_fn
         self._suppress_when = suppress_when
+        # Optional observer of the gate's speech decisions (16 kHz frames incl.
+        # preroll) — feeds the speaker-change tracker. Must be O(1)/non-raising:
+        # it runs on the capture thread under this object's lock.
+        self._speech_tap = speech_tap
         self._always_send = always_send
         self._smart = smart
         self._silence = _f32_to_pcm16(np.zeros(_FRAME, dtype=np.float32))
@@ -231,6 +236,11 @@ class _GatedSource:
                     self._hist_send.append(self._acc_send.pop(self._send_frame))
                 active, to_send = self._gate.process(frame)
                 self.speech_active = active
+                if self._speech_tap is not None and to_send:
+                    try:
+                        self._speech_tap(to_send)
+                    except Exception:
+                        pass  # labeling is best-effort; never break capture
                 if self._smart:
                     if to_send:
                         self._silent_run = 0
@@ -275,7 +285,7 @@ class _GatedSource:
 
 class IncomingPipeline:
     def __init__(self, cfg: dict, resolve, mode: str, on_text, on_status,
-                 session_dir: str | None = None):
+                 session_dir: str | None = None, on_speaker=None):
         # Default the premium flag before either capture branch so callers and
         # teardown can always read it, even on the driverless path that never
         # probes premium hardware.
@@ -285,6 +295,17 @@ class IncomingPipeline:
         self._source = None
         self._recorder = None
         self._mode = mode
+        # Optional speaker-change tracker (incoming direction only: the system /
+        # meeting-partner side is where several people can talk). Best-effort by
+        # contract — any init failure just means unlabeled captions, and the
+        # model loads on the tracker's own thread so start is never delayed.
+        self._spk_tracker = None
+        if on_speaker is not None and cfg.get("speaker_labels", True):
+            try:
+                from .speaker_id import SpeakerTracker  # noqa: PLC0415
+                self._spk_tracker = SpeakerTracker(on_change=on_speaker)
+            except Exception:
+                _log.exception("speaker tracker init failed — labels disabled")
         # Per-session output folder (transcript + WAVs share it); None → the
         # recorder falls back to the flat transcripts root.
         self._session_dir = session_dir
@@ -439,6 +460,7 @@ class IncomingPipeline:
                 self.capture.rate, SpeechGate(**vad_cfg), send_fn,
                 suppress_when=suppress, smart=not stream_gated(cfg),
                 send_rate=send_rate,
+                speech_tap=self._spk_tracker.feed if self._spk_tracker else None,
             )
         else:
             # VB-CABLE: audio is intercepted before reaching the speakers. The
@@ -483,8 +505,11 @@ class IncomingPipeline:
             # Match the ambient resampler to the capture device's true rate so the
             # M/S passthrough never clicks on a capture/playback clock mismatch.
             self.player.configure_passthrough(self.capture.rate)
-            self._source = _GatedSource(self.capture.rate, SpeechGate(**vad_cfg), send_fn,
-                                        smart=not stream_gated(cfg), send_rate=send_rate)
+            self._source = _GatedSource(
+                self.capture.rate, SpeechGate(**vad_cfg), send_fn,
+                smart=not stream_gated(cfg), send_rate=send_rate,
+                speech_tap=self._spk_tracker.feed if self._spk_tracker else None,
+            )
 
         # One-shot capture diagnostic (rendered in the transcript, so a field
         # report — "translation stops after the first line" — can be mapped to the
@@ -556,7 +581,7 @@ class IncomingPipeline:
             except Exception:
                 pass
             self._sducker = None
-        for attr in ("_stager", "player", "translator", "_recorder"):
+        for attr in ("_stager", "player", "translator", "_recorder", "_spk_tracker"):
             comp = getattr(self, attr, None)
             if comp is not None:
                 try:
@@ -665,7 +690,8 @@ def _stop_all(pipeline):
     if src is not None:
         src.closed = True
     fns = []
-    for attr in ("capture", "_stager", "player", "translator", "_recorder"):
+    for attr in ("capture", "_stager", "player", "translator", "_recorder",
+                 "_spk_tracker"):
         comp = getattr(pipeline, attr, None)
         if comp is not None:
             fns.append(comp.stop)
@@ -713,12 +739,15 @@ class ModeController:
 
     def __init__(self, cfg: dict, api_key: str | None, on_text, on_status,
                  on_usage_reported=None, on_quota_exceeded=None,
-                 on_session_failed=None):
+                 on_session_failed=None, on_speaker=None):
         self.cfg = cfg
         self.api_key = api_key       # legacy field; key resolution now via self.resolve
         self.resolve = None          # callable(target)->(engine, key, model); set by the bridge
         self.on_text = on_text
         self.on_status = on_status
+        # Speaker-change events (incoming direction) from the local tracker;
+        # None disables labeling entirely.
+        self.on_speaker = on_speaker
         self.on_usage_reported = on_usage_reported or (lambda: None)
         # Fired (at most once per session) when the server reports the license is
         # exhausted via a 402 on /usage/report. The server cannot stop a running
@@ -814,11 +843,13 @@ class ModeController:
         session_dir = getattr(self, "_session_dir_out", None)
         if mode == "video":
             return [IncomingPipeline(self.cfg, resolve, mode, self.on_text,
-                                     self.on_status, session_dir=session_dir)]
+                                     self.on_status, session_dir=session_dir,
+                                     on_speaker=self.on_speaker)]
         if mode == "meeting":
             pipes = [IncomingPipeline(self.cfg, resolve, "meeting",
                                       self.on_text, self.on_status,
-                                      session_dir=session_dir)]
+                                      session_dir=session_dir,
+                                      on_speaker=self.on_speaker)]
             try:
                 # Outbound direction requires a virtual microphone driver. If
                 # none is installed, the meeting gracefully falls back to

@@ -17,7 +17,8 @@ Wire format (schema v1):
       "target_in": "tr",                # incoming target language code
       "target_out": "en",               # outgoing target language code
       "turns": [
-        {"t": 0.0, "dir": "out", "src": "original ...", "text": "translated ..."},
+        {"t": 0.0, "dir": "out", "src": "original ...", "text": "translated ...",
+         "spk": 1},
         ...
       ]
     }
@@ -25,6 +26,12 @@ Wire format (schema v1):
 `t` is the turn's offset in seconds from session start. The translate model is
 natively simultaneous and stays a few seconds behind the speaker, so `t` is an
 approximate caption sync, not a frame-accurate cue — adequate for SRT/VTT.
+
+`spk` (optional, additive to schema v1) is the anonymous speaker label from the
+local speaker-change tracker (1-based session-scoped int; see app/speaker_id).
+Exports render it as a language-neutral "S1:"/"S2:" prefix — only when the
+session actually saw more than one speaker, so single-voice transcripts stay
+clean.
 """
 import json
 import os
@@ -73,6 +80,7 @@ def build_record(started, turns, *, app_version="", mode="",
                 "dir": turn.get("dir", "out"),
                 "src": (turn.get("src") or "").strip(),
                 "text": (turn.get("text") or "").strip(),
+                **({"spk": int(turn["spk"])} if turn.get("spk") is not None else {}),
             }
             for turn in turns
             if (turn.get("text") or "").strip()
@@ -196,13 +204,40 @@ def _fmt_ts(seconds: float, *, vtt: bool) -> str:
     return f"{h:02d}:{m:02d}:{s:02d}{sep}{ms:03d}"
 
 
-def _cue_text(turn, *, bilingual: bool) -> str:
-    """Caption body: translation, optionally with the source line above it."""
+def _multi_speaker(turns) -> bool:
+    """True when the session saw more than one labeled speaker — the gate for
+    rendering "S1:"/"S2:" prefixes (a single-voice transcript stays clean)."""
+    labels = {t.get("spk") for t in turns
+              if isinstance(t, dict) and t.get("spk") is not None}
+    return len(labels) >= 2
+
+
+def _spk_prefixes(turns, multi: bool) -> list[str]:
+    """Per-turn "S1: " prefixes, emitted ONLY where the speaker changes from
+    the previous labeled turn: one speaker talking across several consecutive
+    turns reads as one labeled run, not a re-tagged line each time (owner
+    feedback, 2026-07-10). Same rule as the live captions and History."""
+    out, prev = [], None
+    for t in turns:
+        spk = t.get("spk") if isinstance(t, dict) else None
+        if multi and spk is not None and spk != prev:
+            out.append(f"S{int(spk)}: ")
+        else:
+            out.append("")
+        if spk is not None:
+            prev = spk
+    return out
+
+
+def _cue_text(turn, *, bilingual: bool, pre: str = "") -> str:
+    """Caption body: translation, optionally with the source line above it.
+    A speaker-change cue carries the tag on both lines."""
     text = turn.get("text", "").strip()
     src = turn.get("src", "").strip()
     if bilingual and src:
-        return f"{src}\n{text}"
-    return text
+        return f"{pre}{src}\n{pre}{text}"
+    # A bare prefix must not fabricate a cue for an empty turn.
+    return f"{pre}{text}" if text else ""
 
 
 def render_txt(record: dict, *, bilingual: bool = False) -> str:
@@ -211,25 +246,28 @@ def render_txt(record: dict, *, bilingual: bool = False) -> str:
     translation, turns separated by a blank line — for localization/dubbing work
     where both languages side by side beats a translated-only export."""
     turns = record.get("turns", [])
+    pres = _spk_prefixes(turns, _multi_speaker(turns))
     if not bilingual:
-        lines = [t.get("text", "").strip()
-                 for t in turns if t.get("text", "").strip()]
+        lines = [pres[i] + t.get("text", "").strip()
+                 for i, t in enumerate(turns) if t.get("text", "").strip()]
         return "\n".join(lines) + ("\n" if lines else "")
     blocks = []
-    for t in turns:
+    for i, t in enumerate(turns):
         text = t.get("text", "").strip()
         if not text:
             continue
+        pre = pres[i]
         src = t.get("src", "").strip()
-        blocks.append(f"{src}\n{text}" if src else text)
+        blocks.append(f"{pre}{src}\n{pre}{text}" if src else pre + text)
     return "\n\n".join(blocks) + ("\n" if blocks else "")
 
 
 def render_srt(record: dict, *, bilingual: bool = True) -> str:
     turns = record.get("turns", [])
+    pres = _spk_prefixes(turns, _multi_speaker(turns))
     blocks = []
     for i, turn in enumerate(turns):
-        body = _cue_text(turn, bilingual=bilingual)
+        body = _cue_text(turn, bilingual=bilingual, pre=pres[i])
         if not body:
             continue
         start, end = _cue_bounds(turns, i)
@@ -243,9 +281,10 @@ def render_srt(record: dict, *, bilingual: bool = True) -> str:
 
 def render_vtt(record: dict, *, bilingual: bool = True) -> str:
     turns = record.get("turns", [])
+    pres = _spk_prefixes(turns, _multi_speaker(turns))
     blocks = ["WEBVTT\n"]
     for i, turn in enumerate(turns):
-        body = _cue_text(turn, bilingual=bilingual)
+        body = _cue_text(turn, bilingual=bilingual, pre=pres[i])
         if not body:
             continue
         start, end = _cue_bounds(turns, i)

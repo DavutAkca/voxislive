@@ -30,6 +30,11 @@ def _bare_bridge():
     b._turns = []
     b._overlay_text = ""
     b._overlay_until = 0.0
+    # Speaker-labeling state (see Bridge.__init__).
+    b._cur_spk = None
+    b._src_spk = None
+    b._spk_seen = set()
+    b._pending_spk_break = False
     b._put_event = lambda *a, **k: None      # swallow UI events
     b._obs_write = lambda *a, **k: None       # swallow OBS file writes
     return b
