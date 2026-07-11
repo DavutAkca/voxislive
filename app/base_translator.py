@@ -393,10 +393,10 @@ class BaseTranslator(threading.Thread):
                     self._reset_reconnect_state()
                     transient_failures += 1
                     if transient_failures >= self.MAX_TRANSIENT_FAILURES:
-                        self._give_up("server closed session immediately")
+                        self._give_up(t("st_server_closed"))
                         break
                     self.on_status(t("st_conn_err", name=self.name, s=self._backoff,
-                                     e="server closed session immediately"))
+                                     e=t("st_server_closed")))
                     await asyncio.sleep(self._backoff)
                     self._backoff = min(self._backoff * 1.6, 6)
             except _Rotate:
@@ -537,8 +537,8 @@ class BaseTranslator(threading.Thread):
             # (a hung TCP connection may never raise in the receiver).
             if self._sent_since_recv >= self.STALL_ROTATE_SECONDS:
                 self._sent_since_recv = 0.0
-                self.on_status("translator: no server events for %ds of sent "
-                               "audio — reconnecting" % int(self.STALL_ROTATE_SECONDS))
+                self.on_status(t("st_stall_reconnect", name=self.name,
+                                 s=int(self.STALL_ROTATE_SECONDS)))
                 raise _Rotate(heal=True)
             # No-output watchdog: input transcription recently but no output.
             # Warn once, then SELF-HEAL — force a reconnect if the stall persists,
@@ -557,8 +557,8 @@ class BaseTranslator(threading.Thread):
                 if (stalled >= self.NO_OUTPUT_ROTATE_SECONDS
                         and self._watchdog_rotations < self.WATCHDOG_ROTATE_MAX):
                     self._watchdog_rotations += 1
-                    self.on_status("translator: no translation for %ds — "
-                                   "reconnecting" % int(self.NO_OUTPUT_ROTATE_SECONDS))
+                    self.on_status(t("st_noout_reconnect", name=self.name,
+                                     s=int(self.NO_OUTPUT_ROTATE_SECONDS)))
                     raise _Rotate(heal=True)
             # Voice watchdog: translated TEXT is flowing (recently) but translated
             # AUDIO is absent — subtitles with no voice. Gated on recent text so a

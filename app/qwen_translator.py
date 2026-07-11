@@ -435,7 +435,8 @@ class QwenTranslator(BaseTranslator):
                         # truncates InvalidParameter exactly where the reason is.
                         _log.warning("qwen clone rejected (frequency=%s): %s",
                                      self.clone, msg)
-                        self.on_status(f"translator: clone voice hiccup ({msg[:80]})")
+                        from .i18n import t  # noqa: PLC0415 — lazy, matches module style
+                        self.on_status(t("st_clone_hiccup", name=self.name, msg=msg[:80]))
                     continue
                 raise RuntimeError(msg)
             elif et in ("session.finished", "session.closed"):

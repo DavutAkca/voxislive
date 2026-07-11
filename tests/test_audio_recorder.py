@@ -35,7 +35,8 @@ def test_both_tracks_written_valid_wav(tmp_path):
                                   "frames": 1600}
     assert _read_wav(tr_wav) == {"channels": 1, "width": 2, "rate": 24000,
                                  "frames": 2400}
-    assert statuses and "audio saved" in statuses[-1]
+    # Status text is localized (st_audio_saved) — pin the payload, not the locale.
+    assert statuses and "_source.wav" in statuses[-1] and "_translated.wav" in statuses[-1]
 
 
 def test_empty_track_pruned(tmp_path):

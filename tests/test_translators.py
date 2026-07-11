@@ -257,7 +257,11 @@ def test_no_output_watchdog_self_heals_by_reconnecting():
         while time.monotonic() < deadline and len(connects) < 2:
             time.sleep(0.05)
         assert len(connects) >= 2  # the stall forced a reconnect
-        assert any("reconnecting" in e for e in events)
+        # Status text is localized (st_noout_reconnect) — pin via the i18n key.
+        from app.i18n import t
+        expected = t("st_noout_reconnect", name=tr.name,
+                     s=int(_Driven.NO_OUTPUT_ROTATE_SECONDS))
+        assert any(e == expected for e in events)
     finally:
         tr.stop()
         tr.join(timeout=5.0)
