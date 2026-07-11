@@ -53,9 +53,11 @@ LINE_GAP = 2.5
 # speakers still land in separate, separately-labeled turns.
 SPK_GAP = 0.7
 FADE_MS = 6.0
-# Prefetched session-key freshness window (seconds). Short on purpose: the
-# server issues ephemeral tokens, so a stale entry must fall back to the
-# normal synchronous fetch rather than risk connecting with a dead token.
+# Prefetched session-key freshness window (seconds). Short on purpose so a
+# stale entry falls back to the normal synchronous fetch. Only RAW keys are
+# ever cached — a single-use ephemeral token (2-min new-session window,
+# shorter than this TTL) would fail the first connect terminally, so
+# _prefetch_session_key skips caching those.
 KEY_PREFETCH_TTL = 240.0
 # Overlay/OBS subtitle width cap on a word boundary so a runaway turn never
 # produces an unbounded single line in the overlay window or the OBS file.
@@ -1356,14 +1358,19 @@ class Bridge:
         def work():
             try:
                 from . import voxis_client  # noqa: PLC0415
-                key, engine, model, quality, quota, workspace, _err = voxis_client.get_session_key(
-                    target=target, caps="engine-routing")
-                if key:
+                key, engine, model, quality, quota, workspace, key_type, _err = voxis_client.get_session_key(
+                    target=target, caps=voxis_client.SESSION_KEY_CAPS)
+                # Never cache an ephemeral token: its new-session window (2 min)
+                # is shorter than KEY_PREFETCH_TTL, and a dead single-use token
+                # at session start fails the first connect TERMINALLY instead of
+                # retrying. The prefetch still warms TLS + the server-side token
+                # cache, so the synchronous start fetch stays cheap.
+                if key and key_type != "ephemeral":
                     with self._key_cache_lock:
                         self._key_cache[target] = (time.time(), engine, key,
                                                    model, quality, workspace)
-                    if isinstance(quota, dict):
-                        self._last_quota = quota
+                if isinstance(quota, dict):
+                    self._last_quota = quota
             except Exception:
                 pass  # cold cache == old behavior
 
@@ -1440,7 +1447,7 @@ class Bridge:
         # plain Gemini key (session_key.go defaults engine to "gemini" when the
         # client is not routing-aware), so no server change is needed.
         def gemini_key():
-            key, _engine, model, quality, quota, _ws, err = voxis_client.get_session_key()
+            key, _engine, model, quality, quota, _ws, _kt, err = voxis_client.get_session_key()
             if not key:
                 raise RuntimeError(err or t("st_no_key"))
             if isinstance(quota, dict):
@@ -1448,6 +1455,22 @@ class Bridge:
             if quality:
                 self.cfg["quality_preset"] = quality
             return ENGINE_GEMINI, key, (model or resolve_model(self.cfg, ENGINE_GEMINI))
+
+        # Gemini key fountain for LiveTranslator: called on the translator's
+        # thread before every reconnect once its single-use ephemeral token has
+        # been spent (a raw-key session never calls it). No target → the server
+        # always answers Gemini (an empty target routes to the catch-all), and
+        # because ephemeral tokens are uses:1 this re-runs the quota + device
+        # gates on every 13-min rotation — the point of Tier A5. Raising here
+        # just fails that reconnect attempt; the translator retries with backoff.
+        def gemini_key_provider():
+            key, _engine, _model, _quality, quota, _ws, _kt, err = \
+                voxis_client.get_session_key(caps=voxis_client.SESSION_KEY_CAPS)
+            if not key:
+                raise RuntimeError(err or t("st_no_key"))
+            if isinstance(quota, dict):
+                self._last_quota = quota
+            return key
 
         if beta_qwen:
             # SaaS beta: ask the server for the Qwen session key explicitly. The
@@ -1460,8 +1483,8 @@ class Bridge:
                 # Skip Qwen entirely for a target it can't voice (text-only tier):
                 # the standard engine gives translated speech, not just subtitles.
                 if qwen_can_voice(self.cfg, target):
-                    key, engine, model, quality, quota, workspace, err = voxis_client.get_session_key(
-                        target=target, caps="engine-routing", engine="qwen")
+                    key, engine, model, quality, quota, workspace, _kt, err = voxis_client.get_session_key(
+                        target=target, caps=voxis_client.SESSION_KEY_CAPS, engine="qwen")
                     if key and engine == "qwen":
                         if isinstance(quota, dict):
                             self._last_quota = quota
@@ -1469,8 +1492,8 @@ class Bridge:
                         return engine, key, (model or resolve_model(self.cfg, engine))
                 else:
                     _log.info("Qwen beta has no voice for target %r; using standard routing", target)
-                key, engine, model, quality, quota, workspace, err2 = voxis_client.get_session_key(
-                    target=target, caps="engine-routing")
+                key, engine, model, quality, quota, workspace, _kt, err2 = voxis_client.get_session_key(
+                    target=target, caps=voxis_client.SESSION_KEY_CAPS)
                 if key:
                     if isinstance(quota, dict):
                         self._last_quota = quota
@@ -1479,6 +1502,7 @@ class Bridge:
                     self._apply_qwen_workspace(engine, workspace)
                     return engine, key, (model or resolve_model(self.cfg, engine))
                 raise RuntimeError(err or err2 or t("st_no_key"))
+            resolve.gemini_key_provider = gemini_key_provider
             return resolve
 
         # Single-round-trip start: /auth/session-key now verifies the token
@@ -1498,8 +1522,8 @@ class Bridge:
                     self.cfg["quality_preset"] = quality
                 self._apply_qwen_workspace(engine, workspace)
                 return engine, key, (model or resolve_model(self.cfg, engine))
-            key, engine, model, quality, quota, workspace, err = voxis_client.get_session_key(
-                target=target, caps="engine-routing")
+            key, engine, model, quality, quota, workspace, _kt, err = voxis_client.get_session_key(
+                target=target, caps=voxis_client.SESSION_KEY_CAPS)
             if key:
                 if isinstance(quota, dict):
                     self._last_quota = quota  # keeps the paid-badge gate fresh
@@ -1508,12 +1532,13 @@ class Bridge:
                 self._apply_qwen_workspace(engine, workspace)
                 return engine, key, (model or resolve_model(self.cfg, engine))
             # Routed engine unavailable (503) → fall back to Gemini via the legacy path.
-            key, engine, model, quality, quota, workspace, err2 = voxis_client.get_session_key()
+            key, engine, model, quality, quota, workspace, _kt, err2 = voxis_client.get_session_key()
             if key:
                 if quality:
                     self.cfg["quality_preset"] = quality
                 return "gemini", key, (model or resolve_model(self.cfg, "gemini"))
             raise RuntimeError(err or err2 or t("st_no_key"))
+        resolve.gemini_key_provider = gemini_key_provider
         return resolve
 
     def _start(self, mode, consented=False):

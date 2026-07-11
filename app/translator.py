@@ -16,13 +16,15 @@ context-manager connection, the config, session resumption + GoAway handling —
 live here. This module also owns the process-wide usage accumulator that every
 engine funnels into (get_usage / _add_usage).
 """
+import asyncio
+import contextlib
 import threading
 
 from google import genai
 from google.genai import types
 
 from .base_translator import BaseTranslator, _Rotate, is_terminal_error
-from .config import GEMINI_LIVE_MODEL
+from .config import GEMINI_LIVE_MODEL, is_ephemeral_key
 
 # Live session resumption + GoAway handling — enabled only if this google-genai
 # build exposes the type (older builds silently skip it; the path still works).
@@ -91,12 +93,24 @@ class LiveTranslator(BaseTranslator):
     def __init__(self, api_key, target_lang, on_audio, on_text, on_status,
                  rotate_minutes: float = 13, name: str = "translator",
                  voice: str = "Aoede", temperature: float = 0.3,
-                 model: str = GEMINI_LIVE_MODEL):
+                 model: str = GEMINI_LIVE_MODEL, key_provider=None):
         super().__init__(api_key, target_lang, on_audio, on_text, on_status,
                          rotate_minutes=rotate_minutes, name=name)
         self.voice = voice
         self.temperature = temperature
         self.model = model
+        # key_provider() -> fresh api_key, called (blocking, off the loop via
+        # to_thread) before every connect once the initial key has been spent.
+        # Only consulted while the current key is EPHEMERAL (single-use
+        # "auth_tokens/…", uses:1 — Tier A5): each 13-min rotation / reconnect
+        # then goes back through /auth/session-key, which re-runs the quota gate
+        # mid-session and mints the next token. A raw key (BYOK, SaaS with the
+        # rollout flag off, or a provider that started answering raw) keeps the
+        # original cached-client path and never calls the provider.
+        self.key_provider = key_provider
+        # True once a connect ATTEMPT may have consumed the single-use token —
+        # set before dialing, because a failed handshake may still spend it.
+        self._key_spent = False
         self._client = None
         # session-resumption token for a seamless reconnect (None = fresh session)
         self._resume_handle = None
@@ -139,6 +153,13 @@ class LiveTranslator(BaseTranslator):
         return config
 
     def _session_cm(self):
+        # An ephemeral token (server-minted, uses:1) cannot be reused across
+        # connects — take the fetch-fresh path while the current key is one.
+        # Checked live (not latched) so a provider that starts answering with a
+        # raw key (rollout flag turned off mid-session) settles back onto the
+        # cached-client path below.
+        if is_ephemeral_key(self.api_key):
+            return self._ephemeral_session_cm()
         # Disable WebSocket permessage-deflate: PCM16 audio is high-entropy so it
         # never compresses, and deflate only adds per-frame CPU and a flush
         # boundary on the 32 ms cadence. Client is created once and cached.
@@ -149,6 +170,31 @@ class LiveTranslator(BaseTranslator):
                     async_client_args={"compression": None}))
         return self._client.aio.live.connect(model=self.model,
                                              config=self._build_config())
+
+    @contextlib.asynccontextmanager
+    async def _ephemeral_session_cm(self):
+        """Connect with a single-use auth token: the initial key serves the first
+        connect (it was minted seconds ago by the session-key fetch); every later
+        connect fetches a fresh one via key_provider, off the loop thread so
+        queued frames keep draining into the bounded input queue meanwhile."""
+        if self._key_spent:
+            if self.key_provider is None:
+                # Defensive: an ephemeral key without a provider can serve only
+                # its first connect. Surfaced as a normal connection error.
+                raise RuntimeError("single-use session token spent and no key provider")
+            self.api_key = await asyncio.to_thread(self.key_provider)
+        self._key_spent = True
+        # Fresh client per connect: the token IS the api_key, and auth_tokens
+        # live only on the v1alpha API surface. A provider answering with a raw
+        # key (flag rolled back) stays on the default API version.
+        client = genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(
+                api_version="v1alpha" if is_ephemeral_key(self.api_key) else None,
+                async_client_args={"compression": None}))
+        async with client.aio.live.connect(model=self.model,
+                                           config=self._build_config()) as conn:
+            yield conn
 
     def _reset_reconnect_state(self):
         # A failed reconnect may be a stale/expired resume handle — drop it so the

@@ -27,7 +27,7 @@ def resolve_engine_for_target(cfg, keys, target_lang):
 
 def make_translator(cfg, target_lang, *, engine, key, model=None,
                     on_audio, on_text, on_status, name, noise_reduction=None,
-                    on_fatal=None):
+                    on_fatal=None, key_provider=None):
     """Build the translator thread for an ALREADY-RESOLVED engine + key + model.
     The caller resolves per target (locally for BYOK, server-side for SaaS) so the
     capture send-rate can match. Returns an object honoring the translator
@@ -36,7 +36,11 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
     on_fatal is invoked if the engine gives up mid-session (see
     BaseTranslator._give_up) so the caller can substitute another engine. It is
     attached after construction rather than threaded through all three subclass
-    signatures — nothing reads it until the reconnect loop is abandoned."""
+    signatures — nothing reads it until the reconnect loop is abandoned.
+
+    key_provider (Gemini only) fetches a fresh api key per reconnect once a
+    single-use ephemeral token has been spent (see LiveTranslator); the other
+    engines receive raw multi-use keys and ignore it."""
     if not key:
         raise RuntimeError(f"no API key for engine '{engine}'")
     model = model or resolve_model(cfg, engine)
@@ -86,7 +90,7 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
         rotate_minutes=cfg.get("session_rotate_minutes", 13), name=name,
         voice=cfg.get("gemini_voice", "Aoede"),
         temperature=float(cfg.get("gemini_temperature", 0.3)),
-        model=model)
+        model=model, key_provider=key_provider)
     tr.engine = engine
     tr.on_fatal = on_fatal
     return tr

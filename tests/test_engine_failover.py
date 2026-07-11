@@ -49,8 +49,10 @@ def pipe(monkeypatch):
     built = []
 
     def fake_make_translator(cfg, target, *, engine, key, model, on_audio, on_text,
-                             on_status, name, noise_reduction=None, on_fatal=None):
-        built.append({"engine": engine, "key": key, "on_fatal": on_fatal})
+                             on_status, name, noise_reduction=None, on_fatal=None,
+                             key_provider=None):
+        built.append({"engine": engine, "key": key, "on_fatal": on_fatal,
+                      "key_provider": key_provider})
         return _FakeTr(engine)
 
     monkeypatch.setattr(P, "make_translator", fake_make_translator)
@@ -118,6 +120,16 @@ def test_gemini_is_the_last_resort(pipe):
     assert pipe._failover_to_gemini(Exception("Arrearage")) is True
     assert pipe.built[-1]["on_fatal"] is None
     assert pipe._failover_to_gemini(Exception("boom")) is False
+
+
+def test_failover_forwards_key_provider(pipe):
+    """The SaaS resolver hangs the Gemini key fountain off the resolve fn; the
+    failover replacement must inherit it so an ephemeral-token session can still
+    refresh its key across rotations after the swap."""
+    provider = lambda: "auth_tokens/next"
+    pipe._resolve.gemini_key_provider = provider
+    assert pipe._failover_to_gemini(Exception("Arrearage")) is True
+    assert pipe.built[-1]["key_provider"] is provider
 
 
 def test_no_failover_when_already_on_gemini(pipe):

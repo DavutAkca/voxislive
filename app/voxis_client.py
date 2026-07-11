@@ -481,7 +481,15 @@ def _device_headers() -> dict:
     return headers
 
 
-def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str], Optional[str]]:
+# Capability list a routing-aware client sends with /auth/session-key. The
+# "ephemeral" cap (Tier A5, 1.0.38+) tells the server this client can consume a
+# single-use, model-locked Gemini auth token instead of the raw master key;
+# whether one is actually issued is the server-side gemini_ephemeral setting
+# (staged rollout), so sending the cap is always safe.
+SESSION_KEY_CAPS = "engine-routing,ephemeral"
+
+
+def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str], Optional[str], Optional[str]]:
     """SaaS execution path: retrieves a server-issued translation key. With
     caps='engine-routing' the server picks the engine by TARGET language and also
     returns {engine, model, quality, quota} — plus {workspace} on Qwen (DashScope
@@ -489,16 +497,21 @@ def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str],
     verifies the token inline on a cold cache, this single call is a complete
     session start — no separate /auth/verify round-trip is needed.
 
-    Returns (key, engine, model, quality, quota, workspace, error); `quota` is
-    the license snapshot dict when the server provided one (routing-aware
-    responses only). 401/402 are mapped to localized messages by STATUS CODE
-    (never by sniffing the server's English error string). Never embedded in
-    the client build."""
+    With the "ephemeral" cap (SESSION_KEY_CAPS) the Gemini key may instead be a
+    single-use auth token ("auth_tokens/…"); the server discriminates via
+    key_type ("ephemeral" | "raw"). A response without the field (legacy path,
+    Qwen/OpenAI engines) is always a raw key.
+
+    Returns (key, engine, model, quality, quota, workspace, key_type, error);
+    `quota` is the license snapshot dict when the server provided one
+    (routing-aware responses only). 401/402 are mapped to localized messages by
+    STATUS CODE (never by sniffing the server's English error string). Never
+    embedded in the client build."""
     if not IS_OFFICIAL_RELEASE:
-        return None, None, None, None, None, None, "SaaS keys are disabled in developer builds."
+        return None, None, None, None, None, None, None, "SaaS keys are disabled in developer builds."
     token = _valid_jwt()
     if not token:
-        return None, None, None, None, None, None, t("st_not_signed_in")
+        return None, None, None, None, None, None, None, t("st_not_signed_in")
     params = {}
     if caps:
         params["caps"] = caps
@@ -517,25 +530,26 @@ def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str],
         )
     except requests.RequestException as exc:
         _log_detail("get_session_key", exc)
-        return None, None, None, None, None, None, _net_error()
+        return None, None, None, None, None, None, None, _net_error()
     if resp.status_code == 200:
         d = resp.json()
         quota = d.get("quota") if isinstance(d.get("quota"), dict) else None
         return (d.get("key"), d.get("engine", "gemini"), d.get("model"),
-                d.get("quality"), quota, d.get("workspace"), None)
+                d.get("quality"), quota, d.get("workspace"),
+                d.get("key_type") or "raw", None)
     if resp.status_code == 401:
         clear_jwt()
-        return None, None, None, None, None, None, t("st_not_signed_in")
+        return None, None, None, None, None, None, None, t("st_not_signed_in")
     if resp.status_code == 402:
-        return None, None, None, None, None, None, t("err_quota_exhausted")
+        return None, None, None, None, None, None, None, t("err_quota_exhausted")
     if resp.status_code == 503:
         # Distinguishable "engine unavailable" → caller falls back to Gemini.
         try:
             eng = resp.json().get("engine")
         except Exception:
             eng = None
-        return None, eng, None, None, None, None, "engine unavailable"
-    return None, None, None, None, None, None, _core_error(resp)
+        return None, eng, None, None, None, None, None, "engine unavailable"
+    return None, None, None, None, None, None, None, _core_error(resp)
 
 
 def _post_usage(session_id: str, delta_minutes: float, source: str, engine: str) -> str:

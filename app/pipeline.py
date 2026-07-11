@@ -375,6 +375,10 @@ class IncomingPipeline:
             cfg, cfg["target_language_incoming"], engine=self._engine, key=_key, model=_model,
             on_audio=_tts_sink, on_text=on_text, on_status=on_status,
             name=t("name_in"), on_fatal=self._failover_to_gemini,
+            # SaaS resolvers hang the Gemini key fountain off the resolve fn so
+            # a single-use ephemeral key can be refreshed on every rotation
+            # (dev/BYOK resolvers carry none — raw keys need no refetch).
+            key_provider=getattr(resolve, "gemini_key_provider", None),
         )
         # Bound through self, not to the translator instance, so a mid-session
         # engine swap redirects the capture without rebuilding the gate/capture.
@@ -661,7 +665,10 @@ def _swap_to_gemini(pipe, target_key, name, exc):
             on_audio=pipe._tts_sink, on_text=pipe._on_text,
             on_status=pipe._on_status, name=name,
             # No on_fatal: Gemini is the last resort — a further failure must
-            # reach the user instead of looping.
+            # reach the user instead of looping. The failover key comes from the
+            # legacy (no-caps) endpoint and is always raw, so the provider is
+            # passed only for symmetry — a raw key never consults it.
+            key_provider=getattr(pipe._resolve, "gemini_key_provider", None),
         )
     except Exception:
         _log.exception("failover: could not build the Gemini translator")
@@ -722,6 +729,7 @@ class OutgoingPipeline:
             on_audio=self.player.feed_tts_pcm16, on_text=on_text, on_status=on_status,
             name=t("name_out"), noise_reduction="near_field",
             on_fatal=self._failover_to_gemini,
+            key_provider=getattr(resolve, "gemini_key_provider", None),
         )
         self.input_level = 0.0
         self.capture = None
