@@ -1394,7 +1394,7 @@ class Bridge:
         Gemini (the engine selector is server-controlled). Dev/BYOK routes locally
         over the stored keys. Raises a localized error if no key is available.
         """
-        from .config import resolve_model, qwen_can_voice
+        from .config import ENGINE_GEMINI, resolve_model, qwen_can_voice
         # Beta engine opt-in (Qwen): only honored when the account is
         # beta-eligible (server flag; dev builds are always eligible) AND the
         # user switched it on. Never touches the normal Gemini/OpenAI routing.
@@ -1410,31 +1410,53 @@ class Bridge:
             # the Qwen engine locally — sandbox-style, no server round-trip.
             if beta_qwen and self.cfg.get("qwen_key"):
                 gem = keys.get("gemini")
-                def resolve(target):
+                def resolve(target, force_gemini=False):
                     # Qwen has no VOICE for some targets (text-only tier) — those
                     # would give subtitles with no audio, so prefer Gemini when a
-                    # key is available.
-                    if gem and not qwen_can_voice(self.cfg, target):
-                        _log.info("Qwen beta has no voice for target %r; using Gemini", target)
+                    # key is available. force_gemini is the mid-session failover
+                    # (see IncomingPipeline._failover_to_gemini).
+                    if gem and (force_gemini or not qwen_can_voice(self.cfg, target)):
+                        if not force_gemini:
+                            _log.info("Qwen beta has no voice for target %r; using Gemini", target)
                         return ENGINE_GEMINI, gem, resolve_model(self.cfg, ENGINE_GEMINI)
+                    if force_gemini:
+                        raise RuntimeError(t("st_no_key_offline"))
                     return (ENGINE_QWEN, self.cfg.get("qwen_key"),
                             resolve_model(self.cfg, ENGINE_QWEN))
                 return resolve
             if not keys.get("gemini"):
                 raise RuntimeError(t("st_no_key_offline"))
 
-            def resolve(target):
+            def resolve(target, force_gemini=False):
                 return ENGINE_GEMINI, keys.get("gemini"), resolve_model(self.cfg, ENGINE_GEMINI)
             return resolve
 
         from . import voxis_client
 
+        # Mid-session failover (IncomingPipeline._failover_to_gemini): a routed
+        # engine that gave up — a spent DashScope balance reports as a terminal
+        # 'arrearage' — needs a Gemini key NOW. Calling /auth/session-key with no
+        # ?caps is the server's backward-compat path and always answers with the
+        # plain Gemini key (session_key.go defaults engine to "gemini" when the
+        # client is not routing-aware), so no server change is needed.
+        def gemini_key():
+            key, _engine, model, quality, quota, _ws, err = voxis_client.get_session_key()
+            if not key:
+                raise RuntimeError(err or t("st_no_key"))
+            if isinstance(quota, dict):
+                self._last_quota = quota
+            if quality:
+                self.cfg["quality_preset"] = quality
+            return ENGINE_GEMINI, key, (model or resolve_model(self.cfg, ENGINE_GEMINI))
+
         if beta_qwen:
             # SaaS beta: ask the server for the Qwen session key explicitly. The
             # server re-checks the account's beta flag (client is not trusted)
             # and refuses otherwise — then we fall through to normal routing.
-            def resolve(target):
+            def resolve(target, force_gemini=False):
                 err = None
+                if force_gemini:
+                    return gemini_key()
                 # Skip Qwen entirely for a target it can't voice (text-only tier):
                 # the standard engine gives translated speech, not just subtitles.
                 if qwen_can_voice(self.cfg, target):
@@ -1466,7 +1488,9 @@ class Bridge:
         # surface as localized errors from get_session_key itself.
         # Zero-round-trip start: a fresh prefetched key (warmed at login /
         # target change / previous stop) skips even that one call.
-        def resolve(target):
+        def resolve(target, force_gemini=False):
+            if force_gemini:
+                return gemini_key()
             pre = self._pop_prefetched_key(target)
             if pre:
                 engine, key, model, quality, workspace = pre

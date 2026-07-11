@@ -142,13 +142,20 @@ class BaseTranslator(threading.Thread):
     _USAGE_ADD = None
 
     def __init__(self, api_key, target_lang, on_audio, on_text, on_status, *,
-                 rotate_minutes, name="translator"):
+                 rotate_minutes, name="translator", on_fatal=None):
         super().__init__(daemon=True, name=name)
         self.api_key = api_key
         self.target_lang = target_lang
         self.on_audio = on_audio
         self.on_text = on_text
         self.on_status = on_status
+        # Called (from the translator thread) when this engine has given up for
+        # good — a terminal reject, or transient failures past the cap. Lets the
+        # owner substitute another engine rather than leave the user with a dead
+        # session; nobody listening means the old behaviour, i.e. the session just
+        # stops with a status. Fired at most once.
+        self.on_fatal = on_fatal
+        self._fatal_fired = False
         self.rotate_seconds = rotate_minutes * 60
         self._loop: asyncio.AbstractEventLoop | None = None
         self._queue: asyncio.Queue | None = None
@@ -314,6 +321,26 @@ class BaseTranslator(threading.Thread):
     def _is_terminal(self, exc) -> bool:
         return is_terminal_error(exc, self.TERMINAL_PHRASES, self.TERMINAL_CODES)
 
+    def _give_up(self, exc) -> None:
+        """This engine is finished for this session. Offer the owner a chance to
+        substitute a different one before the user is shown a dead session.
+
+        Every path that abandons the reconnect loop routes through here, so a
+        replacement engine is reachable from a terminal reject (a spent DashScope
+        balance reports as 'arrearage'/'quota'), from exhausted transient retries,
+        and from the covert immediate-close. If on_fatal returns truthy it has
+        taken over and the failure stays silent; otherwise the status surfaces as
+        it always did."""
+        if self.on_fatal is not None and not self._fatal_fired:
+            self._fatal_fired = True
+            try:
+                if self.on_fatal(exc):
+                    return
+            except Exception:  # a broken handler must not mask the real failure
+                traceback.print_exc()
+        self.on_status(t("st_conn_err", name=self.name, s=0, e=exc))
+        traceback.print_exc()
+
     # --- thread body --------------------------------------------------------
     def run(self):
         self._loop = asyncio.new_event_loop()
@@ -366,8 +393,7 @@ class BaseTranslator(threading.Thread):
                     self._reset_reconnect_state()
                     transient_failures += 1
                     if transient_failures >= self.MAX_TRANSIENT_FAILURES:
-                        self.on_status(t("st_conn_err", name=self.name, s=0,
-                                         e="server closed session immediately"))
+                        self._give_up("server closed session immediately")
                         break
                     self.on_status(t("st_conn_err", name=self.name, s=self._backoff,
                                      e="server closed session immediately"))
@@ -384,10 +410,9 @@ class BaseTranslator(threading.Thread):
                 if self._stopping.is_set():
                     break
                 # Terminal (auth/permission/quota/4xx): retrying with the same key
-                # cannot succeed — stop with one actionable status.
+                # cannot succeed — give up and let a substitute engine step in.
                 if self._is_terminal(e):
-                    self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
-                    traceback.print_exc()
+                    self._give_up(e)
                     break
                 # A session that ran past the minimum lifetime proves the path
                 # works; a later drop starts a fresh failure streak.
@@ -397,8 +422,7 @@ class BaseTranslator(threading.Thread):
                 transient_failures += 1
                 self._reset_reconnect_state()
                 if transient_failures >= self.MAX_TRANSIENT_FAILURES:
-                    self.on_status(t("st_conn_err", name=self.name, s=0, e=e))
-                    traceback.print_exc()
+                    self._give_up(e)
                     break
                 self.on_status(t("st_conn_err", name=self.name, s=self._backoff, e=e))
                 # Suppress repeated identical tracebacks: a flapping link would
