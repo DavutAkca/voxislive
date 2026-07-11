@@ -116,8 +116,9 @@ class DualTrackRecorder:
                     pass
         if saved and self._on_status is not None:
             try:
-                self._on_status("audio saved: " + " | ".join(
-                    os.path.basename(p) for p in saved))
+                from .i18n import t  # lazy: keep the module import-light
+                self._on_status(t("st_audio_saved", files=" | ".join(
+                    os.path.basename(p) for p in saved)))
             except Exception:
                 pass
         return saved

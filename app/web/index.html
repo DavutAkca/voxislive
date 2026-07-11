@@ -5,7 +5,189 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voxis</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+/* Fonts are bundled (app/web/fonts) so startup never calls fonts.googleapis.com:
+   no first-paint FOUT, works fully offline, and no per-launch Google request
+   from user machines. Variable woff2 instances mirror the css2 response. */
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrodmgPn.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrMdmgPn.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* symbols2 */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFg08vz7ehw.woff2) format('woff2');
+  unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrgdmgPn.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrkdmgPn.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrcdmg.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrodmgPn.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrMdmgPn.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* symbols2 */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFg08vz7ehw.woff2) format('woff2');
+  unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrgdmgPn.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrkdmgPn.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/geist-mono-or3nQ6H-1_WfwkMZI_qYFrcdmg.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Iayoxdg.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Gayo.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Iayoxdg.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Gayo.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Iayoxdg.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Gayo.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Iayoxdg.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Gayo.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 /* ============================================================
    VOXIS · GRAPHITE CONSOLE DESIGN SYSTEM
@@ -30,7 +212,9 @@
   --surface-3:#1d2025;   /* raised: modal, hover, keycap */
   --inset-hi:rgba(235,240,245,.04);
   --border:rgba(235,240,245,.08); --border-strong:rgba(235,240,245,.17);
-  --text:rgba(233,238,243,.95); --text-2:rgba(233,238,243,.64); --text-3:rgba(233,238,243,.42);
+  /* text-3 kept ≥4.5:1 on surface-1 — it labels real content (card eyebrows,
+     dB readout, status bar), not decoration. */
+  --text:rgba(233,238,243,.95); --text-2:rgba(233,238,243,.64); --text-3:rgba(233,238,243,.52);
   --accent:#57b6ff; --accent-strong:#3ea3f7; --accent-hi:#7cc6ff;
   --accent-soft:rgba(87,182,255,.10); --accent-glow:rgba(87,182,255,.25); --on-accent:#0a1016;
   --green:#3ecf8e; --green-soft:rgba(62,207,142,.11);
@@ -46,7 +230,7 @@
   --surface-1:#ffffff; --surface-2:#f1f3f6; --surface-3:#ffffff;
   --inset-hi:rgba(255,255,255,.6);
   --border:#e4e7ec; --border-strong:#c9cfd9;
-  --text:rgba(17,24,38,.95); --text-2:rgba(17,24,38,.64); --text-3:rgba(17,24,38,.46);
+  --text:rgba(17,24,38,.95); --text-2:rgba(17,24,38,.64); --text-3:rgba(17,24,38,.56);
   --accent:#2743cf; --accent-strong:#2136b8; --accent-hi:#3a57e8;
   --accent-soft:rgba(39,67,207,.08); --accent-glow:rgba(39,67,207,.22); --on-accent:#ffffff;
   --green:#0c8f5f; --green-soft:rgba(12,143,95,.10);
@@ -139,13 +323,17 @@ button{font-family:var(--font)}
 .quota-bar-wrap.unlimited .quota-bar-label{color:var(--accent)}
 .quota-bar-wrap.exhausted .quota-bar-label{color:var(--red)}
 
-.topactions{display:flex;align-items:center;gap:6px}
+.topactions{display:flex;align-items:center;gap:7px}
+/* Keycap at rest (mirrors .hkrow .k): the utility buttons read as pressable
+   without hover — a bare ghost icon next to the window controls didn't. */
 .iconbtn{
   width:36px;height:36px;border-radius:var(--r-ctl);display:grid;place-items:center;
-  background:transparent;border:1px solid transparent;color:var(--text-2);cursor:pointer;transition:all var(--dfast) var(--ease);
+  background:var(--surface-2);border:1px solid var(--border);border-bottom-width:2px;
+  color:var(--text-2);cursor:pointer;transition:all var(--dfast) var(--ease);
 }
-.iconbtn:hover{background:var(--surface-2);border-color:var(--border);color:var(--text)}
+.iconbtn:hover{background:var(--surface-3);border-color:var(--border-strong);color:var(--text)}
 .iconbtn:active{transform:scale(.94)}
+[data-theme="light"] .iconbtn:hover{background:#fff}
 .reportchip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px;border-radius:var(--r-ctl);
   background:transparent;border:1px solid var(--border-strong);color:var(--text-2);
   font-size:12.5px;font-weight:600;letter-spacing:-.01em;cursor:pointer;white-space:nowrap;
@@ -155,6 +343,10 @@ button{font-family:var(--font)}
 .reportchip svg{flex:none}
 
 .windowctl{display:flex;align-items:center;margin-left:6px;margin-right:-24px}
+/* Hairline between app actions and the OS window controls: two different
+   kinds of control, two visual groups (main topbar only — the auth screen
+   has nothing to separate). */
+.topbar .windowctl::before{content:'';width:1px;height:20px;background:var(--border-strong);margin-right:9px}
 .wbtn{width:46px;height:56px;display:grid;place-items:center;background:transparent;border:none;
   color:var(--text-2);cursor:pointer;transition:all var(--dfast) var(--ease)}
 .wbtn:hover{background:var(--surface-2);color:var(--text)}
@@ -182,7 +374,7 @@ button{font-family:var(--font)}
 [data-theme="light"] .card{box-shadow:0 1px 2px rgba(17,24,38,.05)}
 .card-pad{padding:18px}
 .cardlabel{
-  font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;
+  font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;
   color:var(--text-3);margin-bottom:var(--s4);display:flex;align-items:center;gap:9px;
 }
 .cardlabel::after{content:'';flex:1;height:1px;background:var(--border)}
@@ -216,6 +408,9 @@ select:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3p
 .btn-ghost:hover{border-color:var(--border-strong);background:var(--surface-2)}
 .btn-danger{color:var(--red);border-color:var(--border-strong)}
 .btn-danger:hover:not(:disabled){background:var(--red-soft);border-color:color-mix(in srgb,var(--red) 45%,transparent)}
+/* Stop is a transport control: it only exists while a session runs. A
+   permanently visible disabled danger button is idle-state noise. */
+#stopbtn[disabled]{display:none}
 
 .scenario{
   position:relative;overflow:hidden;display:flex;align-items:center;gap:12px;width:100%;
@@ -241,6 +436,14 @@ select:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3p
 .scenario .t1{font-size:13.5px;font-weight:600;color:var(--text);letter-spacing:-.01em}
 .scenario.active .t1{color:var(--accent)}
 .scenario .t2{font-size:11.5px;color:var(--text-2);margin-top:2px}
+/* Tiles ARE the start action — surface that affordance on hover/focus so a
+   first-time user isn't left hunting for a Start button. */
+.scenario .startcue{margin-left:auto;display:inline-flex;align-items:center;gap:6px;flex:none;
+  font-size:11.5px;font-weight:600;color:var(--accent);opacity:0;transform:translateX(-4px);
+  transition:opacity var(--dfast) var(--ease),transform var(--dfast) var(--ease)}
+.scenario:hover:not(:disabled):not(.quota-blocked) .startcue,
+.scenario:focus-visible:not(.quota-blocked) .startcue{opacity:1;transform:none}
+.scenario.active .startcue,.scenario.quota-blocked .startcue{display:none}
 
 /* live audio-rod meter — console signal block */
 .meter{display:flex;align-items:center;gap:11px;margin-top:14px;padding:11px 13px;border-radius:var(--r-ctl);
@@ -290,7 +493,11 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .langgroup{display:flex;align-items:center;gap:14px;padding:8px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--r-card)}
 .langgroup .arrow{color:var(--accent)}
 .langitem{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
-.langitem .lbl{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3)}
+.langitem .lbl{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3)}
+/* Outgoing language is a Meeting-mode control: dimmed + locked during a
+   video session so it can't read as "video translates both ways". */
+.langitem.lang-dim{opacity:.45}
+.langitem.lang-dim select{cursor:not-allowed}
 .langitem .selectwrap{width:184px}
 .langitem select{padding:10px 30px 10px 13px;font-size:15px;font-weight:600;color:var(--text);background:var(--surface-1)}
 [data-theme="light"] .langitem select{background:#fff}
@@ -300,7 +507,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 
 .stream{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .streamhead{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border)}
-.streamhead .title{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--text-2)}
+.streamhead .title{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--text-2)}
 .presence{display:flex;align-items:center;gap:3px;height:18px;opacity:0;transition:opacity var(--dur)}
 .presence.on{opacity:1}
 .presence i{width:3px;height:4px;border-radius:2px;background:var(--green)}
@@ -308,7 +515,23 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .streamhint{font-family:var(--mono);font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:7px;letter-spacing:.04em}
 .streamhint .lv{color:var(--amber)}
 
-.scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:15px;scroll-behavior:smooth}
+.scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:15px;scroll-behavior:smooth;container-type:inline-size}
+
+/* Live "heard now" ghost line: the source utterance streaming in real time,
+   always the last element of the scroll. Cleared when its translation turn
+   finalizes (the paired 'src' event) or the session ends. */
+.hearline{display:flex;gap:8px;align-items:baseline;padding-left:16px;font-size:12px;color:var(--text-3)}
+.hearline .who{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;flex:none}
+.hearline .ht{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Dual-column captions on a wide stream: translation | source side by side
+   (the stacked layout below stays the narrow fallback). */
+@container (min-width:720px){
+  .turn{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start}
+  .turn .tr{max-width:none;grid-column:1}
+  .turn .src{grid-column:2;grid-row:1;margin-top:3px;padding-left:14px;border-left:1px solid var(--border)}
+  /* .turnact stays absolutely positioned — unaffected by the grid */
+}
 
 .turn{animation:rise .34s var(--ease-out)}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -333,6 +556,10 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .line.sys::before{content:'› ';opacity:.6}
 
 .empty{margin:auto;text-align:center;color:var(--text-3);padding:40px}
+/* The empty state is the largest surface on screen — make it the shortest
+   path to the first translation instead of a passive hint. */
+.empty .emptystart{width:auto;display:inline-flex;margin:20px auto 0;padding:10px 22px}
+.empty .emptystart .dim{opacity:.6;font-weight:500}
 .empty .orb{margin:0 auto 22px;width:76px;height:76px;border-radius:18px;display:grid;place-items:center;
   background:var(--surface-2);border:1px solid var(--border);color:var(--text-3);position:relative}
 .empty .orb::after{content:'';position:absolute;inset:-1px;border-radius:18px;border:1px solid var(--border-strong);animation:breathe 3.6s var(--ease) infinite}
@@ -343,7 +570,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 /* ============ FOOTER HUD ============ */
 .statusbar{
   flex:0 0 32px;display:flex;align-items:center;gap:0;padding:0 var(--s5);
-  font-family:var(--mono);font-size:10px;color:var(--text-3);letter-spacing:.08em;
+  font-family:var(--mono);font-size:10.5px;color:var(--text-3);letter-spacing:.08em;
   border-top:1px solid var(--border);font-variant-numeric:tabular-nums;white-space:nowrap;
   background:var(--surface-1);
 }
@@ -598,10 +825,23 @@ body.resizing,body.resizing *{user-select:none!important}
 #tour-pop .tour-step{font-family:var(--mono);font-size:10px;color:var(--text-3);font-variant-numeric:tabular-nums;font-weight:500;letter-spacing:.08em}
 @keyframes ostepin{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 
+/* ============ SOUND CHECK MODAL ============ */
+.scmeter{height:10px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border);
+  overflow:hidden;margin:14px 0 10px}
+.scmeter i{display:block;height:100%;width:0%;border-radius:6px;background:var(--green);
+  transition:width 90ms linear}
+.scstatus{font-size:12.5px;color:var(--text-3);min-height:1.4em}
+.scstatus.ok{color:var(--green);font-weight:600}
+.scstatus.err{color:var(--red)}
+
 /* ============ MEETING TILE CAVEAT (proactive, not post-failure) ============ */
-.tilecaveat{display:flex;gap:8px;align-items:flex-start;margin:-2px 0 8px;padding:9px 11px;border-radius:var(--r-inner);
+.tilecaveat{display:none;gap:8px;align-items:flex-start;margin:-2px 0 8px;padding:9px 11px;border-radius:var(--r-inner);
   background:var(--surface-2);border:1px solid var(--border);font-size:11.5px;line-height:1.5;color:var(--text-2)}
 .tilecaveat svg{flex:none;margin-top:1px;color:var(--text-3)}
+/* Shown only when it's relevant: Meeting tile hovered/focused, or a meeting
+   session running (.show set by poll). The consent modal restates it before
+   any meeting actually starts, so nothing is lost at idle. */
+#m-meeting:hover+.tilecaveat,#m-meeting:focus-visible+.tilecaveat,.tilecaveat.show{display:flex}
 
 /* ---- VB-CABLE explainer: numbered setup steps ---- */
 .cablesteps{list-style:none;margin:14px 0 4px;padding:0;display:flex;flex-direction:column;gap:11px}
@@ -629,6 +869,15 @@ body.resizing,body.resizing *{user-select:none!important}
 .streamhead .clearstream{width:28px;height:28px;border-radius:var(--r-ctl);display:grid;place-items:center;cursor:pointer;
   background:transparent;border:1px solid transparent;color:var(--text-3);transition:all var(--dfast) var(--ease)}
 .streamhead .clearstream:hover{color:var(--text);background:var(--surface-2);border-color:var(--border)}
+/* Post-session save chip: the rail's "Transkripti kaydet" can sit below the
+   fold, so when a session ends with turns on screen the save action surfaces
+   where the user is already looking. Hidden again on the next session start. */
+.savechip{display:none;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:var(--r-ctl);cursor:pointer;
+  font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-soft);
+  border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);transition:all var(--dfast) var(--ease)}
+.savechip.on{display:inline-flex}
+.savechip:hover{border-color:var(--accent)}
+.savechip svg{flex:none}
 /* ---- privacy trust badge (in .streamhead) + data-flow modal accents ---- */
 .trustbadge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:5px;cursor:pointer;
   font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;color:var(--green);
@@ -703,7 +952,7 @@ body.resizing,body.resizing *{user-select:none!important}
       </button>
       <div class="auth-or"><span data-i18n="auth_or">or</span></div>
       <div class="fieldlabel" data-i18n="email">E-posta</div>
-      <input type="email" id="login-email" placeholder="ornek@email.com" autocomplete="email">
+      <input type="email" id="login-email" placeholder="ornek@email.com" data-i18n-ph="report_email_ph" autocomplete="email">
       <div class="fieldlabel" data-i18n="password">Şifre</div>
       <input type="password" id="login-pw" placeholder="••••••••" autocomplete="current-password">
       <button class="btn btn-primary" id="login-btn" style="margin-top:18px" data-i18n="tab_login">Giriş Yap</button>
@@ -729,7 +978,7 @@ body.resizing,body.resizing *{user-select:none!important}
     </div>
   </div>
   <div class="topactions">
-    <button class="reportchip" id="reportbtn-top" title="Sorun bildir" aria-label="Sorun bildir" data-i18n-aria="report_open" aria-haspopup="dialog" style="display:none">
+    <button class="reportchip" id="reportbtn-top" title="Sorun bildir" data-i18n-title="report_open" aria-label="Sorun bildir" data-i18n-aria="report_open" aria-haspopup="dialog" style="display:none">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><path d="M12 8v3" stroke-width="2"/><path d="M12 14h.01" stroke-width="2.2"/></svg>
       <span data-i18n="report_open">Sorun bildir</span>
     </button>
@@ -767,11 +1016,13 @@ body.resizing,body.resizing *{user-select:none!important}
       <button class="scenario" data-mode="video" id="m-video">
         <span class="tile"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M10 8.5l5 2.75-5 2.75z" fill="currentColor" stroke="none"/></svg></span>
         <span><span class="t1" data-i18n="video_t1">Video &amp; Oyun</span><br><span class="t2" data-i18n="video_t2">Sistem sesini canlı çevir</span></span>
+        <span class="startcue" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg><span data-i18n="start_cue">Başlat</span></span>
         <svg class="lockglyph" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
       </button>
       <button class="scenario" data-mode="meeting" id="m-meeting">
         <span class="tile"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 1 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg></span>
         <span><span class="t1" data-i18n="meeting_t1">Toplantı</span><br><span class="t2">Teams · Zoom · Meet</span></span>
+        <span class="startcue" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg><span data-i18n="start_cue">Başlat</span></span>
         <svg class="lockglyph" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
       </button>
       <!-- Meeting needs a virtual mic to inject the outgoing translation; surfaced
@@ -797,6 +1048,10 @@ body.resizing,body.resizing *{user-select:none!important}
         <span class="metertext" id="vadtxt" data-i18n="waiting_signal">Giriş sinyali bekleniyor</span>
         <span class="ms" id="meterdb">−∞ dB</span>
       </div>
+      <button class="btn btn-ghost" id="soundcheckbtn" style="margin-top:10px" aria-haspopup="dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4M7.5 6v12M12 3v18M16.5 8v8M21 10.5v3"/></svg>
+        <span data-i18n="sound_check">Ses testi</span>
+      </button>
     </div>
 
     <div class="card card-pad">
@@ -813,15 +1068,9 @@ body.resizing,body.resizing *{user-select:none!important}
       </div>
     </div>
 
-    <div class="card card-pad">
-      <div class="cardlabel" data-i18n="session">Oturum</div>
-      <div class="sessionline" id="sess"><span class="sdot"></span><span id="sesstxt" data-i18n="ready_idle">Hazır bekliyor</span></div>
-      <button class="btn btn-ghost" id="savetxt">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        <span data-i18n="save_transcript">Transkripti kaydet</span>
-      </button>
-    </div>
-
+    <!-- The old "Oturum" card is gone: its status line duplicated the topbar
+         pill, and saving now lives on the stream's persistent Kaydet chip
+         (visible whenever there are turns — during AND after a session). -->
   </aside>
 
   <section class="stage">
@@ -831,7 +1080,7 @@ body.resizing,body.resizing *{user-select:none!important}
           <div class="selectwrap"><select id="hear"></select><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
         </div>
         <svg class="arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg>
-        <div class="langitem"><span class="lbl" data-i18n="to_other">Karşıya</span>
+        <div class="langitem" id="send-item" title="Yalnızca Toplantı modunda kullanılır" data-i18n-title="to_other_hint"><span class="lbl" data-i18n="to_other">Karşıya</span>
           <div class="selectwrap"><select id="send"></select><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
         </div>
       </div>
@@ -852,6 +1101,10 @@ body.resizing,body.resizing *{user-select:none!important}
         <span class="presence" id="presence" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <span class="spacer"></span>
         <span class="hint streamhint" id="streamhint"></span>
+        <button class="savechip" id="savechip" type="button" title="Transkripti kaydet" data-i18n-title="save_transcript" aria-label="Transkripti kaydet" data-i18n-aria="save_transcript">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <span data-i18n="save">Kaydet</span>
+        </button>
         <button class="clearstream" id="clearstream" title="Akışı temizle" data-i18n-title="clear_stream" aria-label="Akışı temizle" data-i18n-aria="clear_stream">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
         </button>
@@ -861,6 +1114,10 @@ body.resizing,body.resizing *{user-select:none!important}
           <div class="orb"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 9.5v5M8 6v12M12 9v6M16 4v16M20 8.5v7"/></svg></div>
           <div class="big" data-i18n="empty_big">Dinlemeye hazır</div>
           <div class="small" data-i18n-html="empty_small">Soldan bir senaryo seçerek başlayın.<br>Çeviriler burada gerçek zamanlı akar.</div>
+          <button class="btn btn-primary emptystart" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+            <span data-i18n="start_cue">Başlat</span><span class="dim">—</span><span data-i18n="video_t1">Video &amp; Oyun</span>
+          </button>
         </div>
       </div>
     </div>
@@ -923,11 +1180,17 @@ body.resizing,body.resizing *{user-select:none!important}
               <option value="nl">Nederlands</option>
               <option value="vi">Tiếng Việt</option>
               <option value="th">ภาษาไทย</option>
+              <option value="ro">Română</option>
+              <option value="hi">हिन्दी</option>
+              <option value="hu">Magyar</option>
+              <option value="sv">Svenska</option>
+              <option value="sr">Srpski</option>
+              <option value="zh-Hant">中文（繁體）</option>
             </select>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           </div>
           <div style="margin-top:14px"><label class="switch"><input type="checkbox" id="obs"><span class="track"></span><span data-i18n="obs_write">OBS altyazı dosyası yaz</span></label></div>
-          <div style="margin-top:14px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 0"><label class="switch"><input type="checkbox" id="brandbadge"><span class="track"></span><span data-i18n="brand_badge">"Powered by Voxis" rozetini göster</span></label><a id="badge-upgrade" style="display:none;font-size:11.5px;color:var(--accent);cursor:pointer;margin-left:10px">Yükselt →</a></div>
+          <div style="margin-top:14px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 0"><label class="switch"><input type="checkbox" id="brandbadge"><span class="track"></span><span data-i18n="brand_badge">"Powered by Voxis" rozetini göster</span></label><a id="badge-upgrade" data-i18n="badge_upgrade" style="display:none;font-size:11.5px;color:var(--accent);cursor:pointer;margin-left:10px">Yükselt →</a></div>
           <div style="margin-top:18px"><button class="btn btn-ghost" id="showtourbtn" style="width:auto" data-i18n="show_tour">Tanıtım turunu tekrar göster</button></div>
           <div style="margin-top:18px">
             <div class="fieldlabel" data-i18n="transcript_folder">Transkript klasörü</div>
@@ -990,6 +1253,7 @@ body.resizing,body.resizing *{user-select:none!important}
   </div>
   <footer>
     <button class="btn btn-primary" id="savesettings" style="flex:1" data-i18n="save">Kaydet</button>
+    <span class="ver" style="color:var(--text-3)" data-i18n="settings_live_note">Değişiklikler anında uygulanır</span>
     <span class="ver" id="ver">Voxis · voxislive.com</span>
   </footer>
 </div>
@@ -1031,6 +1295,23 @@ body.resizing,body.resizing *{user-select:none!important}
 
 <!-- soft ~80% warning (non-blocking, auto-dismiss) -->
 <div id="quota-toast" class="quota-toast" style="display:none" role="status" aria-live="polite"></div>
+
+<!-- ============ SOUND CHECK ("do I hear this device?") ============ -->
+<div class="modal" id="soundcheck-modal" role="dialog" aria-modal="true" aria-labelledby="sc-title">
+  <div class="mhead">
+    <span class="micon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4M7.5 6v12M12 3v18M16.5 8v8M21 10.5v3"/></svg></span>
+    <h2 id="sc-title" data-i18n="sound_check">Ses testi</h2>
+  </div>
+  <div class="mbody">
+    <p data-i18n="sound_check_hint">Bir video ya da müzik çal — Voxis'in duyduğu sinyal aşağıdaki çubukta oynamalı.</p>
+    <div class="scmeter" aria-hidden="true"><i id="sc-fill"></i></div>
+    <div class="scstatus" id="sc-status" role="status" aria-live="polite" data-i18n="sound_check_wait">Sinyal bekleniyor…</div>
+  </div>
+  <div class="mfoot">
+    <span class="spacer"></span>
+    <button class="btn btn-primary" id="sc-close" style="width:auto" data-i18n="report_close">Kapat</button>
+  </div>
+</div>
 
 <!-- ============ REPORT A PROBLEM ============ -->
 <div class="modal reportmodal" id="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-title">
@@ -1249,7 +1530,11 @@ const I18N = {
     password2:"Şifre (tekrar)", ph_pw_min:"En az 8 karakter", ph_pw_again:"Şifreyi tekrar girin",
     auth_sub:" · Lisans bilgisi için giriş gerekli.",
     scenario:"Senaryo", video_t1:"Video & Oyun", video_t2:"Sistem sesini canlı çevir",
-    meeting_t1:"Toplantı", stop:"Durdur", audio:"Ses", out_device:"Çıkış cihazı", mic:"Mikrofon",
+    meeting_t1:"Toplantı", stop:"Durdur", start_cue:"Başlat", to_other_hint:"Yalnızca Toplantı modunda kullanılır",
+    session_summary:"Oturum bitti · {m} dk", settings_live_note:"Değişiklikler anında uygulanır",
+    sound_check:"Ses testi", sound_check_hint:"Bir video ya da müzik çal — Voxis'in duyduğu sinyal aşağıdaki çubukta oynamalı.",
+    sound_check_ok:"Sinyal algılandı — cihaz doğru ✓", sound_check_wait:"Sinyal bekleniyor…", sound_check_fail:"Ses yakalama başlatılamadı.",
+    audio:"Ses", out_device:"Çıkış cihazı", mic:"Mikrofon",
     waiting_signal:"Giriş sinyali bekleniyor", translation:"Çeviri", profile:"Profil", quality:"Kalite",
     voice:"Çeviri sesi", duck_label:"Orijinal ses (konuşmada)", vol_label:"Çeviri ses seviyesi",
     session:"Oturum", ready_idle:"Hazır bekliyor", save_transcript:"Transkripti kaydet",
@@ -1360,7 +1645,11 @@ const I18N = {
     password2:"Password (again)", ph_pw_min:"At least 8 characters", ph_pw_again:"Re-enter password",
     auth_sub:" · Sign in for license details.",
     scenario:"Scenario", video_t1:"Video & Game", video_t2:"Translate system audio live",
-    meeting_t1:"Meeting", stop:"Stop", audio:"Audio", out_device:"Output device", mic:"Microphone",
+    meeting_t1:"Meeting", stop:"Stop", start_cue:"Start", to_other_hint:"Used in Meeting mode only",
+    session_summary:"Session ended · {m} min", settings_live_note:"Changes apply immediately",
+    sound_check:"Sound check", sound_check_hint:"Play a video or some music — the signal Voxis hears should move the bar below.",
+    sound_check_ok:"Signal detected — device is correct ✓", sound_check_wait:"Waiting for signal…", sound_check_fail:"Could not start audio capture.",
+    audio:"Audio", out_device:"Output device", mic:"Microphone",
     waiting_signal:"Waiting for input signal", translation:"Translation", profile:"Profile", quality:"Quality",
     voice:"Translation voice", duck_label:"Original audio (while speaking)", vol_label:"Translation volume",
     session:"Session", ready_idle:"Idle, ready", save_transcript:"Save transcript",
@@ -1434,6 +1723,15 @@ const I18N = {
   },
   cs:{
     about_powered:"Překlad pomocí pokročilé umělé inteligence.",
+    start_cue:"Spustit",
+    to_other_hint:"Používá se pouze v režimu schůzky",
+    session_summary:"Relace ukončena · {m} min",
+    settings_live_note:"Změny se projeví okamžitě",
+    sound_check:"Test zvuku",
+    sound_check_hint:"Přehrajte video nebo hudbu — signál, který Voxis slyší, by měl rozhýbat lištu níže.",
+    sound_check_ok:"Signál zachycen — zařízení je správné ✓",
+    sound_check_wait:"Čekání na signál…",
+    sound_check_fail:"Nepodařilo se spustit záznam zvuku.",
     al_contact:"Kontakt",
     al_pricing:"Ceník",
     al_privacy:"Soukromí",
@@ -1728,7 +2026,11 @@ const I18N = {
     password2:"Passwort (wiederholen)", ph_pw_min:"Mindestens 8 Zeichen", ph_pw_again:"Passwort erneut eingeben",
     auth_sub:" · Anmelden für Lizenzdetails.",
     scenario:"Szenario", video_t1:"Video & Spiel", video_t2:"Systemton live übersetzen",
-    meeting_t1:"Meeting", stop:"Stopp", audio:"Audio", out_device:"Ausgabegerät", mic:"Mikrofon",
+    meeting_t1:"Meeting", stop:"Stopp", start_cue:"Starten", to_other_hint:"Wird nur im Meeting-Modus verwendet",
+    session_summary:"Sitzung beendet · {m} Min.", settings_live_note:"Änderungen gelten sofort",
+    sound_check:"Soundtest", sound_check_hint:"Spiele ein Video oder Musik ab — das Signal, das Voxis hört, sollte den Balken unten bewegen.",
+    sound_check_ok:"Signal erkannt — Gerät ist korrekt ✓", sound_check_wait:"Warte auf Signal…", sound_check_fail:"Audioaufnahme konnte nicht gestartet werden.",
+    audio:"Audio", out_device:"Ausgabegerät", mic:"Mikrofon",
     waiting_signal:"Warte auf Eingangssignal", translation:"Übersetzung", profile:"Profil", quality:"Qualität",
     voice:"Übersetzungsstimme", duck_label:"Originalton (beim Sprechen)", vol_label:"Übersetzungslautstärke",
     session:"Sitzung", ready_idle:"Bereit", save_transcript:"Transkript speichern",
@@ -1839,7 +2141,11 @@ const I18N = {
     password2:"Mot de passe (à nouveau)", ph_pw_min:"Au moins 8 caractères", ph_pw_again:"Ressaisir le mot de passe",
     auth_sub:" · Connectez-vous pour les détails de licence.",
     scenario:"Scénario", video_t1:"Vidéo & Jeu", video_t2:"Traduire l'audio système en direct",
-    meeting_t1:"Réunion", stop:"Arrêter", audio:"Audio", out_device:"Périphérique de sortie", mic:"Microphone",
+    meeting_t1:"Réunion", stop:"Arrêter", start_cue:"Démarrer", to_other_hint:"Utilisé uniquement en mode Réunion",
+    session_summary:"Session terminée · {m} min", settings_live_note:"Les modifications s'appliquent immédiatement",
+    sound_check:"Test audio", sound_check_hint:"Lancez une vidéo ou de la musique — le signal entendu par Voxis doit faire bouger la barre ci-dessous.",
+    sound_check_ok:"Signal détecté — le périphérique est correct ✓", sound_check_wait:"En attente de signal…", sound_check_fail:"Impossible de démarrer la capture audio.",
+    audio:"Audio", out_device:"Périphérique de sortie", mic:"Microphone",
     waiting_signal:"En attente du signal d'entrée", translation:"Traduction", profile:"Profil", quality:"Qualité",
     voice:"Voix de traduction", duck_label:"Audio original (pendant la parole)", vol_label:"Volume de traduction",
     session:"Session", ready_idle:"En attente", save_transcript:"Enregistrer la transcription",
@@ -1950,7 +2256,11 @@ const I18N = {
     password2:"Contraseña (de nuevo)", ph_pw_min:"Al menos 8 caracteres", ph_pw_again:"Vuelve a introducir la contraseña",
     auth_sub:" · Inicia sesión para ver los detalles de la licencia.",
     scenario:"Escenario", video_t1:"Vídeo y juego", video_t2:"Traducir audio del sistema en directo",
-    meeting_t1:"Reunión", stop:"Detener", audio:"Audio", out_device:"Dispositivo de salida", mic:"Micrófono",
+    meeting_t1:"Reunión", stop:"Detener", start_cue:"Iniciar", to_other_hint:"Solo se usa en modo Reunión",
+    session_summary:"Sesión finalizada · {m} min", settings_live_note:"Los cambios se aplican al instante",
+    sound_check:"Prueba de sonido", sound_check_hint:"Reproduce un video o música — la señal que Voxis oye debería mover la barra de abajo.",
+    sound_check_ok:"Señal detectada — el dispositivo es correcto ✓", sound_check_wait:"Esperando señal…", sound_check_fail:"No se pudo iniciar la captura de audio.",
+    audio:"Audio", out_device:"Dispositivo de salida", mic:"Micrófono",
     waiting_signal:"Esperando señal de entrada", translation:"Traducción", profile:"Perfil", quality:"Calidad",
     voice:"Voz de traducción", duck_label:"Audio original (mientras se habla)", vol_label:"Volumen de traducción",
     session:"Sesión", ready_idle:"Listo, en espera", save_transcript:"Guardar transcripción",
@@ -2061,7 +2371,11 @@ const I18N = {
     password2:"Senha (novamente)", ph_pw_min:"Pelo menos 8 caracteres", ph_pw_again:"Digite a senha novamente",
     auth_sub:" · Entre para ver os detalhes da licença.",
     scenario:"Cenário", video_t1:"Vídeo & Jogo", video_t2:"Traduzir áudio do sistema ao vivo",
-    meeting_t1:"Reunião", stop:"Parar", audio:"Áudio", out_device:"Dispositivo de saída", mic:"Microfone",
+    meeting_t1:"Reunião", stop:"Parar", start_cue:"Iniciar", to_other_hint:"Usado apenas no modo Reunião",
+    session_summary:"Sessão encerrada · {m} min", settings_live_note:"As alterações são aplicadas imediatamente",
+    sound_check:"Teste de som", sound_check_hint:"Reproduza um vídeo ou música — o sinal que o Voxis ouve deve mover a barra abaixo.",
+    sound_check_ok:"Sinal detectado — o dispositivo está correto ✓", sound_check_wait:"Aguardando sinal…", sound_check_fail:"Não foi possível iniciar a captura de áudio.",
+    audio:"Áudio", out_device:"Dispositivo de saída", mic:"Microfone",
     waiting_signal:"Aguardando sinal de entrada", translation:"Tradução", profile:"Perfil", quality:"Qualidade",
     voice:"Voz de tradução", duck_label:"Áudio original (ao falar)", vol_label:"Volume da tradução",
     session:"Sessão", ready_idle:"Ocioso, pronto", save_transcript:"Salvar transcrição",
@@ -2172,7 +2486,11 @@ const I18N = {
     password2:"パスワード（確認）", ph_pw_min:"8文字以上", ph_pw_again:"パスワードを再入力",
     auth_sub:" · ライセンス詳細はサインインしてください。",
     scenario:"シナリオ", video_t1:"動画・ゲーム", video_t2:"システム音声をリアルタイム翻訳",
-    meeting_t1:"ミーティング", stop:"停止", audio:"オーディオ", out_device:"出力デバイス", mic:"マイク",
+    meeting_t1:"ミーティング", stop:"停止", start_cue:"開始", to_other_hint:"ミーティングモードでのみ使用されます",
+    session_summary:"セッション終了 · {m}分", settings_live_note:"変更は即座に適用されます",
+    sound_check:"サウンドチェック", sound_check_hint:"動画や音楽を再生してください — Voxisが聞いている信号で下のバーが動くはずです。",
+    sound_check_ok:"信号を検出 — デバイスは正常です ✓", sound_check_wait:"信号を待っています…", sound_check_fail:"音声キャプチャを開始できませんでした。",
+    audio:"オーディオ", out_device:"出力デバイス", mic:"マイク",
     waiting_signal:"入力信号待機中", translation:"翻訳", profile:"プロフィール", quality:"品質",
     voice:"翻訳の音声", duck_label:"元の音声（発話中）", vol_label:"翻訳の音量",
     session:"セッション", ready_idle:"待機中", save_transcript:"文字起こしを保存",
@@ -2283,7 +2601,11 @@ const I18N = {
     password2:"비밀번호 (재입력)", ph_pw_min:"최소 8자 이상", ph_pw_again:"비밀번호 재입력",
     auth_sub:" · 라이선스 세부 정보를 보려면 로그인하세요.",
     scenario:"시나리오", video_t1:"비디오 & 게임", video_t2:"시스템 오디오 실시간 번역",
-    meeting_t1:"미팅", stop:"중지", audio:"오디오", out_device:"출력 장치", mic:"마이크",
+    meeting_t1:"미팅", stop:"중지", start_cue:"시작", to_other_hint:"미팅 모드에서만 사용됩니다",
+    session_summary:"세션 종료 · {m}분", settings_live_note:"변경 사항은 즉시 적용됩니다",
+    sound_check:"사운드 체크", sound_check_hint:"동영상이나 음악을 재생하세요 — Voxis가 듣는 신호로 아래 막대가 움직여야 합니다.",
+    sound_check_ok:"신호 감지됨 — 장치가 올바릅니다 ✓", sound_check_wait:"신호 대기 중…", sound_check_fail:"오디오 캡처를 시작할 수 없습니다.",
+    audio:"오디오", out_device:"출력 장치", mic:"마이크",
     waiting_signal:"입력 신호 대기 중", translation:"번역", profile:"프로필", quality:"품질",
     voice:"번역 음성", duck_label:"원본 오디오 (말하는 동안)", vol_label:"번역 볼륨",
     session:"세션", ready_idle:"대기 중", save_transcript:"자막 저장",
@@ -2394,7 +2716,11 @@ const I18N = {
     password2:"Пароль (повторно)", ph_pw_min:"Не менее 8 символов", ph_pw_again:"Введите пароль ещё раз",
     auth_sub:" · Войдите для просмотра сведений о лицензии.",
     scenario:"Сценарий", video_t1:"Видео и игры", video_t2:"Перевод системного звука в реальном времени",
-    meeting_t1:"Встреча", stop:"Стоп", audio:"Аудио", out_device:"Устройство вывода", mic:"Микрофон",
+    meeting_t1:"Встреча", stop:"Стоп", start_cue:"Старт", to_other_hint:"Используется только в режиме встречи",
+    session_summary:"Сессия завершена · {m} мин", settings_live_note:"Изменения применяются сразу",
+    sound_check:"Проверка звука", sound_check_hint:"Включите видео или музыку — сигнал, который слышит Voxis, должен двигать полосу ниже.",
+    sound_check_ok:"Сигнал обнаружен — устройство выбрано верно ✓", sound_check_wait:"Ожидание сигнала…", sound_check_fail:"Не удалось запустить захват звука.",
+    audio:"Аудио", out_device:"Устройство вывода", mic:"Микрофон",
     waiting_signal:"Ожидание входного сигнала", translation:"Перевод", profile:"Профиль", quality:"Качество",
     voice:"Голос перевода", duck_label:"Оригинальный звук (во время речи)", vol_label:"Громкость перевода",
     session:"Сессия", ready_idle:"Готов, ожидание", save_transcript:"Сохранить транскрипт",
@@ -2505,7 +2831,11 @@ const I18N = {
     password2:"密码（再次输入）", ph_pw_min:"至少8个字符", ph_pw_again:"再次输入密码",
     auth_sub:" · 登录以查看许可证详情。",
     scenario:"场景", video_t1:"视频与游戏", video_t2:"实时翻译系统音频",
-    meeting_t1:"会议", stop:"停止", audio:"音频", out_device:"输出设备", mic:"麦克风",
+    meeting_t1:"会议", stop:"停止", start_cue:"开始", to_other_hint:"仅在会议模式下使用",
+    session_summary:"会话已结束 · {m} 分钟", settings_live_note:"更改立即生效",
+    sound_check:"声音测试", sound_check_hint:"播放视频或音乐 — Voxis 听到的信号应使下方的进度条跳动。",
+    sound_check_ok:"已检测到信号 — 设备正确 ✓", sound_check_wait:"等待信号…", sound_check_fail:"无法启动音频捕获。",
+    audio:"音频", out_device:"输出设备", mic:"麦克风",
     waiting_signal:"等待输入信号", translation:"翻译", profile:"配置文件", quality:"质量",
     voice:"翻译语音", duck_label:"原始音频（讲话时）", vol_label:"翻译音量",
     session:"会话", ready_idle:"空闲，就绪", save_transcript:"保存转录",
@@ -2616,7 +2946,11 @@ const I18N = {
     password2:"Hasło (ponownie)", ph_pw_min:"Co najmniej 8 znaków", ph_pw_again:"Wpisz hasło ponownie",
     auth_sub:" · Zaloguj się, aby zobaczyć szczegóły licencji.",
     scenario:"Scenariusz", video_t1:"Wideo i gry", video_t2:"Tłumacz dźwięk systemowy na żywo",
-    meeting_t1:"Spotkanie", stop:"Zatrzymaj", audio:"Dźwięk", out_device:"Urządzenie wyjściowe", mic:"Mikrofon",
+    meeting_t1:"Spotkanie", stop:"Zatrzymaj", start_cue:"Start", to_other_hint:"Używane tylko w trybie spotkania",
+    session_summary:"Sesja zakończona · {m} min", settings_live_note:"Zmiany obowiązują od razu",
+    sound_check:"Test dźwięku", sound_check_hint:"Odtwórz wideo lub muzykę — sygnał słyszany przez Voxis powinien poruszać paskiem poniżej.",
+    sound_check_ok:"Wykryto sygnał — urządzenie jest właściwe ✓", sound_check_wait:"Oczekiwanie na sygnał…", sound_check_fail:"Nie udało się uruchomić przechwytywania dźwięku.",
+    audio:"Dźwięk", out_device:"Urządzenie wyjściowe", mic:"Mikrofon",
     waiting_signal:"Oczekiwanie na sygnał wejściowy", translation:"Tłumaczenie", profile:"Profil", quality:"Jakość",
     voice:"Głos tłumaczenia", duck_label:"Oryginalny dźwięk (podczas mówienia)", vol_label:"Głośność tłumaczenia",
     session:"Sesja", ready_idle:"Gotowy, bezczynny", save_transcript:"Zapisz transkrypt",
@@ -2727,7 +3061,11 @@ const I18N = {
     password2:"Password (di nuovo)", ph_pw_min:"Almeno 8 caratteri", ph_pw_again:"Reinserisci la password",
     auth_sub:" · Accedi per i dettagli della licenza.",
     scenario:"Scenario", video_t1:"Video e giochi", video_t2:"Traduci l'audio di sistema in tempo reale",
-    meeting_t1:"Riunione", stop:"Ferma", audio:"Audio", out_device:"Dispositivo di uscita", mic:"Microfono",
+    meeting_t1:"Riunione", stop:"Ferma", start_cue:"Avvia", to_other_hint:"Usato solo in modalità Riunione",
+    session_summary:"Sessione terminata · {m} min", settings_live_note:"Le modifiche si applicano subito",
+    sound_check:"Test audio", sound_check_hint:"Riproduci un video o della musica — il segnale che Voxis sente dovrebbe muovere la barra qui sotto.",
+    sound_check_ok:"Segnale rilevato — il dispositivo è corretto ✓", sound_check_wait:"In attesa del segnale…", sound_check_fail:"Impossibile avviare l'acquisizione audio.",
+    audio:"Audio", out_device:"Dispositivo di uscita", mic:"Microfono",
     waiting_signal:"In attesa del segnale di ingresso", translation:"Traduzione", profile:"Profilo", quality:"Qualità",
     voice:"Voce di traduzione", duck_label:"Audio originale (durante la voce)", vol_label:"Volume traduzione",
     session:"Sessione", ready_idle:"In attesa", save_transcript:"Salva trascrizione",
@@ -2838,7 +3176,11 @@ const I18N = {
     password2:"Kata sandi (ulangi)", ph_pw_min:"Minimal 8 karakter", ph_pw_again:"Masukkan ulang kata sandi",
     auth_sub:" · Masuk untuk detail lisensi.",
     scenario:"Skenario", video_t1:"Video & Game", video_t2:"Terjemahkan audio sistem secara langsung",
-    meeting_t1:"Rapat", stop:"Berhenti", audio:"Audio", out_device:"Perangkat keluaran", mic:"Mikrofon",
+    meeting_t1:"Rapat", stop:"Berhenti", start_cue:"Mulai", to_other_hint:"Hanya digunakan dalam mode Rapat",
+    session_summary:"Sesi berakhir · {m} mnt", settings_live_note:"Perubahan langsung diterapkan",
+    sound_check:"Tes suara", sound_check_hint:"Putar video atau musik — sinyal yang didengar Voxis akan menggerakkan bilah di bawah.",
+    sound_check_ok:"Sinyal terdeteksi — perangkat sudah benar ✓", sound_check_wait:"Menunggu sinyal…", sound_check_fail:"Tidak dapat memulai penangkapan audio.",
+    audio:"Audio", out_device:"Perangkat keluaran", mic:"Mikrofon",
     waiting_signal:"Menunggu sinyal masukan", translation:"Terjemahan", profile:"Profil", quality:"Kualitas",
     voice:"Suara terjemahan", duck_label:"Audio asli (saat berbicara)", vol_label:"Volume terjemahan",
     session:"Sesi", ready_idle:"Siap, menunggu", save_transcript:"Simpan transkrip",
@@ -2949,7 +3291,11 @@ const I18N = {
     password2:"Wachtwoord (opnieuw)", ph_pw_min:"Minimaal 8 tekens", ph_pw_again:"Voer wachtwoord opnieuw in",
     auth_sub:" · Log in voor licentiegegevens.",
     scenario:"Scenario", video_t1:"Video & Game", video_t2:"Systeemaudio live vertalen",
-    meeting_t1:"Vergadering", stop:"Stop", audio:"Audio", out_device:"Uitvoerapparaat", mic:"Microfoon",
+    meeting_t1:"Vergadering", stop:"Stop", start_cue:"Starten", to_other_hint:"Alleen gebruikt in vergadermodus",
+    session_summary:"Sessie beëindigd · {m} min", settings_live_note:"Wijzigingen gelden direct",
+    sound_check:"Geluidstest", sound_check_hint:"Speel een video of muziek af — het signaal dat Voxis hoort moet de balk hieronder bewegen.",
+    sound_check_ok:"Signaal gedetecteerd — apparaat klopt ✓", sound_check_wait:"Wachten op signaal…", sound_check_fail:"Audio-opname kon niet worden gestart.",
+    audio:"Audio", out_device:"Uitvoerapparaat", mic:"Microfoon",
     waiting_signal:"Wachten op ingangssignaal", translation:"Vertaling", profile:"Profiel", quality:"Kwaliteit",
     voice:"Vertaalstem", duck_label:"Originele audio (tijdens spreken)", vol_label:"Vertaalvolume",
     session:"Sessie", ready_idle:"Inactief, gereed", save_transcript:"Transcriptie opslaan",
@@ -3060,7 +3406,11 @@ const I18N = {
     password2:"Mật khẩu (nhập lại)", ph_pw_min:"Ít nhất 8 ký tự", ph_pw_again:"Nhập lại mật khẩu",
     auth_sub:" · Đăng nhập để xem chi tiết giấy phép.",
     scenario:"Kịch bản", video_t1:"Video & Game", video_t2:"Dịch âm thanh hệ thống trực tiếp",
-    meeting_t1:"Cuộc họp", stop:"Dừng", audio:"Âm thanh", out_device:"Thiết bị đầu ra", mic:"Micrô",
+    meeting_t1:"Cuộc họp", stop:"Dừng", start_cue:"Bắt đầu", to_other_hint:"Chỉ dùng trong chế độ Cuộc họp",
+    session_summary:"Phiên kết thúc · {m} phút", settings_live_note:"Thay đổi được áp dụng ngay",
+    sound_check:"Kiểm tra âm thanh", sound_check_hint:"Phát video hoặc nhạc — tín hiệu Voxis nghe được sẽ làm thanh bên dưới chuyển động.",
+    sound_check_ok:"Đã phát hiện tín hiệu — thiết bị chính xác ✓", sound_check_wait:"Đang chờ tín hiệu…", sound_check_fail:"Không thể bắt đầu thu âm thanh.",
+    audio:"Âm thanh", out_device:"Thiết bị đầu ra", mic:"Micrô",
     waiting_signal:"Đang chờ tín hiệu đầu vào", translation:"Bản dịch", profile:"Hồ sơ", quality:"Chất lượng",
     voice:"Giọng dịch", duck_label:"Âm thanh gốc (khi nói)", vol_label:"Âm lượng dịch",
     session:"Phiên", ready_idle:"Sẵn sàng, chờ", save_transcript:"Lưu bản ghi",
@@ -3171,7 +3521,11 @@ const I18N = {
     password2:"รหัสผ่าน (อีกครั้ง)", ph_pw_min:"อย่างน้อย 8 ตัวอักษร", ph_pw_again:"ป้อนรหัสผ่านอีกครั้ง",
     auth_sub:" · เข้าสู่ระบบเพื่อดูรายละเอียดใบอนุญาต",
     scenario:"สถานการณ์", video_t1:"วิดีโอและเกม", video_t2:"แปลเสียงระบบสดๆ",
-    meeting_t1:"การประชุม", stop:"หยุด", audio:"เสียง", out_device:"อุปกรณ์ส่งออก", mic:"ไมโครโฟน",
+    meeting_t1:"การประชุม", stop:"หยุด", start_cue:"เริ่ม", to_other_hint:"ใช้เฉพาะในโหมดประชุม",
+    session_summary:"จบเซสชัน · {m} นาที", settings_live_note:"การเปลี่ยนแปลงมีผลทันที",
+    sound_check:"ทดสอบเสียง", sound_check_hint:"เล่นวิดีโอหรือเพลง — สัญญาณที่ Voxis ได้ยินควรทำให้แถบด้านล่างขยับ",
+    sound_check_ok:"ตรวจพบสัญญาณ — อุปกรณ์ถูกต้อง ✓", sound_check_wait:"กำลังรอสัญญาณ…", sound_check_fail:"ไม่สามารถเริ่มจับเสียงได้",
+    audio:"เสียง", out_device:"อุปกรณ์ส่งออก", mic:"ไมโครโฟน",
     waiting_signal:"รอสัญญาณอินพุต", translation:"การแปล", profile:"โปรไฟล์", quality:"คุณภาพ",
     voice:"เสียงแปล", duck_label:"เสียงต้นฉบับ (ขณะพูด)", vol_label:"ระดับเสียงแปล",
     session:"เซสชัน", ready_idle:"พร้อม รอใช้งาน", save_transcript:"บันทึกการถอดความ",
@@ -3222,6 +3576,1482 @@ const I18N = {
     cable_install:"Install VB-CABLE", cable_cancel:"Cancel",
     show_tour:"ดูทัวร์อีกครั้ง",
     update_now:"อัปเดตตอนนี้", update_later:"ภายหลัง",
+  },
+  "ro":{
+    "about_powered":"Propulsat de traducere AI avansată.",
+    "al_contact":"Contact",
+    "al_pricing":"Prețuri",
+    "al_privacy":"Confidențialitate",
+    "al_terms":"Termeni",
+    "alert_key_failed":"Cheia nu a putut fi salvată. Reîmprospătează sesiunea și încearcă din nou.",
+    "audio":"Audio",
+    "auth_browser_wait":"Finalizează autentificarea în browser…",
+    "auth_create":"Creează cont",
+    "auth_forgot":"Ai uitat parola?",
+    "auth_google":"Continuă cu Google",
+    "auth_no_account":"Nu ai cont? ",
+    "auth_offline":"Serverul nu a putut fi contactat. Verifică-ți conexiunea la internet.",
+    "auth_or":"sau",
+    "auth_retry":"Reîncearcă",
+    "auth_sub":" · Autentifică-te pentru detaliile licenței.",
+    "badge_upgrade":"Fă upgrade pentru a o elimina →",
+    "behind_suffix":"s în urmă",
+    "brand_badge":"Afișează insigna \"Powered by Voxis\"",
+    "brand_badge_locked":"Necesită abonament",
+    "browse":"Răsfoiește…",
+    "byok_active":"BYOK activ",
+    "byok_hint":"Această variantă necesită propria ta cheie API Gemini pentru a rula. ",
+    "byok_openai_hint":"Opțional — necesară doar pentru motorul OpenAI. ",
+    "cable_cancel":"Anulează",
+    "cable_install":"Instalează VB-CABLE",
+    "cable_lead":"Modul Întâlnire poate trimite vocea ta tradusă înapoi în apel, astfel încât cealaltă persoană să te audă în limba ei. Pentru asta e nevoie de un microfon virtual gratuit numit VB-CABLE. Este opțional — fără el, Întâlnirea funcționează doar în ascultare (îi auzi pe ceilalți traduși).",
+    "cable_manual":"Această versiune nu poate instala drivere în locul tău. Descarcă VB-CABLE gratuit de pe vb-audio.com, instalează-l, apoi repornește Voxis.",
+    "cable_required":"Întâlnirea bidirecțională — trimiterea vocii tale traduse în apel — folosește VB-CABLE, un microfon virtual opțional de la un terț. Nu este obligatoriu: fără el, modul Întâlnire rulează doar în ascultare. Pentru a activa modul bidirecțional, instalează singur VB-CABLE, apoi redeschide Voxis.",
+    "cable_step1":"Instalează VB-CABLE (gratuit, circa 1 minut).",
+    "cable_step2":"Repornește Voxis — detectează automat microfonul virtual.",
+    "cable_step3":"În aplicația ta de întâlniri (Zoom · Teams · Meet), alege “CABLE Output” ca microfon. Voxis se ocupă de rest.",
+    "cable_title":"Întâlnire bidirecțională (opțional)",
+    "checking_session":"Se verifică sesiunea…",
+    "clear":"Șterge",
+    "clear_stream":"Golește fluxul",
+    "confirm_clear_byok":"Cheia API Gemini salvată va fi ștearsă. Traducerea nu poate porni până nu introduci o cheie nouă. Continui?",
+    "conn":"Conexiune",
+    "consent_accept":"Am înțeles, pornește",
+    "consent_cancel":"Anulează",
+    "consent_dontshow":"Nu mai afișa",
+    "consent_p1":"În modul Întâlnire, Voxis ascultă cealaltă parte și, în același timp, îi trimite vorbirea ta printr-un microfon virtual.",
+    "consent_p2":"Înregistrarea sau traducerea sunetului poate necesita consimțământul tuturor participanților, în funcție de locul în care te afli. Asigură-te că respecți legile aplicabile și regulile întâlnirii înainte de a începe.",
+    "consent_title":"Modul Întâlnire — consimțământ",
+    "copy_turn":"Copiază traducerea",
+    "duck_label":"Sunet original (în timpul vorbirii)",
+    "email":"E-mail",
+    "empty_big":"Gata de ascultare",
+    "empty_small":"Alege un scenariu din stânga pentru a începe.<br>Traducerile apar aici în timp real.",
+    "err_conn":"Eroare de conexiune. Încearcă din nou.",
+    "err_login_failed":"Autentificare eșuată. Verifică-ți datele.",
+    "err_need_credentials":"E-mailul și parola sunt obligatorii.",
+    "err_pw_mismatch":"Parolele nu coincid.",
+    "err_pw_short":"Parola trebuie să aibă cel puțin 8 caractere.",
+    "err_register_failed":"Înregistrare eșuată. Acest e-mail ar putea fi deja folosit.",
+    "foot_latency":"latență",
+    "foot_model":"model",
+    "foot_ready":"Pregătit",
+    "foot_sample":"eșantion",
+    "foot_session":"sesiune",
+    "gemini_key":"Cheie API Gemini",
+    "general":"General",
+    "hear":"Tradu în",
+    "hide":"Ascunde",
+    "history_delete":"Șterge",
+    "history_export":"Exportă:",
+    "history_fmt_srt":"SRT",
+    "history_fmt_txt":"TXT",
+    "history_fmt_vtt":"VTT",
+    "history_none":"Nicio sesiune salvată.",
+    "history_pick":"Alege o sesiune pentru a o vedea.",
+    "history_search_ph":"Caută în istoric…",
+    "history_title":"Istoric traduceri",
+    "history_turns_n":"{n} replici",
+    "hk_hint":"Dă clic pe o casetă și apasă noua combinație pentru a o schimba.",
+    "latency_note":"Traducerea sosește la câteva secunde după vorbire — aceasta este întârzierea naturală a modelului simultan. Subtitrarea apare înaintea sunetului.",
+    "limit_body":"Minutele tale gratuite se reînnoiesc luna viitoare. Ca să continui acum, adaugă un pachet de minute — minutele se adaugă în contul tău și nu expiră niciodată.",
+    "limit_cta":"Obține mai multe minute →",
+    "limit_dismiss":"Nu acum",
+    "limit_stat_suffix":"minute gratuite folosite",
+    "limit_title":"Ți-ai folosit minutele gratuite din luna aceasta",
+    "limit_warn_prefix":"Atenție — aproximativ ",
+    "live":"live",
+    "logging_in":"Se autentifică…",
+    "logout":"Deconectare",
+    "manage_plan":"Gestionează planul",
+    "meeting_caveat":"Modul Întâlnire are nevoie de un microfon virtual pentru a trimite traducerea ta către ceilalți. Fără el, este activă doar ascultarea.",
+    "meeting_t1":"Întâlnire",
+    "mem_active_plan":"Plan activ",
+    "mem_byok_note":"Această variantă rulează cu propria ta cheie Gemini; fără abonament. O gestionezi în fila General.",
+    "mem_creator_meta":"700 min/lună · toate limbile · transcrieri",
+    "mem_dev_byok":"Dezvoltator (BYOK)",
+    "mem_invite":"Invită un prieten",
+    "mem_pro_meta":"1.500 min/lună · prioritate · mod Întâlnire",
+    "mem_this_month":"Luna aceasta: ",
+    "mem_unlimited":"Minute nelimitate",
+    "mem_upgrade":"Fă upgrade",
+    "mem_your_key":"Cheia ta",
+    "mem_your_plan":"Planul tău",
+    "mic":"Microfon",
+    "min_left":" min rămase",
+    "obs_write":"Scrie fișier de subtitrare OBS",
+    "onboard_back":"Înapoi",
+    "onboard_done":"Să începem",
+    "onboard_eyebrow":"Tur rapid",
+    "onboard_get_started":"Începe",
+    "onboard_latency_d":"Modelul funcționează ca un interpret simultan: traduce cu câteva secunde în urma vorbitorului. Această întârziere de ~3 s este inerentă modelului și nu poate fi dezactivată. Subtitrarea de pe ecran este mereu semnalul cel mai rapid și apare înaintea traducerii vorbite.",
+    "onboard_latency_t":"Întârziere naturală a traducerii",
+    "onboard_meeting":"Bidirecțional: ascultă cealaltă parte și îi trimite vorbirea ta printr-un microfon virtual.",
+    "onboard_next":"Înainte",
+    "onboard_routing":"Rutarea audio este necesară pentru ca traducerea să ajungă la aplicații. Modul Întâlnire folosește un microfon virtual pentru a livra traducerea ta celeilalte părți.",
+    "onboard_settings_d":"Opțiunile de calitate din stânga: Fluent (echilibrat — cea mai bună sincronizare și calitate) vs Econom (trimite doar vorbirea, mai puține minute facturate). Tot de aici poți activa salvarea transcrierii și textul pe ecran.",
+    "onboard_settings_t":"Setări",
+    "onboard_step_fmt":"Pasul {n} din {total}",
+    "onboard_title":"Bine ai venit la Voxis",
+    "onboard_video":"Traduce sunetul de sistem într-un singur sens, în limba ta, în direct — fără configurare sau cabluri: dai clic și gata. Recomandăm căști, ca traducerea să nu se întoarcă în captură și să fie retradusă.",
+    "onboard_welcome":"Voxis traduce în timp real sunetul de sistem al videoclipurilor, jocurilor și întâlnirilor pe care le urmărești.",
+    "open_file":"Deschide fișierul",
+    "open_folder":"Deschide folderul",
+    "openai_key":"Cheie API OpenAI",
+    "out_device":"Dispozitiv de ieșire",
+    "overlay":"Text pe ecran",
+    "password":"Parolă",
+    "password2":"Parolă (din nou)",
+    "ph_gemkey":"AIza…",
+    "ph_oaikey":"sk-…",
+    "ph_pw_again":"Reintrodu parola",
+    "ph_pw_min":"Cel puțin 8 caractere",
+    "press_key":"apasă o tastă…",
+    "privacy_badge":"Fără bot · privat",
+    "privacy_badge_title":"Confidențialitate și flux de date",
+    "privacy_byok_detail":"În varianta open-source (BYOK), traducerea rulează cu propria ta cheie API. Voxis nu comunică deloc cu serverele sale și nu adaugă niciun mecanism de înregistrare sau telemetrie.",
+    "privacy_close":"Am înțeles",
+    "privacy_lead":"Niciun bot nu se alătură apelului tău. Sunetul merge doar la furnizorul nostru de traducere AI, pentru traducere.",
+    "privacy_note":"Deoarece sunetul este trimis furnizorului nostru de traducere AI pentru traducere, el nu rămâne în întregime pe dispozitivul tău. Respectă regulile locale de consimțământ pentru toți participanții la apel.",
+    "privacy_policy_link":"Politica de confidențialitate completă",
+    "privacy_saas_detail":"Voxis trimite sunetul tău doar furnizorului nostru de traducere AI, pentru traducere. Voxis nu îți înregistrează sunetul și nu adaugă un mecanism separat de urmărire — se raportează doar minutele folosite, pentru facturare.",
+    "privacy_step_capture":"Sunet de sistem",
+    "privacy_step_gemini":"Traducere AI",
+    "privacy_step_playback":"Sunet tradus",
+    "privacy_title":"Confidențialitate și flux de date",
+    "profile":"Profil",
+    "quality":"Calitate",
+    "quota_exhausted":"Cotă epuizată",
+    "quota_gate_msg":"Cota ta lunară de traducere s-a epuizat. Fă upgrade licenței pentru a porni o sesiune nouă.",
+    "ready_idle":"Inactiv, pregătit",
+    "record_audio":"Înregistrează audio (sursă + traducere, fișiere separate)",
+    "record_audio_hint":"Salvează sunetul sursă și sunetul tradus al fiecărei sesiuni ca două fișiere WAV separate în folderul de transcrieri. Dezactivat implicit, pentru că pista sursă conține voce umană reală. Doar în modul Video/Jocuri — se dezactivează automat în modul Întâlnire, astfel încât vocea live a celeilalte persoane să nu fie niciodată înregistrată.",
+    "registering":"Se înregistrează…",
+    "report_cancel":"Anulează",
+    "report_cat_audio":"Audio",
+    "report_cat_billing":"Abonament / facturare",
+    "report_cat_crash":"Blocare",
+    "report_cat_other":"Altele",
+    "report_cat_translation":"Traducere",
+    "report_cat_ui":"Interfață",
+    "report_category":"Categorie",
+    "report_close":"Închide",
+    "report_copy":"Copiază",
+    "report_done_intro":"Raport trimis. Dacă ne contactezi, referința ta este:",
+    "report_done_keep":"Păstrează această referință dacă ne contactezi.",
+    "report_email":"E-mail (opțional)",
+    "report_email_hint":"Doar dacă vrei un răspuns la acest raport.",
+    "report_email_ph":"tu@exemplu.com",
+    "report_err_empty":"Te rugăm să descrii problema.",
+    "report_err_failed":"Raportul nu a putut fi trimis. Încearcă din nou.",
+    "report_include_transcript":"Include transcrierea mea recentă (implicit dezactivat)",
+    "report_log_note":"Jurnalul aplicației se atașează automat (secretele sunt eliminate).",
+    "report_message":"Descrie pe scurt problema (opțional)",
+    "report_message_ph":"Ce s-a întâmplat? Poți lăsa gol — ne uităm în jurnal.",
+    "report_notice":"Se trimite echipei de suport Voxis un mic instantaneu tehnic: versiunea aplicației, canalul, versiunea ta de Windows, modul audio, setarea de calitate și perechea de limbi. Secretele (cheia ta API, tokenul de conectare) și numele tău de utilizator Windows nu sunt incluse niciodată. Transcrierea ta se trimite doar dacă bifezi caseta de mai jos.",
+    "report_open":"Raportează o problemă",
+    "report_pii_hint":"Nu introduce parole sau date personale.",
+    "report_preview":"Previzualizează datele de trimis",
+    "report_queued":"Salvat — îl trimitem la următoarea deschidere a Voxis.",
+    "report_repro":"Pași de reproducere (opțional)",
+    "report_send":"Trimite raportul",
+    "report_sending":"Se trimite…",
+    "report_sev_high":"Ridicată",
+    "report_sev_low":"Scăzută",
+    "report_sev_normal":"Normală",
+    "report_severity":"Severitate",
+    "report_title":"Raportează o problemă",
+    "reset_default":"Revino la implicit",
+    "save":"Salvează",
+    "save_transcript":"Salvează transcrierea",
+    "scenario":"Scenariu",
+    "session":"Sesiune",
+    "session_summary":"Sesiune încheiată · {m} min",
+    "settings":"Setări",
+    "settings_live_note":"Modificările se aplică imediat",
+    "shortcuts":"Comenzi rapide de la tastatură",
+    "show":"Afișează",
+    "show_tour":"Arată turul din nou",
+    "sound_check":"Test de sunet",
+    "sound_check_fail":"Captura audio nu a putut porni.",
+    "sound_check_hint":"Redă un videoclip sau niște muzică — semnalul auzit de Voxis ar trebui să miște bara de mai jos.",
+    "sound_check_ok":"Semnal detectat — dispozitivul este corect ✓",
+    "sound_check_wait":"Se așteaptă semnal…",
+    "source":"Sursă",
+    "spk_labels":"Etichete de vorbitor (S1/S2)",
+    "spk_labels_hint":"Detectează schimbările de voce pe dispozitivul tău și etichetează replicile din subtitrare ca S1/S2 când vorbesc persoane diferite una după alta. Complet local — fără apeluri suplimentare în cloud. Etichetele apar doar după ce se aude o a doua voce, iar transcrierile salvate le includ. Traducerea vorbită folosește în continuare o singură voce.",
+    "st_capture_lost":"Captura audio s-a oprit (dispozitivul s-ar putea să se fi schimbat). Repornește sesiunea.",
+    "start_cue":"Pornește",
+    "stop":"Oprește",
+    "store_view":"Vezi în Microsoft Store",
+    "stream_title":"Flux de traducere",
+    "subtitle":"Subtitrări",
+    "tab_about":"Despre",
+    "tab_login":"Autentificare",
+    "tab_membership":"Abonament",
+    "tab_register":"Înregistrare",
+    "title_close":"Închide",
+    "title_history":"Istoric traduceri",
+    "title_max":"Maximizează",
+    "title_min":"Minimizează",
+    "title_restore":"Restabilește",
+    "title_settings":"Setări",
+    "title_theme":"Comută tema",
+    "to_other":"Către ceilalți",
+    "to_other_hint":"Folosit doar în modul Întâlnire",
+    "tour_audio_d":"Alege unde se redă sunetul tradus. Recomandăm căști, ca traducerea să nu se întoarcă în captură și să fie retradusă.",
+    "tour_audio_t":"Dispozitiv de redare",
+    "tour_lang_d":"Alege în stânga limba în care se traduce, iar în dreapta limba trimisă celeilalte părți. În modul Video contează doar cea din stânga (tradu în).",
+    "tour_lang_t":"Alege limbile",
+    "tour_profile_d":"Alege un profil pentru cât de tare se aud sunetul original și traducerea. Reglează fin nivelurile originalului și ale traducerii cu glisoarele de mai jos.",
+    "tour_profile_t":"Profil de sunet",
+    "tour_ready_d":"Asta e tot. Dă clic pe Video și jocuri sau Întâlnire, sus, ca să începi traducerea. Poți relua acest tur oricând din Setări → Despre.",
+    "tour_ready_t":"Ești gata",
+    "tour_skip":"Sari peste",
+    "transcript_folder":"Folder transcrieri",
+    "translation":"Traducere",
+    "ui_lang":"Limba interfeței",
+    "unlimited":"∞ Nelimitat",
+    "update_later":"Mai târziu",
+    "update_now":"Actualizează acum",
+    "upgrade_plan":"Fă upgrade la plan →",
+    "vad_silent":"Liniște",
+    "vad_speaking":"Vorbire detectată",
+    "video_t1":"Video și jocuri",
+    "video_t2":"Traduce sunetul de sistem în direct",
+    "voice":"Vocea traducerii",
+    "vol_label":"Volumul traducerii",
+    "waiting_signal":"Se așteaptă semnal de intrare",
+  },
+  "hi":{
+    "about_powered":"उन्नत AI अनुवाद द्वारा संचालित।",
+    "al_contact":"संपर्क",
+    "al_pricing":"मूल्य निर्धारण",
+    "al_privacy":"गोपनीयता",
+    "al_terms":"शर्तें",
+    "alert_key_failed":"कुंजी सहेजी नहीं जा सकी। कृपया अपना सत्र रीफ़्रेश करके फिर से प्रयास करें।",
+    "audio":"ऑडियो",
+    "auth_browser_wait":"अपने ब्राउज़र में साइन-इन पूरा करें…",
+    "auth_create":"खाता बनाएँ",
+    "auth_forgot":"पासवर्ड भूल गए?",
+    "auth_google":"Google से जारी रखें",
+    "auth_no_account":"खाता नहीं है? ",
+    "auth_offline":"सर्वर से संपर्क नहीं हो सका। अपना इंटरनेट कनेक्शन जाँचें।",
+    "auth_or":"या",
+    "auth_retry":"पुनः प्रयास करें",
+    "auth_sub":" · लाइसेंस विवरण के लिए साइन इन करें।",
+    "badge_upgrade":"हटाने के लिए अपग्रेड करें →",
+    "behind_suffix":"s पीछे",
+    "brand_badge":"\"Powered by Voxis\" बैज दिखाएँ",
+    "brand_badge_locked":"सदस्यता आवश्यक",
+    "browse":"ब्राउज़ करें…",
+    "byok_active":"BYOK सक्रिय",
+    "byok_hint":"इस बिल्ड को चलाने के लिए आपकी अपनी Gemini API कुंजी आवश्यक है। ",
+    "byok_openai_hint":"वैकल्पिक — केवल OpenAI इंजन उपयोग करने के लिए आवश्यक। ",
+    "cable_cancel":"रद्द करें",
+    "cable_install":"VB-CABLE इंस्टॉल करें",
+    "cable_lead":"मीटिंग मोड आपकी अनुवादित आवाज़ को कॉल में वापस भेज सकता है, ताकि सामने वाला आपको अपनी भाषा में सुने। इसके लिए VB-CABLE नामक एक मुफ़्त वर्चुअल माइक्रोफ़ोन चाहिए। यह वैकल्पिक है — इसके बिना भी मीटिंग केवल-सुनने में काम करती है (आप उन्हें अनुवादित सुनते हैं)।",
+    "cable_manual":"यह संस्करण आपके लिए ड्राइवर इंस्टॉल नहीं कर सकता। VB-CABLE को vb-audio.com से मुफ़्त डाउनलोड करके इंस्टॉल करें, फिर Voxis को फिर से शुरू करें।",
+    "cable_required":"दोतरफ़ा मीटिंग — आपकी अनुवादित आवाज़ को कॉल में भेजना — VB-CABLE नामक एक वैकल्पिक थर्ड-पार्टी वर्चुअल माइक्रोफ़ोन का उपयोग करती है। यह अनिवार्य नहीं है: इसके बिना मीटिंग मोड केवल-सुनने में चलता है। दोतरफ़ा सक्षम करने के लिए VB-CABLE स्वयं इंस्टॉल करें, फिर Voxis दोबारा खोलें।",
+    "cable_step1":"VB-CABLE इंस्टॉल करें (मुफ़्त, लगभग 1 मिनट)।",
+    "cable_step2":"Voxis को फिर से शुरू करें — यह वर्चुअल माइक्रोफ़ोन को अपने आप पहचान लेता है।",
+    "cable_step3":"अपने मीटिंग ऐप (Zoom · Teams · Meet) में माइक्रोफ़ोन के रूप में “CABLE Output” चुनें। बाकी Voxis संभाल लेता है।",
+    "cable_title":"दोतरफ़ा मीटिंग (वैकल्पिक)",
+    "checking_session":"सत्र जाँचा जा रहा है…",
+    "clear":"साफ़ करें",
+    "clear_stream":"स्ट्रीम साफ़ करें",
+    "confirm_clear_byok":"सहेजी गई Gemini API कुंजी हटा दी जाएगी। नई कुंजी दर्ज करने तक अनुवाद शुरू नहीं हो सकेगा। जारी रखें?",
+    "conn":"कनेक्शन",
+    "consent_accept":"समझ गया, शुरू करें",
+    "consent_cancel":"रद्द करें",
+    "consent_dontshow":"दोबारा न दिखाएँ",
+    "consent_p1":"मीटिंग मोड में Voxis दूसरे पक्ष को सुनता भी है और आपकी बात वर्चुअल माइक्रोफ़ोन के ज़रिए उन तक पहुँचाता भी है।",
+    "consent_p2":"ऑडियो रिकॉर्ड या अनुवाद करने के लिए आपके क्षेत्र में सभी प्रतिभागियों की सहमति आवश्यक हो सकती है। शुरू करने से पहले सुनिश्चित करें कि आप लागू कानूनों और मीटिंग नियमों का पालन कर रहे हैं।",
+    "consent_title":"मीटिंग मोड — सहमति",
+    "copy_turn":"अनुवाद कॉपी करें",
+    "duck_label":"मूल ऑडियो (बोलते समय)",
+    "email":"ईमेल",
+    "empty_big":"सुनने के लिए तैयार",
+    "empty_small":"शुरू करने के लिए बाईं ओर से कोई परिदृश्य चुनें।<br>अनुवाद यहाँ रीयल-टाइम में स्ट्रीम होंगे।",
+    "err_conn":"कनेक्शन त्रुटि। फिर से प्रयास करें।",
+    "err_login_failed":"लॉगिन विफल रहा। अपना विवरण जाँचें।",
+    "err_need_credentials":"ईमेल और पासवर्ड आवश्यक हैं।",
+    "err_pw_mismatch":"पासवर्ड मेल नहीं खाते।",
+    "err_pw_short":"पासवर्ड कम से कम 8 अक्षरों का होना चाहिए।",
+    "err_register_failed":"पंजीकरण विफल रहा। यह ईमेल शायद पहले से उपयोग में है।",
+    "foot_latency":"विलंब",
+    "foot_model":"मॉडल",
+    "foot_ready":"तैयार",
+    "foot_sample":"सैंपल",
+    "foot_session":"सत्र",
+    "gemini_key":"Gemini API कुंजी",
+    "general":"सामान्य",
+    "hear":"अनुवाद की भाषा",
+    "hide":"छिपाएँ",
+    "history_delete":"हटाएँ",
+    "history_export":"एक्सपोर्ट:",
+    "history_fmt_srt":"SRT",
+    "history_fmt_txt":"TXT",
+    "history_fmt_vtt":"VTT",
+    "history_none":"कोई सहेजा गया सत्र नहीं।",
+    "history_pick":"देखने के लिए कोई सत्र चुनें।",
+    "history_search_ph":"इतिहास में खोजें…",
+    "history_title":"अनुवाद इतिहास",
+    "history_turns_n":"{n} टर्न",
+    "hk_hint":"किसी बॉक्स पर क्लिक करें और बदलने के लिए नया संयोजन दबाएँ।",
+    "latency_note":"अनुवाद बोलने के कुछ सेकंड बाद आता है — यह सिमल्टेनियस मॉडल का स्वाभाविक विलंब है। कैप्शन ऑडियो से पहले दिखता है।",
+    "limit_body":"आपके मुफ़्त मिनट अगले महीने फिर मिलेंगे। अभी जारी रखने के लिए मिनट पैक जोड़ें — मिनट आपके खाते में जुड़ते हैं और कभी समाप्त नहीं होते।",
+    "limit_cta":"और मिनट पाएँ →",
+    "limit_dismiss":"अभी नहीं",
+    "limit_stat_suffix":"मुफ़्त मिनट उपयोग हुए",
+    "limit_title":"इस महीने के मुफ़्त मिनट समाप्त हो गए हैं",
+    "limit_warn_prefix":"ध्यान दें — लगभग ",
+    "live":"लाइव",
+    "logging_in":"लॉग इन हो रहा है…",
+    "logout":"लॉग आउट",
+    "manage_plan":"प्लान प्रबंधित करें",
+    "meeting_caveat":"मीटिंग मोड को आपका अनुवाद दूसरी ओर भेजने के लिए एक वर्चुअल माइक्रोफ़ोन चाहिए। इसके बिना केवल सुनना सक्रिय रहता है।",
+    "meeting_t1":"मीटिंग",
+    "mem_active_plan":"सक्रिय प्लान",
+    "mem_byok_note":"यह बिल्ड आपकी अपनी Gemini कुंजी पर चलता है; कोई सदस्यता नहीं। इसे सामान्य टैब में प्रबंधित करें।",
+    "mem_creator_meta":"700 मिनट/माह · सभी भाषाएँ · ट्रांसक्रिप्ट",
+    "mem_dev_byok":"डेवलपर (BYOK)",
+    "mem_invite":"किसी मित्र को आमंत्रित करें",
+    "mem_pro_meta":"1,500 मिनट/माह · प्राथमिकता · मीटिंग मोड",
+    "mem_this_month":"इस महीने: ",
+    "mem_unlimited":"असीमित मिनट",
+    "mem_upgrade":"अपग्रेड करें",
+    "mem_your_key":"आपकी कुंजी",
+    "mem_your_plan":"आपका प्लान",
+    "mic":"माइक्रोफ़ोन",
+    "min_left":" मिनट शेष",
+    "obs_write":"OBS सबटाइटल फ़ाइल लिखें",
+    "onboard_back":"पीछे",
+    "onboard_done":"चलिए शुरू करें",
+    "onboard_eyebrow":"त्वरित परिचय",
+    "onboard_get_started":"शुरू करें",
+    "onboard_latency_d":"मॉडल एक सिमल्टेनियस दुभाषिये की तरह काम करता है: यह वक्ता से कुछ सेकंड पीछे रहकर अनुवाद करता है। ~3 सेकंड का यह विलंब मॉडल की प्रकृति में है और बंद नहीं किया जा सकता। स्क्रीन पर दिखने वाला कैप्शन हमेशा सबसे तेज़ संकेत है और बोले गए अनुवाद से पहले दिखाई देता है।",
+    "onboard_latency_t":"स्वाभाविक अनुवाद विलंब",
+    "onboard_meeting":"दोतरफ़ा: दूसरे पक्ष को सुनता है और आपकी बात वर्चुअल माइक्रोफ़ोन के ज़रिए वापस भेजता है।",
+    "onboard_next":"आगे",
+    "onboard_routing":"अनुवाद को ऐप्स तक पहुँचाने के लिए ऑडियो रूटिंग आवश्यक है। मीटिंग मोड आपका अनुवाद दूसरी ओर पहुँचाने के लिए वर्चुअल माइक्रोफ़ोन का उपयोग करता है।",
+    "onboard_settings_d":"बाईं ओर गुणवत्ता विकल्प: स्मूद (संतुलित — सबसे अच्छा सिंक और गुणवत्ता) बनाम सेवर (केवल स्पीच भेजता है, कम बिल किए गए मिनट)। यहीं से ट्रांसक्रिप्ट सहेजना और ऑन-स्क्रीन ओवरले भी चालू कर सकते हैं।",
+    "onboard_settings_t":"सेटिंग्स",
+    "onboard_step_fmt":"चरण {n} / {total}",
+    "onboard_title":"Voxis में आपका स्वागत है",
+    "onboard_video":"सिस्टम ऑडियो का एकतरफ़ा लाइव अनुवाद आपकी भाषा में करता है — कोई सेटअप या केबल नहीं, बस क्लिक करें और शुरू करें। हेडफ़ोन की सलाह दी जाती है ताकि अनुवाद लौटकर दोबारा अनुवादित न हो।",
+    "onboard_welcome":"Voxis आपके देखे जा रहे वीडियो, गेम और मीटिंग के सिस्टम ऑडियो का रीयल-टाइम अनुवाद करता है।",
+    "open_file":"फ़ाइल खोलें",
+    "open_folder":"फ़ोल्डर खोलें",
+    "openai_key":"OpenAI API कुंजी",
+    "out_device":"आउटपुट डिवाइस",
+    "overlay":"ऑन-स्क्रीन टेक्स्ट",
+    "password":"पासवर्ड",
+    "password2":"पासवर्ड (फिर से)",
+    "ph_gemkey":"AIza…",
+    "ph_oaikey":"sk-…",
+    "ph_pw_again":"पासवर्ड दोबारा दर्ज करें",
+    "ph_pw_min":"कम से कम 8 अक्षर",
+    "press_key":"कोई कुंजी दबाएँ…",
+    "privacy_badge":"कोई बॉट नहीं · निजी",
+    "privacy_badge_title":"गोपनीयता और डेटा प्रवाह",
+    "privacy_byok_detail":"ओपन-सोर्स (BYOK) बिल्ड में अनुवाद आपकी अपनी API कुंजी पर चलता है। Voxis कभी अपने सर्वर से संपर्क नहीं करता और कोई रिकॉर्डिंग या टेलीमेट्री बीकन नहीं जोड़ता।",
+    "privacy_close":"समझ गया",
+    "privacy_lead":"आपकी कॉल में कोई बॉट शामिल नहीं होता। आपका ऑडियो केवल अनुवाद के लिए हमारे AI अनुवाद प्रदाता को जाता है।",
+    "privacy_note":"चूँकि ऑडियो अनुवाद के लिए हमारे AI अनुवाद प्रदाता को भेजा जाता है, यह पूरी तरह आपके डिवाइस पर नहीं रहता। कॉल में शामिल सभी लोगों के लिए स्थानीय सहमति नियमों का पालन करें।",
+    "privacy_policy_link":"पूरी गोपनीयता नीति",
+    "privacy_saas_detail":"Voxis आपका ऑडियो केवल अनुवाद के लिए हमारे AI अनुवाद प्रदाता को स्ट्रीम करता है। Voxis स्वयं आपका ऑडियो रिकॉर्ड नहीं करता और न ही कोई अलग ट्रैकिंग बीकन जोड़ता है — केवल उपयोग किए गए मिनट बिलिंग के लिए रिपोर्ट होते हैं।",
+    "privacy_step_capture":"सिस्टम ऑडियो",
+    "privacy_step_gemini":"AI अनुवाद",
+    "privacy_step_playback":"अनुवादित ऑडियो",
+    "privacy_title":"गोपनीयता और डेटा प्रवाह",
+    "profile":"प्रोफ़ाइल",
+    "quality":"गुणवत्ता",
+    "quota_exhausted":"कोटा समाप्त",
+    "quota_gate_msg":"आपका मासिक अनुवाद कोटा समाप्त हो गया है। नया सत्र शुरू करने के लिए अपना लाइसेंस अपग्रेड करें।",
+    "ready_idle":"निष्क्रिय, तैयार",
+    "record_audio":"ऑडियो रिकॉर्ड करें (स्रोत + अनुवाद, अलग-अलग फ़ाइलें)",
+    "record_audio_hint":"हर सत्र के स्रोत ऑडियो और अनुवादित ऑडियो को आपके ट्रांसक्रिप्ट फ़ोल्डर में दो अलग WAV फ़ाइलों के रूप में सहेजता है। डिफ़ॉल्ट रूप से बंद है क्योंकि स्रोत ट्रैक में असली मानव आवाज़ होती है। केवल वीडियो/गेम मोड में — मीटिंग मोड में अपने आप बंद हो जाता है, ताकि सामने वाले की लाइव आवाज़ कभी रिकॉर्ड न हो।",
+    "registering":"साइन अप हो रहा है…",
+    "report_cancel":"रद्द करें",
+    "report_cat_audio":"ऑडियो",
+    "report_cat_billing":"सदस्यता / बिलिंग",
+    "report_cat_crash":"क्रैश",
+    "report_cat_other":"अन्य",
+    "report_cat_translation":"अनुवाद",
+    "report_cat_ui":"इंटरफ़ेस",
+    "report_category":"श्रेणी",
+    "report_close":"बंद करें",
+    "report_copy":"कॉपी करें",
+    "report_done_intro":"रिपोर्ट भेज दी गई। यदि आप हमसे संपर्क करें, तो आपका संदर्भ है:",
+    "report_done_keep":"हमसे संपर्क करते समय यह संदर्भ अपने पास रखें।",
+    "report_email":"ईमेल (वैकल्पिक)",
+    "report_email_hint":"केवल तभी, जब आप इस रिपोर्ट पर जवाब चाहते हों।",
+    "report_email_ph":"you@example.com",
+    "report_err_empty":"कृपया समस्या का विवरण दें।",
+    "report_err_failed":"आपकी रिपोर्ट भेजी नहीं जा सकी। कृपया फिर से प्रयास करें।",
+    "report_include_transcript":"मेरा हालिया ट्रांसक्रिप्ट शामिल करें (डिफ़ॉल्ट रूप से बंद)",
+    "report_log_note":"आपका ऐप लॉग अपने आप संलग्न होता है (गोपनीय जानकारी हटाकर)।",
+    "report_message":"समस्या का संक्षिप्त विवरण दें (वैकल्पिक)",
+    "report_message_ph":"क्या हुआ? इसे खाली छोड़ सकते हैं — हम लॉग देख लेंगे।",
+    "report_notice":"यह Voxis सहायता को एक छोटा तकनीकी स्नैपशॉट भेजता है: ऐप संस्करण, चैनल, आपका Windows संस्करण, ऑडियो मोड, गुणवत्ता सेटिंग और भाषा जोड़ी। गोपनीय जानकारी (आपकी API कुंजी, लॉगिन टोकन) और आपका Windows उपयोगकर्ता नाम कभी शामिल नहीं होते। आपका ट्रांसक्रिप्ट तभी भेजा जाता है जब आप नीचे का बॉक्स चुनें।",
+    "report_open":"समस्या रिपोर्ट करें",
+    "report_pii_hint":"पासवर्ड या व्यक्तिगत जानकारी न लिखें।",
+    "report_preview":"भेजे जाने वाले डेटा का पूर्वावलोकन",
+    "report_queued":"सहेज लिया गया — अगली बार Voxis खोलने पर हम इसे भेज देंगे।",
+    "report_repro":"समस्या दोहराने के चरण (वैकल्पिक)",
+    "report_send":"रिपोर्ट भेजें",
+    "report_sending":"भेजा जा रहा है…",
+    "report_sev_high":"उच्च",
+    "report_sev_low":"कम",
+    "report_sev_normal":"सामान्य",
+    "report_severity":"गंभीरता",
+    "report_title":"समस्या रिपोर्ट करें",
+    "reset_default":"डिफ़ॉल्ट पर रीसेट करें",
+    "save":"सहेजें",
+    "save_transcript":"ट्रांसक्रिप्ट सहेजें",
+    "scenario":"परिदृश्य",
+    "session":"सत्र",
+    "session_summary":"सत्र समाप्त · {m} मिनट",
+    "settings":"सेटिंग्स",
+    "settings_live_note":"बदलाव तुरंत लागू होते हैं",
+    "shortcuts":"कीबोर्ड शॉर्टकट",
+    "show":"दिखाएँ",
+    "show_tour":"परिचय फिर से दिखाएँ",
+    "sound_check":"साउंड चेक",
+    "sound_check_fail":"ऑडियो कैप्चर शुरू नहीं हो सका।",
+    "sound_check_hint":"कोई वीडियो या संगीत चलाएँ — Voxis को सुनाई देने वाले सिग्नल से नीचे की पट्टी हिलनी चाहिए।",
+    "sound_check_ok":"सिग्नल मिला — डिवाइस सही है ✓",
+    "sound_check_wait":"सिग्नल की प्रतीक्षा…",
+    "source":"स्रोत",
+    "spk_labels":"वक्ता लेबल (S1/S2)",
+    "spk_labels_hint":"जब अलग-अलग लोग एक के बाद एक बोलते हैं, तो यह आपके डिवाइस पर आवाज़ का बदलाव पहचानकर कैप्शन पंक्तियों को S1/S2 के रूप में टैग करता है। पूरी तरह लोकल — कोई अतिरिक्त क्लाउड कॉल नहीं। लेबल तभी दिखते हैं जब दूसरी आवाज़ सुनाई देती है, और सहेजे गए ट्रांसक्रिप्ट में भी शामिल होते हैं। बोला गया अनुवाद फिर भी एक ही आवाज़ में रहता है।",
+    "st_capture_lost":"ऑडियो कैप्चर रुक गया (डिवाइस बदला हो सकता है)। सत्र फिर से शुरू करें।",
+    "start_cue":"शुरू करें",
+    "stop":"रोकें",
+    "store_view":"Microsoft Store में देखें",
+    "stream_title":"अनुवाद स्ट्रीम",
+    "subtitle":"सबटाइटल",
+    "tab_about":"परिचय",
+    "tab_login":"लॉग इन",
+    "tab_membership":"सदस्यता",
+    "tab_register":"साइन अप",
+    "title_close":"बंद करें",
+    "title_history":"अनुवाद इतिहास",
+    "title_max":"बड़ा करें",
+    "title_min":"छोटा करें",
+    "title_restore":"पुनर्स्थापित करें",
+    "title_settings":"सेटिंग्स",
+    "title_theme":"थीम बदलें",
+    "to_other":"दूसरों को",
+    "to_other_hint":"केवल मीटिंग मोड में उपयोग होता है",
+    "tour_audio_d":"चुनें कि अनुवादित ऑडियो कहाँ बजे। हेडफ़ोन की सलाह दी जाती है ताकि अनुवाद लौटकर दोबारा अनुवादित न हो।",
+    "tour_audio_t":"प्लेबैक डिवाइस",
+    "tour_lang_d":"बाईं ओर अपनी अनुवाद भाषा चुनें, और दाईं ओर वह भाषा जो दूसरी ओर भेजी जाएगी। वीडियो मोड में केवल बाईं (अनुवाद की) भाषा मायने रखती है।",
+    "tour_lang_t":"भाषाएँ चुनें",
+    "tour_profile_d":"मूल ऑडियो और अनुवाद कितनी तेज़ बजें, इसके लिए एक प्रोफ़ाइल चुनें। नीचे के स्लाइडरों से मूल और अनुवाद के स्तर को बारीकी से समायोजित करें।",
+    "tour_profile_t":"साउंड प्रोफ़ाइल",
+    "tour_ready_d":"बस इतना ही। अनुवाद शुरू करने के लिए ऊपर वीडियो और गेम या मीटिंग पर क्लिक करें। यह परिचय आप कभी भी सेटिंग्स → परिचय से दोबारा देख सकते हैं।",
+    "tour_ready_t":"आप तैयार हैं",
+    "tour_skip":"छोड़ें",
+    "transcript_folder":"ट्रांसक्रिप्ट फ़ोल्डर",
+    "translation":"अनुवाद",
+    "ui_lang":"इंटरफ़ेस भाषा",
+    "unlimited":"∞ असीमित",
+    "update_later":"बाद में",
+    "update_now":"अभी अपडेट करें",
+    "upgrade_plan":"प्लान अपग्रेड करें →",
+    "vad_silent":"मौन",
+    "vad_speaking":"स्पीच का पता चला",
+    "video_t1":"वीडियो और गेम",
+    "video_t2":"सिस्टम ऑडियो का लाइव अनुवाद",
+    "voice":"अनुवाद की आवाज़",
+    "vol_label":"अनुवाद वॉल्यूम",
+    "waiting_signal":"इनपुट सिग्नल की प्रतीक्षा",
+  },
+  "hu":{
+    "about_powered":"Fejlett AI-fordítással működik.",
+    "al_contact":"Kapcsolat",
+    "al_pricing":"Árak",
+    "al_privacy":"Adatvédelem",
+    "al_terms":"Feltételek",
+    "alert_key_failed":"A kulcsot nem sikerült menteni. Frissítsd a munkamenetet, és próbáld újra.",
+    "audio":"Hang",
+    "auth_browser_wait":"Fejezd be a bejelentkezést a böngészőben…",
+    "auth_create":"Fiók létrehozása",
+    "auth_forgot":"Elfelejtetted a jelszavad?",
+    "auth_google":"Folytatás a Google-lal",
+    "auth_no_account":"Nincs fiókod? ",
+    "auth_offline":"Nem sikerült elérni a szervert. Ellenőrizd az internetkapcsolatod.",
+    "auth_or":"vagy",
+    "auth_retry":"Újra",
+    "auth_sub":" · Jelentkezz be a licencadatokért.",
+    "badge_upgrade":"Válts csomagot az eltávolításhoz →",
+    "behind_suffix":" mp lemaradás",
+    "brand_badge":"\"Powered by Voxis\" jelvény megjelenítése",
+    "brand_badge_locked":"Előfizetés szükséges",
+    "browse":"Tallózás…",
+    "byok_active":"BYOK aktív",
+    "byok_hint":"Ehhez a verzióhoz saját Gemini API-kulcs szükséges. ",
+    "byok_openai_hint":"Opcionális — csak az OpenAI motor használatához szükséges. ",
+    "cable_cancel":"Mégse",
+    "cable_install":"VB-CABLE telepítése",
+    "cable_lead":"A Megbeszélés mód vissza tudja küldeni a lefordított hangodat a hívásba, így a másik fél a saját nyelvén hall téged. Ehhez egy ingyenes virtuális mikrofon, a VB-CABLE szükséges. Opcionális — nélküle a Megbeszélés csak hallgatásra működik (te lefordítva hallod a másik felet).",
+    "cable_manual":"Ez a verzió nem tud illesztőprogramot telepíteni helyetted. Töltsd le ingyen a VB-CABLE-t a vb-audio.com oldalról, telepítsd, majd indítsd újra a Voxist.",
+    "cable_required":"A kétirányú megbeszélés — a lefordított hangod hívásba küldése — a VB-CABLE nevű, opcionális, külső virtuális mikrofont használja. Nem kötelező: nélküle a Megbeszélés mód csak hallgatásra működik. A kétirányú működéshez telepítsd magad a VB-CABLE-t, majd nyisd meg újra a Voxist.",
+    "cable_step1":"Telepítsd a VB-CABLE-t (ingyenes, kb. 1 perc).",
+    "cable_step2":"Indítsd újra a Voxist — automatikusan felismeri a virtuális mikrofont.",
+    "cable_step3":"A meetingalkalmazásban (Zoom · Teams · Meet) válaszd a “CABLE Output” mikrofont. A többit a Voxis intézi.",
+    "cable_title":"Kétirányú megbeszélés (opcionális)",
+    "checking_session":"Munkamenet ellenőrzése…",
+    "clear":"Törlés",
+    "clear_stream":"Folyam törlése",
+    "confirm_clear_byok":"A mentett Gemini API-kulcs törlődik. Új kulcs megadásáig a fordítás nem indítható. Folytatod?",
+    "conn":"Kapcsolat",
+    "consent_accept":"Értem, indítás",
+    "consent_cancel":"Mégse",
+    "consent_dontshow":"Ne jelenjen meg többé",
+    "consent_p1":"Megbeszélés módban a Voxis hallgatja a másik felet, és a beszédedet virtuális mikrofonon keresztül továbbítja neki.",
+    "consent_p2":"A hang rögzítése vagy fordítása a tartózkodási helyeden minden résztvevő hozzájárulását igényelheti. Indítás előtt győződj meg róla, hogy betartod a vonatkozó törvényeket és a megbeszélés szabályait.",
+    "consent_title":"Megbeszélés mód — hozzájárulás",
+    "copy_turn":"Fordítás másolása",
+    "duck_label":"Eredeti hang (beszéd közben)",
+    "email":"E-mail",
+    "empty_big":"Készen áll a hallgatásra",
+    "empty_small":"Válassz egy forgatókönyvet a bal oldalon a kezdéshez.<br>A fordítások itt jelennek meg valós időben.",
+    "err_conn":"Kapcsolati hiba. Próbáld újra.",
+    "err_login_failed":"Sikertelen bejelentkezés. Ellenőrizd az adataidat.",
+    "err_need_credentials":"Az e-mail-cím és a jelszó megadása kötelező.",
+    "err_pw_mismatch":"A jelszavak nem egyeznek.",
+    "err_pw_short":"A jelszónak legalább 8 karakterből kell állnia.",
+    "err_register_failed":"Sikertelen regisztráció. Lehet, hogy ez az e-mail-cím már használatban van.",
+    "foot_latency":"késleltetés",
+    "foot_model":"modell",
+    "foot_ready":"Kész",
+    "foot_sample":"mintavétel",
+    "foot_session":"munkamenet",
+    "gemini_key":"Gemini API-kulcs",
+    "general":"Általános",
+    "hear":"Fordítás erre",
+    "hide":"Elrejtés",
+    "history_delete":"Törlés",
+    "history_export":"Exportálás:",
+    "history_fmt_srt":"SRT",
+    "history_fmt_txt":"TXT",
+    "history_fmt_vtt":"VTT",
+    "history_none":"Nincs mentett munkamenet.",
+    "history_pick":"Válassz egy munkamenetet a megtekintéshez.",
+    "history_search_ph":"Keresés az előzményekben…",
+    "history_title":"Fordítási előzmények",
+    "history_turns_n":"{n} megszólalás",
+    "hk_hint":"Kattints egy mezőre, és nyomd le az új kombinációt a módosításhoz.",
+    "latency_note":"A fordítás néhány másodperccel a beszéd után érkezik — ez a szinkrontolmács-modell természetes késleltetése. A felirat a hang előtt jelenik meg.",
+    "limit_body":"Az ingyenes perceid jövő hónapban megújulnak. Ha most szeretnéd folytatni, vegyél percsomagot — a percek a fiókodhoz adódnak, és soha nem járnak le.",
+    "limit_cta":"Több perc beszerzése →",
+    "limit_dismiss":"Most nem",
+    "limit_stat_suffix":"ingyenes perc felhasználva",
+    "limit_title":"Elhasználtad a havi ingyenes perceidet",
+    "limit_warn_prefix":"Figyelem — kb. ",
+    "live":"élő",
+    "logging_in":"Bejelentkezés…",
+    "logout":"Kijelentkezés",
+    "manage_plan":"Csomag kezelése",
+    "meeting_caveat":"A Megbeszélés módhoz virtuális mikrofon szükséges, hogy a fordításod eljusson a másik félhez. Enélkül csak a hallgatás aktív.",
+    "meeting_t1":"Megbeszélés",
+    "mem_active_plan":"Aktív csomag",
+    "mem_byok_note":"Ez a verzió a saját Gemini-kulcsoddal fut; nincs előfizetés. Az Általános lapon kezelheted.",
+    "mem_creator_meta":"700 perc/hó · minden nyelv · átiratok",
+    "mem_dev_byok":"Fejlesztői (BYOK)",
+    "mem_invite":"Hívj meg egy barátot",
+    "mem_pro_meta":"1500 perc/hó · prioritás · megbeszélés mód",
+    "mem_this_month":"Ebben a hónapban: ",
+    "mem_unlimited":"Korlátlan perc",
+    "mem_upgrade":"Csomagváltás",
+    "mem_your_key":"Saját kulcsod",
+    "mem_your_plan":"Csomagod",
+    "mic":"Mikrofon",
+    "min_left":" perc maradt",
+    "obs_write":"OBS feliratfájl írása",
+    "onboard_back":"Vissza",
+    "onboard_done":"Vágjunk bele",
+    "onboard_eyebrow":"Gyors bemutató",
+    "onboard_get_started":"Kezdjük",
+    "onboard_latency_d":"A modell szinkrontolmácsként működik: néhány másodperccel a beszélő mögött fordít. Ez a ~3 mp-es késleltetés a modell sajátja, és nem kapcsolható ki. A képernyőn megjelenő felirat mindig a leggyorsabb jelzés, és a hangos fordítás előtt jelenik meg.",
+    "onboard_latency_t":"Természetes fordítási késleltetés",
+    "onboard_meeting":"Kétirányú: hallgatja a másik felet, és a beszédedet virtuális mikrofonon keresztül küldi vissza.",
+    "onboard_next":"Tovább",
+    "onboard_routing":"A fordítás alkalmazásokhoz való eljuttatásához hangátirányítás szükséges. A Megbeszélés mód virtuális mikrofonnal juttatja el a fordításodat a másik félhez.",
+    "onboard_settings_d":"Minőségi beállítások a bal oldalon: Gördülékeny (kiegyensúlyozott — a legjobb szinkron és minőség) vagy Takarékos (csak a beszédet küldi, kevesebb számlázott perc). Itt kapcsolhatod be az átirat mentését és a képernyőn megjelenő szöveget is.",
+    "onboard_settings_t":"Beállítások",
+    "onboard_step_fmt":"{n}/{total}. lépés",
+    "onboard_title":"Üdvözöl a Voxis",
+    "onboard_video":"A rendszerhangot egy irányban, élőben fordítja a nyelvedre — nincs szükség telepítésre vagy kábelre, csak kattints és indulhat. Fejhallgató ajánlott, hogy a fordítás ne kerüljön vissza, és ne fordítódjon újra.",
+    "onboard_welcome":"A Voxis valós időben fordítja a nézett videók, játékok és megbeszélések rendszerhangját.",
+    "open_file":"Fájl megnyitása",
+    "open_folder":"Mappa megnyitása",
+    "openai_key":"OpenAI API-kulcs",
+    "out_device":"Kimeneti eszköz",
+    "overlay":"Szöveg a képernyőn",
+    "password":"Jelszó",
+    "password2":"Jelszó (újra)",
+    "ph_gemkey":"AIza…",
+    "ph_oaikey":"sk-…",
+    "ph_pw_again":"Add meg újra a jelszót",
+    "ph_pw_min":"Legalább 8 karakter",
+    "press_key":"nyomj le egy billentyűt…",
+    "privacy_badge":"Nincs bot · privát",
+    "privacy_badge_title":"Adatvédelem és adatáramlás",
+    "privacy_byok_detail":"A nyílt forráskódú (BYOK) verzióban a fordítás a saját API-kulcsoddal fut. A Voxis soha nem kommunikál a szervereivel, és nem ad hozzá rögzítést vagy telemetriajelzőt.",
+    "privacy_close":"Értem",
+    "privacy_lead":"Nem csatlakozik bot a hívásodhoz. A hangod csak a fordításhoz kerül az AI-fordítási szolgáltatónkhoz.",
+    "privacy_note":"Mivel a hang a fordításhoz az AI-fordítási szolgáltatónkhoz kerül, nem marad teljesen az eszközödön. Tartsd be a helyi hozzájárulási szabályokat a hívás minden résztvevőjére vonatkozóan.",
+    "privacy_policy_link":"Teljes adatvédelmi szabályzat",
+    "privacy_saas_detail":"A Voxis a hangodat csak a fordításhoz továbbítja az AI-fordítási szolgáltatónknak. Maga a Voxis nem rögzíti a hangodat, és nem ad hozzá külön követőjelzőt — csak a felhasznált percek kerülnek jelentésre a számlázáshoz.",
+    "privacy_step_capture":"Rendszerhang",
+    "privacy_step_gemini":"AI-fordítás",
+    "privacy_step_playback":"Lefordított hang",
+    "privacy_title":"Adatvédelem és adatáramlás",
+    "profile":"Profil",
+    "quality":"Minőség",
+    "quota_exhausted":"Keret elfogyott",
+    "quota_gate_msg":"A havi fordítási kereted elfogyott. Új munkamenet indításához válts nagyobb csomagra.",
+    "ready_idle":"Tétlen, készen áll",
+    "record_audio":"Hang rögzítése (forrás + fordítás, külön fájlok)",
+    "record_audio_hint":"Minden munkamenet forráshangját és lefordított hangját két külön WAV-fájlként menti az átiratok mappájába. Alapértelmezés szerint kikapcsolva, mert a forrássáv valódi emberi hangot tartalmaz. Csak Videó/Játék módban működik — Megbeszélés módban automatikusan kikapcsol, így a másik fél élő hangja soha nem kerül rögzítésre.",
+    "registering":"Regisztráció…",
+    "report_cancel":"Mégse",
+    "report_cat_audio":"Hang",
+    "report_cat_billing":"Tagság / számlázás",
+    "report_cat_crash":"Összeomlás",
+    "report_cat_other":"Egyéb",
+    "report_cat_translation":"Fordítás",
+    "report_cat_ui":"Felület",
+    "report_category":"Kategória",
+    "report_close":"Bezárás",
+    "report_copy":"Másolás",
+    "report_done_intro":"Bejelentés elküldve. Ha kapcsolatba lépsz velünk, a hivatkozási számod:",
+    "report_done_keep":"Őrizd meg ezt a hivatkozási számot, ha kapcsolatba lépsz velünk.",
+    "report_email":"E-mail (nem kötelező)",
+    "report_email_hint":"Csak ha választ szeretnél erre a bejelentésre.",
+    "report_email_ph":"te@pelda.hu",
+    "report_err_empty":"Kérjük, írd le a problémát.",
+    "report_err_failed":"A bejelentést nem sikerült elküldeni. Próbáld újra.",
+    "report_include_transcript":"Legutóbbi átiratom csatolása (alapértelmezés szerint kikapcsolva)",
+    "report_log_note":"Az alkalmazásnapló automatikusan csatolódik (titkos adatok eltávolítva).",
+    "report_message":"Írd le röviden a problémát (nem kötelező)",
+    "report_message_ph":"Mi történt? Üresen is hagyhatod — megnézzük a naplót.",
+    "report_notice":"Ez egy kis technikai pillanatképet küld a Voxis ügyfélszolgálatának: alkalmazásverzió, csatorna, a Windows verziója, a hangmód, a minőségi beállítás és a nyelvpár. Titkos adatok (API-kulcsod, bejelentkezési tokened) és a Windows-felhasználóneved soha nem kerülnek bele. Az átiratod csak akkor kerül elküldésre, ha bejelölöd az alábbi négyzetet.",
+    "report_open":"Probléma bejelentése",
+    "report_pii_hint":"Ne írj be jelszót vagy személyes adatot.",
+    "report_preview":"Elküldendő adatok előnézete",
+    "report_queued":"Mentve — a Voxis következő megnyitásakor küldjük el.",
+    "report_repro":"Reprodukálás lépései (nem kötelező)",
+    "report_send":"Bejelentés küldése",
+    "report_sending":"Küldés…",
+    "report_sev_high":"Magas",
+    "report_sev_low":"Alacsony",
+    "report_sev_normal":"Normál",
+    "report_severity":"Súlyosság",
+    "report_title":"Probléma bejelentése",
+    "reset_default":"Visszaállítás alapértelmezettre",
+    "save":"Mentés",
+    "save_transcript":"Átirat mentése",
+    "scenario":"Forgatókönyv",
+    "session":"Munkamenet",
+    "session_summary":"Munkamenet vége · {m} perc",
+    "settings":"Beállítások",
+    "settings_live_note":"A módosítások azonnal életbe lépnek",
+    "shortcuts":"Billentyűparancsok",
+    "show":"Megjelenítés",
+    "show_tour":"Bemutató újbóli megjelenítése",
+    "sound_check":"Hangpróba",
+    "sound_check_fail":"A hangrögzítést nem sikerült elindítani.",
+    "sound_check_hint":"Játssz le egy videót vagy zenét — a Voxis által hallott jelnek mozgatnia kell az alábbi sávot.",
+    "sound_check_ok":"Jel észlelve — az eszköz megfelelő ✓",
+    "sound_check_wait":"Várakozás jelre…",
+    "source":"Forrás",
+    "spk_labels":"Beszélőcímkék (S1/S2)",
+    "spk_labels_hint":"Az eszközödön észleli a hangváltásokat, és S1/S2 címkével jelöli a feliratsorokat, amikor különböző emberek beszélnek egymás után. Teljesen helyben fut — nincs további felhőhívás. A címkék csak akkor jelennek meg, ha egy második hang is hallható, és a mentett átiratok is tartalmazzák őket. A hangos fordítás továbbra is egy hangon szól.",
+    "st_capture_lost":"A hangrögzítés leállt (lehet, hogy megváltozott az eszköz). Indítsd újra a munkamenetet.",
+    "start_cue":"Indítás",
+    "stop":"Leállítás",
+    "store_view":"Megtekintés a Microsoft Store-ban",
+    "stream_title":"Fordítási folyam",
+    "subtitle":"Feliratok",
+    "tab_about":"Névjegy",
+    "tab_login":"Bejelentkezés",
+    "tab_membership":"Tagság",
+    "tab_register":"Regisztráció",
+    "title_close":"Bezárás",
+    "title_history":"Fordítási előzmények",
+    "title_max":"Teljes méret",
+    "title_min":"Kis méret",
+    "title_restore":"Előző méret",
+    "title_settings":"Beállítások",
+    "title_theme":"Téma váltása",
+    "to_other":"A másik félnek",
+    "to_other_hint":"Csak Megbeszélés módban használatos",
+    "tour_audio_d":"Válaszd ki, hol szóljon a lefordított hang. Fejhallgató ajánlott, hogy a fordítás ne kerüljön vissza, és ne fordítódjon újra.",
+    "tour_audio_t":"Lejátszóeszköz",
+    "tour_lang_d":"A bal oldalon válaszd ki a fordítás nyelvét, a jobb oldalon pedig a másik félnek küldött nyelvet. Videó módban csak a bal oldali (fordítás erre) számít.",
+    "tour_lang_t":"Nyelvek kiválasztása",
+    "tour_profile_d":"Válassz profilt, amely meghatározza, milyen hangosan szól az eredeti hang és a fordítás. Az alábbi csúszkákkal finomhangolhatod az eredeti és a fordítási hangszintet.",
+    "tour_profile_t":"Hangprofil",
+    "tour_ready_d":"Ennyi az egész. Kattints fent a Videó és játék vagy a Megbeszélés gombra a fordítás indításához. A bemutatót bármikor újranézheted: Beállítások → Névjegy.",
+    "tour_ready_t":"Készen állsz",
+    "tour_skip":"Kihagyás",
+    "transcript_folder":"Átiratok mappája",
+    "translation":"Fordítás",
+    "ui_lang":"Felület nyelve",
+    "unlimited":"∞ Korlátlan",
+    "update_later":"Később",
+    "update_now":"Frissítés most",
+    "upgrade_plan":"Csomagváltás →",
+    "vad_silent":"Csend",
+    "vad_speaking":"Beszéd észlelve",
+    "video_t1":"Videó és játék",
+    "video_t2":"Rendszerhang élő fordítása",
+    "voice":"Fordítás hangja",
+    "vol_label":"Fordítás hangereje",
+    "waiting_signal":"Várakozás bemeneti jelre",
+  },
+  "sv":{
+    "about_powered":"Drivs av avancerad AI-översättning.",
+    "al_contact":"Kontakt",
+    "al_pricing":"Priser",
+    "al_privacy":"Integritet",
+    "al_terms":"Villkor",
+    "alert_key_failed":"Kunde inte spara nyckeln. Uppdatera din session och försök igen.",
+    "audio":"Ljud",
+    "auth_browser_wait":"Slutför inloggningen i webbläsaren…",
+    "auth_create":"Skapa konto",
+    "auth_forgot":"Glömt lösenordet?",
+    "auth_google":"Fortsätt med Google",
+    "auth_no_account":"Inget konto? ",
+    "auth_offline":"Kunde inte nå servern. Kontrollera din internetanslutning.",
+    "auth_or":"eller",
+    "auth_retry":"Försök igen",
+    "auth_sub":" · Logga in för licensinformation.",
+    "badge_upgrade":"Uppgradera för att ta bort →",
+    "behind_suffix":"s efter",
+    "brand_badge":"Visa \"Powered by Voxis\"-märket",
+    "brand_badge_locked":"Prenumeration krävs",
+    "browse":"Bläddra…",
+    "byok_active":"BYOK aktiv",
+    "byok_hint":"Den här versionen kräver din egen Gemini API-nyckel för att köras. ",
+    "byok_openai_hint":"Valfritt — behövs endast för att använda OpenAI-motorn. ",
+    "cable_cancel":"Avbryt",
+    "cable_install":"Installera VB-CABLE",
+    "cable_lead":"Mötesläget kan skicka din översatta röst tillbaka in i samtalet, så att den andra personen hör dig på sitt språk. Det kräver en gratis virtuell mikrofon som heter VB-CABLE. Den är valfri — utan den fungerar Möte ändå i endast lyssning (du hör dem översatta).",
+    "cable_manual":"Den här versionen kan inte installera drivrutiner åt dig. Ladda ner VB-CABLE gratis från vb-audio.com, installera den och starta sedan om Voxis.",
+    "cable_required":"Tvåvägsmöte — att skicka din översatta röst in i samtalet — använder VB-CABLE, en valfri virtuell mikrofon från tredje part. Den är inte obligatorisk: utan den körs mötesläget i endast lyssning. För att aktivera tvåvägs, installera VB-CABLE själv och öppna sedan Voxis igen.",
+    "cable_step1":"Installera VB-CABLE (gratis, tar cirka 1 minut).",
+    "cable_step2":"Starta om Voxis — den virtuella mikrofonen upptäcks automatiskt.",
+    "cable_step3":"Välj “CABLE Output” som mikrofon i din mötesapp (Zoom · Teams · Meet). Voxis sköter resten.",
+    "cable_title":"Tvåvägsmöte (valfritt)",
+    "checking_session":"Kontrollerar sessionen…",
+    "clear":"Rensa",
+    "clear_stream":"Rensa flödet",
+    "confirm_clear_byok":"Den sparade Gemini API-nyckeln tas bort. Översättning kan inte startas förrän du anger en ny nyckel. Vill du fortsätta?",
+    "conn":"Anslutning",
+    "consent_accept":"Uppfattat, starta",
+    "consent_cancel":"Avbryt",
+    "consent_dontshow":"Visa inte igen",
+    "consent_p1":"I mötesläget lyssnar Voxis på den andra parten och skickar samtidigt ditt tal till dem via en virtuell mikrofon.",
+    "consent_p2":"Att spela in eller översätta ljud kan kräva samtycke från alla deltagare där du befinner dig. Se till att du följer gällande lagar och mötesregler innan du börjar.",
+    "consent_title":"Mötesläge — samtycke",
+    "copy_turn":"Kopiera översättningen",
+    "duck_label":"Originalljud (under tal)",
+    "email":"E-post",
+    "empty_big":"Redo att lyssna",
+    "empty_small":"Välj ett scenario till vänster för att börja.<br>Översättningarna strömmar här i realtid.",
+    "err_conn":"Anslutningsfel. Försök igen.",
+    "err_login_failed":"Inloggningen misslyckades. Kontrollera dina uppgifter.",
+    "err_need_credentials":"E-post och lösenord krävs.",
+    "err_pw_mismatch":"Lösenorden matchar inte.",
+    "err_pw_short":"Lösenordet måste vara minst 8 tecken.",
+    "err_register_failed":"Registreringen misslyckades. E-postadressen kan redan vara i bruk.",
+    "foot_latency":"latens",
+    "foot_model":"modell",
+    "foot_ready":"Redo",
+    "foot_sample":"sampling",
+    "foot_session":"session",
+    "gemini_key":"Gemini API-nyckel",
+    "general":"Allmänt",
+    "hear":"Översätt till",
+    "hide":"Dölj",
+    "history_delete":"Ta bort",
+    "history_export":"Exportera:",
+    "history_fmt_srt":"SRT",
+    "history_fmt_txt":"TXT",
+    "history_fmt_vtt":"VTT",
+    "history_none":"Inga sparade sessioner.",
+    "history_pick":"Välj en session att visa.",
+    "history_search_ph":"Sök i historiken…",
+    "history_title":"Översättningshistorik",
+    "history_turns_n":"{n} repliker",
+    "hk_hint":"Klicka på en ruta och tryck den nya kombinationen för att ändra den.",
+    "latency_note":"Översättningen kommer några sekunder efter talet — det är simultanmodellens naturliga fördröjning. Undertexten visas före ljudet.",
+    "limit_body":"Dina gratisminuter förnyas nästa månad. Vill du fortsätta redan nu kan du köpa ett minutpaket — minuterna läggs till på ditt konto och går aldrig ut.",
+    "limit_cta":"Skaffa fler minuter →",
+    "limit_dismiss":"Inte nu",
+    "limit_stat_suffix":"gratisminuter använda",
+    "limit_title":"Du har använt månadens gratisminuter",
+    "limit_warn_prefix":"Obs — cirka ",
+    "live":"live",
+    "logging_in":"Loggar in…",
+    "logout":"Logga ut",
+    "manage_plan":"Hantera plan",
+    "meeting_caveat":"Mötesläget behöver en virtuell mikrofon för att skicka din översättning till den andra sidan. Utan en är endast lyssning aktiv.",
+    "meeting_t1":"Möte",
+    "mem_active_plan":"Aktiv plan",
+    "mem_byok_note":"Den här versionen körs med din egen Gemini-nyckel; ingen prenumeration. Hantera den under fliken Allmänt.",
+    "mem_creator_meta":"700 min/mån · alla språk · transkript",
+    "mem_dev_byok":"Utvecklare (BYOK)",
+    "mem_invite":"Bjud in en vän",
+    "mem_pro_meta":"1 500 min/mån · prioritet · mötesläge",
+    "mem_this_month":"Denna månad: ",
+    "mem_unlimited":"Obegränsade minuter",
+    "mem_upgrade":"Uppgradera",
+    "mem_your_key":"Din nyckel",
+    "mem_your_plan":"Din plan",
+    "mic":"Mikrofon",
+    "min_left":" min kvar",
+    "obs_write":"Skriv OBS-undertextfil",
+    "onboard_back":"Tillbaka",
+    "onboard_done":"Nu kör vi",
+    "onboard_eyebrow":"Snabbguide",
+    "onboard_get_started":"Kom igång",
+    "onboard_latency_d":"Modellen fungerar som en simultantolk: den översätter några sekunder efter talaren. Fördröjningen på ~3 s är inbyggd i modellen och kan inte stängas av. Undertexten på skärmen är alltid den snabbaste signalen och visas före den upplästa översättningen.",
+    "onboard_latency_t":"Naturlig översättningsfördröjning",
+    "onboard_meeting":"Tvåvägs: lyssnar på den andra parten och skickar ditt tal tillbaka via en virtuell mikrofon.",
+    "onboard_next":"Nästa",
+    "onboard_routing":"Ljudroutning krävs för att översättningen ska nå appar. Mötesläget använder en virtuell mikrofon för att leverera din översättning till den andra sidan.",
+    "onboard_settings_d":"Kvalitetsalternativen till vänster: Smidig (balanserad — bäst synk och kvalitet) eller Sparläge (skickar endast tal, färre debiterade minuter). Här kan du också slå på transkriptsparning och texten på skärmen.",
+    "onboard_settings_t":"Inställningar",
+    "onboard_step_fmt":"Steg {n} av {total}",
+    "onboard_title":"Välkommen till Voxis",
+    "onboard_video":"Översätter systemljudet enkelriktat till ditt språk, live — ingen installation eller kabel behövs, bara klicka och kör. Hörlurar rekommenderas så att översättningen inte går i retur och översätts igen.",
+    "onboard_welcome":"Voxis översätter systemljudet i videor, spel och möten du tittar på, i realtid.",
+    "open_file":"Öppna fil",
+    "open_folder":"Öppna mapp",
+    "openai_key":"OpenAI API-nyckel",
+    "out_device":"Utdataenhet",
+    "overlay":"Text på skärmen",
+    "password":"Lösenord",
+    "password2":"Lösenord (igen)",
+    "ph_gemkey":"AIza…",
+    "ph_oaikey":"sk-…",
+    "ph_pw_again":"Ange lösenordet igen",
+    "ph_pw_min":"Minst 8 tecken",
+    "press_key":"tryck på en tangent…",
+    "privacy_badge":"Ingen bot · privat",
+    "privacy_badge_title":"Integritet & dataflöde",
+    "privacy_byok_detail":"I versionen med öppen källkod (BYOK) körs översättningen med din egen API-nyckel. Voxis kontaktar aldrig sina servrar och lägger inte till någon inspelning eller telemetrisignal.",
+    "privacy_close":"Uppfattat",
+    "privacy_lead":"Ingen bot ansluter till ditt samtal. Ditt ljud skickas endast till vår AI-översättningsleverantör för översättning.",
+    "privacy_note":"Eftersom ljudet skickas till vår AI-översättningsleverantör för översättning stannar det inte helt på din enhet. Följ lokala samtyckesregler för alla i samtalet.",
+    "privacy_policy_link":"Fullständig integritetspolicy",
+    "privacy_saas_detail":"Voxis strömmar ditt ljud endast till vår AI-översättningsleverantör för översättning. Voxis själv spelar inte in ditt ljud och lägger inte till någon separat spårningssignal — endast använda minuter rapporteras för fakturering.",
+    "privacy_step_capture":"Systemljud",
+    "privacy_step_gemini":"AI-översättning",
+    "privacy_step_playback":"Översatt ljud",
+    "privacy_title":"Integritet & dataflöde",
+    "profile":"Profil",
+    "quality":"Kvalitet",
+    "quota_exhausted":"Kvoten är slut",
+    "quota_gate_msg":"Din månatliga översättningskvot är slut. Uppgradera din licens för att starta en ny session.",
+    "ready_idle":"Redo i viloläge",
+    "record_audio":"Spela in ljud (källa + översättning, separata filer)",
+    "record_audio_hint":"Sparar varje sessions källjud och översatta ljud som två separata WAV-filer i din transkriptmapp. Av som standard eftersom källspåret innehåller riktig mänsklig röst. Endast i video-/spelläget — stängs av automatiskt i mötesläget, så den andra personens röst spelas aldrig in.",
+    "registering":"Skapar konto…",
+    "report_cancel":"Avbryt",
+    "report_cat_audio":"Ljud",
+    "report_cat_billing":"Medlemskap / fakturering",
+    "report_cat_crash":"Krasch",
+    "report_cat_other":"Övrigt",
+    "report_cat_translation":"Översättning",
+    "report_cat_ui":"Gränssnitt",
+    "report_category":"Kategori",
+    "report_close":"Stäng",
+    "report_copy":"Kopiera",
+    "report_done_intro":"Rapporten har skickats. Om du kontaktar oss är din referens:",
+    "report_done_keep":"Spara referensen om du kontaktar oss.",
+    "report_email":"E-post (valfritt)",
+    "report_email_hint":"Endast om du vill ha svar om den här rapporten.",
+    "report_email_ph":"du@exempel.se",
+    "report_err_empty":"Beskriv problemet.",
+    "report_err_failed":"Kunde inte skicka rapporten. Försök igen.",
+    "report_include_transcript":"Inkludera mitt senaste transkript (av som standard)",
+    "report_log_note":"Din applogg bifogas automatiskt (hemligheter borttagna).",
+    "report_message":"Beskriv problemet kort (valfritt)",
+    "report_message_ph":"Vad hände? Du kan lämna fältet tomt — vi tittar i loggen.",
+    "report_notice":"Detta skickar en liten teknisk ögonblicksbild till Voxis support: appversion, kanal, din Windows-version, ljudläge, kvalitetsinställning och språkpar. Hemligheter (din API-nyckel, inloggningstoken) och ditt Windows-användarnamn skickas aldrig. Ditt transkript skickas endast om du kryssar i rutan nedan.",
+    "report_open":"Rapportera ett problem",
+    "report_pii_hint":"Skriv inte lösenord eller personuppgifter.",
+    "report_preview":"Förhandsgranska data som skickas",
+    "report_queued":"Sparad — vi skickar den nästa gång du öppnar Voxis.",
+    "report_repro":"Steg för att återskapa (valfritt)",
+    "report_send":"Skicka rapport",
+    "report_sending":"Skickar…",
+    "report_sev_high":"Hög",
+    "report_sev_low":"Låg",
+    "report_sev_normal":"Normal",
+    "report_severity":"Allvarlighetsgrad",
+    "report_title":"Rapportera ett problem",
+    "reset_default":"Återställ till standard",
+    "save":"Spara",
+    "save_transcript":"Spara transkript",
+    "scenario":"Scenario",
+    "session":"Session",
+    "session_summary":"Sessionen avslutades · {m} min",
+    "settings":"Inställningar",
+    "settings_live_note":"Ändringar tillämpas direkt",
+    "shortcuts":"Kortkommandon",
+    "show":"Visa",
+    "show_tour":"Visa rundturen igen",
+    "sound_check":"Ljudtest",
+    "sound_check_fail":"Kunde inte starta ljudupptagningen.",
+    "sound_check_hint":"Spela upp en video eller lite musik — signalen som Voxis hör ska få stapeln nedan att röra sig.",
+    "sound_check_ok":"Signal upptäckt — rätt enhet ✓",
+    "sound_check_wait":"Väntar på signal…",
+    "source":"Källa",
+    "spk_labels":"Talaretiketter (S1/S2)",
+    "spk_labels_hint":"Upptäcker röstbyten på din enhet och märker undertextrader med S1/S2 när olika personer talar direkt efter varandra. Helt lokalt — inga extra molnanrop. Etiketterna visas först när en andra röst hörs, och sparade transkript innehåller dem. Den upplästa översättningen använder fortfarande en enda röst.",
+    "st_capture_lost":"Ljudupptagningen stoppades (enheten kan ha ändrats). Starta om sessionen.",
+    "start_cue":"Starta",
+    "stop":"Stoppa",
+    "store_view":"Visa i Microsoft Store",
+    "stream_title":"Översättningsflöde",
+    "subtitle":"Undertexter",
+    "tab_about":"Om",
+    "tab_login":"Logga in",
+    "tab_membership":"Medlemskap",
+    "tab_register":"Skapa konto",
+    "title_close":"Stäng",
+    "title_history":"Översättningshistorik",
+    "title_max":"Maximera",
+    "title_min":"Minimera",
+    "title_restore":"Återställ",
+    "title_settings":"Inställningar",
+    "title_theme":"Byt tema",
+    "to_other":"Till andra",
+    "to_other_hint":"Används endast i mötesläget",
+    "tour_audio_d":"Välj var det översatta ljudet ska spelas upp. Hörlurar rekommenderas så att översättningen inte går i retur och översätts igen.",
+    "tour_audio_t":"Uppspelningsenhet",
+    "tour_lang_d":"Välj ditt översättningsspråk till vänster och språket som skickas till den andra sidan till höger. I videoläget är det bara det vänstra (översätt till) som spelar roll.",
+    "tour_lang_t":"Välj språk",
+    "tour_profile_d":"Välj en profil för hur högt originalljudet och översättningen spelas upp. Finjustera original- och översättningsnivåerna med reglagen nedan.",
+    "tour_profile_t":"Ljudprofil",
+    "tour_ready_d":"Det var allt. Klicka på Video & spel eller Möte ovan för att börja översätta. Du kan spela upp rundturen igen när som helst via Inställningar → Om.",
+    "tour_ready_t":"Du är redo",
+    "tour_skip":"Hoppa över",
+    "transcript_folder":"Transkriptmapp",
+    "translation":"Översättning",
+    "ui_lang":"Gränssnittsspråk",
+    "unlimited":"∞ Obegränsat",
+    "update_later":"Senare",
+    "update_now":"Uppdatera nu",
+    "upgrade_plan":"Uppgradera plan →",
+    "vad_silent":"Tyst",
+    "vad_speaking":"Tal upptäckt",
+    "video_t1":"Video & spel",
+    "video_t2":"Översätt systemljud live",
+    "voice":"Översättningsröst",
+    "vol_label":"Översättningsvolym",
+    "waiting_signal":"Väntar på insignal",
+  },
+  "sr":{
+    "about_powered":"Pokreće ga napredni AI prevod.",
+    "al_contact":"Kontakt",
+    "al_pricing":"Cene",
+    "al_privacy":"Privatnost",
+    "al_terms":"Uslovi",
+    "alert_key_failed":"Ključ nije mogao da se sačuva. Osveži sesiju i pokušaj ponovo.",
+    "audio":"Zvuk",
+    "auth_browser_wait":"Dovrši prijavu u pregledaču…",
+    "auth_create":"Napravi nalog",
+    "auth_forgot":"Zaboravljena lozinka?",
+    "auth_google":"Nastavi sa Google-om",
+    "auth_no_account":"Nemaš nalog? ",
+    "auth_offline":"Server nije dostupan. Proveri internet vezu.",
+    "auth_or":"ili",
+    "auth_retry":"Pokušaj ponovo",
+    "auth_sub":" · Prijavi se za detalje licence.",
+    "badge_upgrade":"Nadogradi da ukloniš →",
+    "behind_suffix":"s kašnjenja",
+    "brand_badge":"Prikaži bedž \"Powered by Voxis\"",
+    "brand_badge_locked":"Potrebna je pretplata",
+    "browse":"Potraži…",
+    "byok_active":"BYOK aktivan",
+    "byok_hint":"Ova verzija zahteva tvoj sopstveni Gemini API ključ za rad. ",
+    "byok_openai_hint":"Opciono — potrebno samo za korišćenje OpenAI motora. ",
+    "cable_cancel":"Otkaži",
+    "cable_install":"Instaliraj VB-CABLE",
+    "cable_lead":"Režim sastanka može da pošalje tvoj prevedeni glas nazad u poziv, tako da te sagovornik čuje na svom jeziku. Za to je potreban besplatan virtuelni mikrofon VB-CABLE. Opcion je — bez njega Sastanak i dalje radi kao samo slušanje (ti sagovornika čuješ prevedeno).",
+    "cable_manual":"Ova verzija ne može da instalira drajvere umesto tebe. Besplatno preuzmi VB-CABLE sa vb-audio.com, instaliraj ga, pa ponovo pokreni Voxis.",
+    "cable_required":"Dvosmerni sastanak — slanje tvog prevedenog glasa u poziv — koristi VB-CABLE, opcioni virtuelni mikrofon treće strane. Nije obavezan: bez njega režim sastanka radi samo kao slušanje. Da uključiš dvosmerni rad, sam instaliraj VB-CABLE, pa ponovo otvori Voxis.",
+    "cable_step1":"Instaliraj VB-CABLE (besplatno, oko 1 minut).",
+    "cable_step2":"Ponovo pokreni Voxis — automatski detektuje virtuelni mikrofon.",
+    "cable_step3":"U aplikaciji za sastanke (Zoom · Teams · Meet) izaberi „CABLE Output“ kao mikrofon. Ostalo rešava Voxis.",
+    "cable_title":"Dvosmerni sastanak (opciono)",
+    "checking_session":"Provera sesije…",
+    "clear":"Obriši",
+    "clear_stream":"Očisti tok",
+    "confirm_clear_byok":"Sačuvani Gemini API ključ će biti obrisan. Prevođenje ne može da počne dok ne uneseš novi ključ. Nastaviti?",
+    "conn":"Veza",
+    "consent_accept":"Razumem, pokreni",
+    "consent_cancel":"Otkaži",
+    "consent_dontshow":"Ne prikazuj ponovo",
+    "consent_p1":"U režimu sastanka Voxis i sluša drugu stranu i šalje joj tvoj govor preko virtuelnog mikrofona.",
+    "consent_p2":"Snimanje ili prevođenje zvuka može zahtevati saglasnost svih učesnika tamo gde se nalaziš. Pre početka se uveri da poštuješ važeće zakone i pravila sastanka.",
+    "consent_title":"Režim sastanka — saglasnost",
+    "copy_turn":"Kopiraj prevod",
+    "duck_label":"Originalni zvuk (tokom govora)",
+    "email":"Imejl",
+    "empty_big":"Spremno za slušanje",
+    "empty_small":"Izaberi scenario sa leve strane da počneš.<br>Prevodi ovde teku u realnom vremenu.",
+    "err_conn":"Greška u vezi. Pokušaj ponovo.",
+    "err_login_failed":"Prijava nije uspela. Proveri podatke.",
+    "err_need_credentials":"Imejl i lozinka su obavezni.",
+    "err_pw_mismatch":"Lozinke se ne poklapaju.",
+    "err_pw_short":"Lozinka mora imati najmanje 8 znakova.",
+    "err_register_failed":"Registracija nije uspela. Ovaj imejl je možda već u upotrebi.",
+    "foot_latency":"kašnjenje",
+    "foot_model":"model",
+    "foot_ready":"Spremno",
+    "foot_sample":"uzorak",
+    "foot_session":"sesija",
+    "gemini_key":"Gemini API ključ",
+    "general":"Opšte",
+    "hear":"Prevedi na",
+    "hide":"Sakrij",
+    "history_delete":"Obriši",
+    "history_export":"Izvezi:",
+    "history_fmt_srt":"SRT",
+    "history_fmt_txt":"TXT",
+    "history_fmt_vtt":"VTT",
+    "history_none":"Nema sačuvanih sesija.",
+    "history_pick":"Izaberi sesiju za prikaz.",
+    "history_search_ph":"Pretraži istoriju…",
+    "history_title":"Istorija prevoda",
+    "history_turns_n":"{n} replika",
+    "hk_hint":"Klikni na polje i pritisni novu kombinaciju da je promeniš.",
+    "latency_note":"Prevod stiže nekoliko sekundi nakon govora — to je prirodno kašnjenje simultanog modela. Titl se pojavljuje pre zvuka.",
+    "limit_body":"Besplatni minuti se obnavljaju sledećeg meseca. Da nastaviš odmah, dodaj paket minuta — minuti se dodaju na tvoj nalog i nikada ne ističu.",
+    "limit_cta":"Nabavi još minuta →",
+    "limit_dismiss":"Ne sada",
+    "limit_stat_suffix":"besplatnih minuta iskorišćeno",
+    "limit_title":"Besplatni minuti za ovaj mesec su potrošeni",
+    "limit_warn_prefix":"Pažnja — još oko ",
+    "live":"uživo",
+    "logging_in":"Prijavljivanje…",
+    "logout":"Odjavi se",
+    "manage_plan":"Upravljaj planom",
+    "meeting_caveat":"Režim sastanka zahteva virtuelni mikrofon da pošalje tvoj prevod sagovorniku. Bez njega je aktivno samo slušanje.",
+    "meeting_t1":"Sastanak",
+    "mem_active_plan":"Aktivni plan",
+    "mem_byok_note":"Ova verzija radi na tvom sopstvenom Gemini ključu; bez pretplate. Ključem upravljaj na kartici Opšte.",
+    "mem_creator_meta":"700 min/mes · svi jezici · transkripti",
+    "mem_dev_byok":"Programer (BYOK)",
+    "mem_invite":"Pozovi prijatelja",
+    "mem_pro_meta":"1.500 min/mes · prioritet · režim sastanka",
+    "mem_this_month":"Ovog meseca: ",
+    "mem_unlimited":"Neograničeni minuti",
+    "mem_upgrade":"Nadogradi",
+    "mem_your_key":"Tvoj ključ",
+    "mem_your_plan":"Tvoj plan",
+    "mic":"Mikrofon",
+    "min_left":" min preostalo",
+    "obs_write":"Upisuj OBS fajl titlova",
+    "onboard_back":"Nazad",
+    "onboard_done":"Krenimo",
+    "onboard_eyebrow":"Brzi vodič",
+    "onboard_get_started":"Započni",
+    "onboard_latency_d":"Model radi kao simultani prevodilac: prevodi nekoliko sekundi iza govornika. Ovo kašnjenje od ~3 s svojstveno je modelu i ne može se isključiti. Titl na ekranu je uvek najbrži signal i pojavljuje se pre izgovorenog prevoda.",
+    "onboard_latency_t":"Prirodno kašnjenje prevoda",
+    "onboard_meeting":"Dvosmerno: sluša drugu stranu i šalje tvoj govor nazad preko virtuelnog mikrofona.",
+    "onboard_next":"Dalje",
+    "onboard_routing":"Rutiranje zvuka je potrebno da bi prevod stigao do aplikacija. Režim sastanka koristi virtuelni mikrofon da isporuči tvoj prevod sagovorniku.",
+    "onboard_settings_d":"Opcije kvaliteta levo: Tečno (balansirano — najbolja sinhronizacija i kvalitet) i Štednja (šalje samo govor, manje naplaćenih minuta). Ovde možeš uključiti i čuvanje transkripta i tekst na ekranu.",
+    "onboard_settings_t":"Podešavanja",
+    "onboard_step_fmt":"Korak {n} od {total}",
+    "onboard_title":"Dobrodošli u Voxis",
+    "onboard_video":"Prevodi sistemski zvuk jednosmerno na tvoj jezik, uživo — bez podešavanja i kablova, samo klikni i kreni. Preporučuju se slušalice da se prevod ne bi vratio u petlju i ponovo prevodio.",
+    "onboard_welcome":"Voxis u realnom vremenu prevodi sistemski zvuk videa, igara i sastanaka koje pratiš.",
+    "open_file":"Otvori fajl",
+    "open_folder":"Otvori fasciklu",
+    "openai_key":"OpenAI API ključ",
+    "out_device":"Izlazni uređaj",
+    "overlay":"Tekst na ekranu",
+    "password":"Lozinka",
+    "password2":"Lozinka (ponovo)",
+    "ph_gemkey":"AIza…",
+    "ph_oaikey":"sk-…",
+    "ph_pw_again":"Ponovo unesi lozinku",
+    "ph_pw_min":"Najmanje 8 znakova",
+    "press_key":"pritisni taster…",
+    "privacy_badge":"Bez bota · privatno",
+    "privacy_badge_title":"Privatnost i tok podataka",
+    "privacy_byok_detail":"U open-source (BYOK) verziji prevod radi na tvom sopstvenom API ključu. Voxis nikada ne komunicira sa svojim serverima i ne dodaje snimanje ni telemetriju.",
+    "privacy_close":"Razumem",
+    "privacy_lead":"Bot se ne pridružuje tvom pozivu. Zvuk ide isključivo našem provajderu AI prevoda radi prevođenja.",
+    "privacy_note":"Pošto se zvuk šalje našem provajderu AI prevoda radi prevođenja, ne ostaje u potpunosti na tvom uređaju. Poštuj lokalna pravila o saglasnosti svih učesnika poziva.",
+    "privacy_policy_link":"Puna politika privatnosti",
+    "privacy_saas_detail":"Voxis šalje tvoj zvuk isključivo našem provajderu AI prevoda radi prevođenja. Sam Voxis ne snima tvoj zvuk niti dodaje poseban signal za praćenje — radi naplate se prijavljuju samo iskorišćeni minuti.",
+    "privacy_step_capture":"Sistemski zvuk",
+    "privacy_step_gemini":"AI prevod",
+    "privacy_step_playback":"Prevedeni zvuk",
+    "privacy_title":"Privatnost i tok podataka",
+    "profile":"Profil",
+    "quality":"Kvalitet",
+    "quota_exhausted":"Kvota potrošena",
+    "quota_gate_msg":"Tvoja mesečna kvota prevoda je potrošena. Nadogradi licencu da pokreneš novu sesiju.",
+    "ready_idle":"Miruje, spremno",
+    "record_audio":"Snimaj zvuk (izvor + prevod, odvojeni fajlovi)",
+    "record_audio_hint":"Čuva izvorni i prevedeni zvuk svake sesije kao dva odvojena WAV fajla u tvojoj fascikli za transkripte. Podrazumevano je isključeno jer izvorna traka sadrži pravi ljudski glas. Radi samo u režimu Video/Igre — u režimu sastanka se automatski isključuje, tako da se glas sagovornika uživo nikada ne snima.",
+    "registering":"Registrovanje…",
+    "report_cancel":"Otkaži",
+    "report_cat_audio":"Zvuk",
+    "report_cat_billing":"Članstvo / naplata",
+    "report_cat_crash":"Pad aplikacije",
+    "report_cat_other":"Drugo",
+    "report_cat_translation":"Prevod",
+    "report_cat_ui":"Interfejs",
+    "report_category":"Kategorija",
+    "report_close":"Zatvori",
+    "report_copy":"Kopiraj",
+    "report_done_intro":"Prijava poslata. Ako nas kontaktiraš, tvoja referenca je:",
+    "report_done_keep":"Sačuvaj ovu referencu za slučaj da nas kontaktiraš.",
+    "report_email":"Imejl (opciono)",
+    "report_email_hint":"Samo ako želiš odgovor u vezi sa ovom prijavom.",
+    "report_email_ph":"ime@primer.com",
+    "report_err_empty":"Opiši problem.",
+    "report_err_failed":"Prijava nije mogla da se pošalje. Pokušaj ponovo.",
+    "report_include_transcript":"Priloži moj nedavni transkript (podrazumevano isključeno)",
+    "report_log_note":"Dnevnik aplikacije se prilaže automatski (tajne su uklonjene).",
+    "report_message":"Ukratko opiši problem (opciono)",
+    "report_message_ph":"Šta se desilo? Možeš ostaviti prazno — pogledaćemo dnevnik.",
+    "report_notice":"Ovo šalje Voxis podršci mali tehnički presek: verziju aplikacije, kanal, tvoju verziju Windows-a, audio režim, podešavanje kvaliteta i jezički par. Tajne (tvoj API ključ, token za prijavu) i tvoje Windows korisničko ime se nikada ne šalju. Transkript se šalje samo ako označiš polje ispod.",
+    "report_open":"Prijavi problem",
+    "report_pii_hint":"Ne unosi lozinke ni lične podatke.",
+    "report_preview":"Pregledaj podatke koji se šalju",
+    "report_queued":"Sačuvano — poslaćemo je sledeći put kad otvoriš Voxis.",
+    "report_repro":"Koraci za ponavljanje (opciono)",
+    "report_send":"Pošalji prijavu",
+    "report_sending":"Slanje…",
+    "report_sev_high":"Visoka",
+    "report_sev_low":"Niska",
+    "report_sev_normal":"Normalna",
+    "report_severity":"Ozbiljnost",
+    "report_title":"Prijavi problem",
+    "reset_default":"Vrati na podrazumevano",
+    "save":"Sačuvaj",
+    "save_transcript":"Sačuvaj transkript",
+    "scenario":"Scenario",
+    "session":"Sesija",
+    "session_summary":"Sesija završena · {m} min",
+    "settings":"Podešavanja",
+    "settings_live_note":"Promene se primenjuju odmah",
+    "shortcuts":"Prečice na tastaturi",
+    "show":"Prikaži",
+    "show_tour":"Prikaži vodič ponovo",
+    "sound_check":"Provera zvuka",
+    "sound_check_fail":"Hvatanje zvuka nije moglo da se pokrene.",
+    "sound_check_hint":"Pusti video ili muziku — signal koji Voxis čuje treba da pomera traku ispod.",
+    "sound_check_ok":"Signal detektovan — uređaj je ispravan ✓",
+    "sound_check_wait":"Čekanje signala…",
+    "source":"Izvor",
+    "spk_labels":"Oznake govornika (S1/S2)",
+    "spk_labels_hint":"Prepoznaje promene glasa na tvom uređaju i označava redove titla kao S1/S2 kada različite osobe govore jedna za drugom. Radi potpuno lokalno — bez dodatnih poziva ka oblaku. Oznake se prikazuju tek kada se čuje drugi glas, a upisuju se i u sačuvane transkripte. Izgovoreni prevod i dalje koristi jedan glas.",
+    "st_capture_lost":"Hvatanje zvuka je stalo (uređaj se možda promenio). Ponovo pokreni sesiju.",
+    "start_cue":"Pokreni",
+    "stop":"Zaustavi",
+    "store_view":"Prikaži u Microsoft Store-u",
+    "stream_title":"Tok prevoda",
+    "subtitle":"Titlovi",
+    "tab_about":"O aplikaciji",
+    "tab_login":"Prijava",
+    "tab_membership":"Članstvo",
+    "tab_register":"Registracija",
+    "title_close":"Zatvori",
+    "title_history":"Istorija prevoda",
+    "title_max":"Uvećaj",
+    "title_min":"Umanji",
+    "title_restore":"Vrati",
+    "title_settings":"Podešavanja",
+    "title_theme":"Promeni temu",
+    "to_other":"Ka sagovorniku",
+    "to_other_hint":"Koristi se samo u režimu sastanka",
+    "tour_audio_d":"Izaberi gde se pušta prevedeni zvuk. Preporučuju se slušalice da se prevod ne bi vratio i ponovo prevodio.",
+    "tour_audio_t":"Uređaj za reprodukciju",
+    "tour_lang_d":"Levo izaberi jezik na koji se prevodi, a desno jezik koji se šalje sagovorniku. U Video režimu bitan je samo levi (prevedi na).",
+    "tour_lang_t":"Izaberi jezike",
+    "tour_profile_d":"Izaberi profil koji određuje koliko glasno se čuju original i prevod. Nivoe originala i prevoda fino podesi klizačima ispod.",
+    "tour_profile_t":"Zvučni profil",
+    "tour_ready_d":"To je sve. Klikni na Video i igre ili Sastanak iznad da počneš da prevodiš. Ovaj vodič možeš ponovo pokrenuti bilo kada iz Podešavanja → O aplikaciji.",
+    "tour_ready_t":"Sve je spremno",
+    "tour_skip":"Preskoči",
+    "transcript_folder":"Fascikla za transkripte",
+    "translation":"Prevod",
+    "ui_lang":"Jezik interfejsa",
+    "unlimited":"∞ Neograničeno",
+    "update_later":"Kasnije",
+    "update_now":"Ažuriraj sada",
+    "upgrade_plan":"Nadogradi plan →",
+    "vad_silent":"Tišina",
+    "vad_speaking":"Govor detektovan",
+    "video_t1":"Video i igre",
+    "video_t2":"Prevodi sistemski zvuk uživo",
+    "voice":"Glas prevoda",
+    "vol_label":"Jačina prevoda",
+    "waiting_signal":"Čekanje ulaznog signala",
+  },
+  "zh-Hant":{
+    "about_powered":"由先進的 AI 翻譯技術驅動。",
+    "al_contact":"聯絡我們",
+    "al_pricing":"價格",
+    "al_privacy":"隱私權",
+    "al_terms":"條款",
+    "alert_key_failed":"無法儲存金鑰。請重新整理工作階段後再試一次。",
+    "audio":"音訊",
+    "auth_browser_wait":"請在瀏覽器中完成登入…",
+    "auth_create":"建立帳號",
+    "auth_forgot":"忘記密碼？",
+    "auth_google":"使用 Google 繼續",
+    "auth_no_account":"還沒有帳號？",
+    "auth_offline":"無法連線到伺服器。請檢查你的網路連線。",
+    "auth_or":"或",
+    "auth_retry":"重試",
+    "auth_sub":" · 登入以檢視授權資訊。",
+    "badge_upgrade":"升級即可移除 →",
+    "behind_suffix":" 秒延遲",
+    "brand_badge":"顯示「Powered by Voxis」徽章",
+    "brand_badge_locked":"需要訂閱",
+    "browse":"瀏覽…",
+    "byok_active":"BYOK 已啟用",
+    "byok_hint":"此版本需要你自己的 Gemini API 金鑰才能執行。 ",
+    "byok_openai_hint":"選填——僅在使用 OpenAI 引擎時需要。 ",
+    "cable_cancel":"取消",
+    "cable_install":"安裝 VB-CABLE",
+    "cable_lead":"會議模式可以把你翻譯後的語音送回通話中，讓對方以他的語言聽到你。這需要一款名為 VB-CABLE 的免費虛擬麥克風。它是選用的——沒有安裝時，會議模式仍可用僅聆聽方式運作（你會聽到對方的翻譯）。",
+    "cable_manual":"此版本無法為你安裝驅動程式。請自 vb-audio.com 免費下載並安裝 VB-CABLE，然後重新啟動 Voxis。",
+    "cable_required":"雙向會議——把你翻譯後的語音送進通話——需使用 VB-CABLE，這是一款選用的第三方虛擬麥克風。它並非必要：沒有安裝時，會議模式會以僅聆聽方式執行。若要啟用雙向功能，請自行安裝 VB-CABLE，然後重新開啟 Voxis。",
+    "cable_step1":"安裝 VB-CABLE（免費，約 1 分鐘）。",
+    "cable_step2":"重新啟動 Voxis——它會自動偵測虛擬麥克風。",
+    "cable_step3":"在你的會議應用程式（Zoom · Teams · Meet）中，將麥克風選為「CABLE Output」。其餘交給 Voxis 處理。",
+    "cable_title":"雙向會議（選用）",
+    "checking_session":"正在檢查工作階段…",
+    "clear":"清除",
+    "clear_stream":"清除串流",
+    "confirm_clear_byok":"將刪除已儲存的 Gemini API 金鑰。在輸入新的金鑰之前無法開始翻譯。要繼續嗎？",
+    "conn":"連線",
+    "consent_accept":"知道了，開始",
+    "consent_cancel":"取消",
+    "consent_dontshow":"不再顯示",
+    "consent_p1":"在會議模式中，Voxis 會聆聽對方說話，同時透過虛擬麥克風將你的語音傳送給對方。",
+    "consent_p2":"在你所在的地區，錄音或翻譯音訊可能需要取得所有與會者的同意。開始前請確認你已遵守適用法律與會議規範。",
+    "consent_title":"會議模式——同意事項",
+    "copy_turn":"複製翻譯",
+    "duck_label":"原始音訊（說話時）",
+    "email":"電子郵件",
+    "empty_big":"準備聆聽",
+    "empty_small":"從左側選擇情境即可開始。<br>翻譯會在這裡即時串流顯示。",
+    "err_conn":"連線錯誤。請再試一次。",
+    "err_login_failed":"登入失敗。請檢查你的資料。",
+    "err_need_credentials":"請輸入電子郵件和密碼。",
+    "err_pw_mismatch":"兩次密碼不一致。",
+    "err_pw_short":"密碼至少需 8 個字元。",
+    "err_register_failed":"註冊失敗。此電子郵件可能已被使用。",
+    "foot_latency":"延遲",
+    "foot_model":"模型",
+    "foot_ready":"就緒",
+    "foot_sample":"取樣",
+    "foot_session":"工作階段",
+    "gemini_key":"Gemini API 金鑰",
+    "general":"一般",
+    "hear":"翻譯成",
+    "hide":"隱藏",
+    "history_delete":"刪除",
+    "history_export":"匯出：",
+    "history_fmt_srt":"SRT",
+    "history_fmt_txt":"TXT",
+    "history_fmt_vtt":"VTT",
+    "history_none":"沒有已儲存的工作階段。",
+    "history_pick":"選擇要檢視的工作階段。",
+    "history_search_ph":"搜尋紀錄…",
+    "history_title":"翻譯紀錄",
+    "history_turns_n":"{n} 個段落",
+    "hk_hint":"點選欄位後按下新的按鍵組合即可變更。",
+    "latency_note":"翻譯會在語音之後幾秒鐘才出現——這是同步翻譯模型的自然延遲。字幕會比語音先出現。",
+    "limit_body":"你的免費分鐘數將於下個月更新。想立即繼續，可加購分鐘數方案——分鐘數會加到你的帳戶且永不過期。",
+    "limit_cta":"取得更多分鐘數 →",
+    "limit_dismiss":"暫時不要",
+    "limit_stat_suffix":"免費分鐘數已使用",
+    "limit_title":"你已用完本月的免費分鐘數",
+    "limit_warn_prefix":"注意——大約還有 ",
+    "live":"即時",
+    "logging_in":"登入中…",
+    "logout":"登出",
+    "manage_plan":"管理方案",
+    "meeting_caveat":"會議模式需要虛擬麥克風才能將你的翻譯傳送給對方。若沒有安裝，只會啟用聆聽功能。",
+    "meeting_t1":"會議",
+    "mem_active_plan":"目前方案",
+    "mem_byok_note":"此版本使用你自己的 Gemini 金鑰執行，無需訂閱。可在「一般」分頁管理金鑰。",
+    "mem_creator_meta":"每月 700 分鐘 · 全部語言 · 逐字稿",
+    "mem_dev_byok":"開發者（BYOK）",
+    "mem_invite":"邀請好友",
+    "mem_pro_meta":"每月 1,500 分鐘 · 優先處理 · 會議模式",
+    "mem_this_month":"本月：",
+    "mem_unlimited":"無限分鐘數",
+    "mem_upgrade":"升級",
+    "mem_your_key":"你的金鑰",
+    "mem_your_plan":"你的方案",
+    "mic":"麥克風",
+    "min_left":" 分鐘可用",
+    "obs_write":"寫入 OBS 字幕檔",
+    "onboard_back":"上一步",
+    "onboard_done":"開始吧",
+    "onboard_eyebrow":"快速導覽",
+    "onboard_get_started":"開始使用",
+    "onboard_latency_d":"模型的運作方式如同同步口譯員：翻譯會落後說話者幾秒鐘。這約 3 秒的延遲是模型本身的特性，無法關閉。畫面上的字幕永遠是最快的訊號，會比語音翻譯先出現。",
+    "onboard_latency_t":"自然的翻譯延遲",
+    "onboard_meeting":"雙向：聆聽對方說話，並透過虛擬麥克風把你的語音傳送回去。",
+    "onboard_next":"下一步",
+    "onboard_routing":"翻譯要傳入其他應用程式需要音訊路由。會議模式使用虛擬麥克風將你的翻譯傳送給對方。",
+    "onboard_settings_d":"左側的品質選項：流暢(均衡——最佳同步與品質)與節省（只傳送語音，計費分鐘較少）。你也可以在這裡開啟逐字稿儲存與浮動字幕。",
+    "onboard_settings_t":"設定",
+    "onboard_step_fmt":"第 {n} 步，共 {total} 步",
+    "onboard_title":"歡迎使用 Voxis",
+    "onboard_video":"將系統音訊單向即時翻譯成你的語言——不需任何設定或線材，點一下就能開始。建議使用耳機，以免翻譯的聲音回傳後被重複翻譯。",
+    "onboard_welcome":"Voxis 會即時翻譯你觀看的影片、遊戲和會議的系統音訊。",
+    "open_file":"開啟檔案",
+    "open_folder":"開啟資料夾",
+    "openai_key":"OpenAI API 金鑰",
+    "out_device":"輸出裝置",
+    "overlay":"浮動字幕",
+    "password":"密碼",
+    "password2":"密碼（再次輸入）",
+    "ph_gemkey":"AIza…",
+    "ph_oaikey":"sk-…",
+    "ph_pw_again":"再次輸入密碼",
+    "ph_pw_min":"至少 8 個字元",
+    "press_key":"請按下按鍵…",
+    "privacy_badge":"無機器人 · 私密",
+    "privacy_badge_title":"隱私權與資料流",
+    "privacy_byok_detail":"在開放原始碼（BYOK）版本中，翻譯使用你自己的 API 金鑰執行。Voxis 完全不會連線到自家伺服器，也不會加入任何錄音或遙測信標。",
+    "privacy_close":"知道了",
+    "privacy_lead":"不會有機器人加入你的通話。你的音訊只會傳送給我們的 AI 翻譯供應商進行翻譯。",
+    "privacy_note":"由於音訊會傳送給我們的 AI 翻譯供應商進行翻譯，因此不會完全留在你的裝置上。請遵守當地規範，取得通話中所有人的同意。",
+    "privacy_policy_link":"完整隱私權政策",
+    "privacy_saas_detail":"Voxis 只會將你的音訊串流給我們的 AI 翻譯供應商進行翻譯。Voxis 本身不會錄下你的音訊，也不會加入額外的追蹤信標——只會回報使用的分鐘數以供計費。",
+    "privacy_step_capture":"系統音訊",
+    "privacy_step_gemini":"AI 翻譯",
+    "privacy_step_playback":"翻譯後音訊",
+    "privacy_title":"隱私權與資料流",
+    "profile":"設定檔",
+    "quality":"品質",
+    "quota_exhausted":"配額已用完",
+    "quota_gate_msg":"你本月的翻譯配額已用完。請升級授權以開始新的工作階段。",
+    "ready_idle":"閒置，準備就緒",
+    "record_audio":"錄製音訊（原音＋翻譯，個別檔案）",
+    "record_audio_hint":"將每次工作階段的原始音訊與翻譯後音訊，以兩個獨立的 WAV 檔儲存到你的逐字稿資料夾。由於原音音軌包含真實人聲，預設為關閉。僅適用於影片／遊戲模式——在會議模式會自動關閉，因此絕不會錄下對方的即時語音。",
+    "registering":"註冊中…",
+    "report_cancel":"取消",
+    "report_cat_audio":"音訊",
+    "report_cat_billing":"會員／帳務",
+    "report_cat_crash":"當機",
+    "report_cat_other":"其他",
+    "report_cat_translation":"翻譯",
+    "report_cat_ui":"介面",
+    "report_category":"類別",
+    "report_close":"關閉",
+    "report_copy":"複製",
+    "report_done_intro":"回報已送出。若要與我們聯絡，你的參考編號為：",
+    "report_done_keep":"與我們聯絡時請提供此參考編號。",
+    "report_email":"電子郵件（選填）",
+    "report_email_hint":"僅在你希望收到此回報的回覆時填寫。",
+    "report_email_ph":"you@example.com",
+    "report_err_empty":"請描述問題。",
+    "report_err_failed":"無法送出你的回報。請再試一次。",
+    "report_include_transcript":"附上我最近的逐字稿（預設關閉）",
+    "report_log_note":"應用程式記錄檔會自動附上（已移除機密資訊）。",
+    "report_message":"簡短描述問題（選填）",
+    "report_message_ph":"發生了什麼事？可以留空——我們會查看記錄檔。",
+    "report_notice":"這會傳送一份簡短的技術快照給 Voxis 支援團隊：應用程式版本、發行通道、你的 Windows 版本、音訊模式、品質設定與語言組合。機密資訊（你的 API 金鑰、登入權杖）和 Windows 使用者名稱絕不會包含在內。只有勾選下方核取方塊時，才會傳送你的逐字稿。",
+    "report_open":"回報問題",
+    "report_pii_hint":"請勿輸入密碼或個人資料。",
+    "report_preview":"預覽將傳送的資料",
+    "report_queued":"已儲存——下次開啟 Voxis 時將自動送出。",
+    "report_repro":"重現步驟（選填）",
+    "report_send":"送出回報",
+    "report_sending":"傳送中…",
+    "report_sev_high":"高",
+    "report_sev_low":"低",
+    "report_sev_normal":"一般",
+    "report_severity":"嚴重程度",
+    "report_title":"回報問題",
+    "reset_default":"還原預設值",
+    "save":"儲存",
+    "save_transcript":"儲存逐字稿",
+    "scenario":"情境",
+    "session":"工作階段",
+    "session_summary":"工作階段已結束 · {m} 分鐘",
+    "settings":"設定",
+    "settings_live_note":"變更會立即生效",
+    "shortcuts":"鍵盤快速鍵",
+    "show":"顯示",
+    "show_tour":"再次顯示導覽",
+    "sound_check":"聲音檢查",
+    "sound_check_fail":"無法啟動音訊擷取。",
+    "sound_check_hint":"播放影片或音樂——Voxis 聽到的訊號應該會讓下方的音量條跳動。",
+    "sound_check_ok":"偵測到訊號——裝置正確 ✓",
+    "sound_check_wait":"等待訊號中…",
+    "source":"來源",
+    "spk_labels":"說話者標籤（S1/S2）",
+    "spk_labels_hint":"當不同的人接連說話時，在你的裝置上偵測聲音變化，並將字幕段落標記為 S1/S2。完全在本機執行——不會產生額外的雲端呼叫。標籤只有在聽到第二個聲音後才會顯示，並會寫入儲存的逐字稿。語音翻譯仍以單一聲音播出。",
+    "st_capture_lost":"音訊擷取已停止（裝置可能已變更）。請重新啟動工作階段。",
+    "start_cue":"開始",
+    "stop":"停止",
+    "store_view":"在 Microsoft Store 檢視",
+    "stream_title":"翻譯串流",
+    "subtitle":"字幕",
+    "tab_about":"關於",
+    "tab_login":"登入",
+    "tab_membership":"會員",
+    "tab_register":"註冊",
+    "title_close":"關閉",
+    "title_history":"翻譯紀錄",
+    "title_max":"最大化",
+    "title_min":"最小化",
+    "title_restore":"還原",
+    "title_settings":"設定",
+    "title_theme":"切換主題",
+    "to_other":"給對方",
+    "to_other_hint":"僅在會議模式使用",
+    "tour_audio_d":"選擇翻譯後音訊的播放位置。建議使用耳機，以免翻譯的聲音再次傳入而被重複翻譯。",
+    "tour_audio_t":"播放裝置",
+    "tour_lang_d":"左邊選擇你要的翻譯語言，右邊選擇傳送給對方的語言。在影片模式中只有左邊（翻譯成）有作用。",
+    "tour_lang_t":"選擇語言",
+    "tour_profile_d":"選擇一個設定檔，決定原始音訊與翻譯的播放音量。可用下方滑桿微調原音與翻譯的音量。",
+    "tour_profile_t":"聲音設定檔",
+    "tour_ready_d":"就這樣。點選上方的「影片與遊戲」或「會議」即可開始翻譯。你隨時可以在「設定 → 關於」重新播放此導覽。",
+    "tour_ready_t":"一切就緒",
+    "tour_skip":"略過",
+    "transcript_folder":"逐字稿資料夾",
+    "translation":"翻譯",
+    "ui_lang":"介面語言",
+    "unlimited":"∞ 無限制",
+    "update_later":"稍後",
+    "update_now":"立即更新",
+    "upgrade_plan":"升級方案 →",
+    "vad_silent":"無聲",
+    "vad_speaking":"偵測到語音",
+    "video_t1":"影片與遊戲",
+    "video_t2":"即時翻譯系統音訊",
+    "voice":"翻譯語音",
+    "vol_label":"翻譯音量",
+    "waiting_signal":"等待輸入訊號",
   },
 };
 const I18N_EXTRA = {"en":{"tab_membership":"Membership","tab_about":"About","al_pricing":"Pricing","al_terms":"Terms","al_privacy":"Privacy","al_contact":"Contact","about_powered":"Powered by advanced AI translation.","mem_active_plan":"Active plan","mem_unlimited":"Unlimited minutes","mem_this_month":"This month: ","mem_your_plan":"Your plan","mem_upgrade":"Upgrade","mem_creator_meta":"700 min/mo · all languages · transcripts","mem_pro_meta":"1,500 min/mo · priority · meeting mode","mem_dev_byok":"Developer (BYOK)","mem_your_key":"Your key","mem_byok_note":"This build runs on your own Gemini key; no subscription. Manage it in the General tab.","badge_upgrade":"Upgrade to remove →","auth_no_account":"No account? ","auth_create":"Create account","auth_forgot":"Forgot password?","auth_offline":"Could not reach the server. Check your internet connection.","auth_retry":"Retry","store_view":"View in Microsoft Store","open_file":"Open file","open_folder":"Open folder","transcript_folder":"Transcript folder","browse":"Browse…","reset_default":"Reset to default","record_audio":"Record audio (source + translation, separate files)","record_audio_hint":"Saves each session's source audio and translated audio as two separate WAV files in your transcript folder. Off by default because the source track contains real human voice. Video/Game mode only — turned off automatically in Meeting mode, so the other person's live voice is never recorded.","st_capture_lost":"Audio capture stopped (the device may have changed). Restart the session.","openai_key":"OpenAI API key","ph_oaikey":"sk-…","byok_openai_hint":"Optional — only needed to use the OpenAI engine. ","privacy_policy_link":"Full privacy policy","report_open":"Report a problem","report_title":"Report a problem","report_notice":"This sends Voxis support a small technical snapshot: app version, channel, your Windows version, the audio mode, quality setting and language pair. Secrets (your API key, login token) and your Windows username are never included. Your transcript is sent only if you tick the box below.","report_category":"Category","report_cat_audio":"Audio","report_cat_translation":"Translation","report_cat_billing":"Membership / billing","report_cat_crash":"Crash","report_cat_ui":"Interface","report_cat_other":"Other","report_severity":"Severity","report_sev_low":"Low","report_sev_normal":"Normal","report_sev_high":"High","report_message":"Briefly describe the problem (optional)","report_message_ph":"What happened? You can leave this blank — we'll look at the log.","report_log_note":"Your app log is attached automatically (secrets removed).","report_pii_hint":"Don't type passwords or personal details.","report_repro":"Steps to reproduce (optional)","report_email":"Email (optional)","report_email_ph":"you@example.com","report_email_hint":"Only if you want a reply about this report.","report_include_transcript":"Include my recent transcript (off by default)","report_preview":"Preview data to be sent","report_cancel":"Cancel","report_send":"Send report","report_sending":"Sending…","report_close":"Close","report_copy":"Copy","report_done_intro":"Report sent. If you contact us, your reference is:","report_done_keep":"Keep this reference if you contact us.","report_queued":"Saved — we'll send it the next time you open Voxis.","report_err_empty":"Please describe the problem.","report_err_failed":"Could not send your report. Please try again."},"tr":{"tab_membership":"Üyelik","tab_about":"Hakkında","al_pricing":"Fiyatlandırma","al_terms":"Koşullar","al_privacy":"Gizlilik","al_contact":"İletişim","about_powered":"Gelişmiş yapay zeka çevirisiyle desteklenir.","mem_active_plan":"Aktif plan","mem_unlimited":"Sınırsız dakika","mem_this_month":"Bu ay: ","mem_your_plan":"Mevcut planın","mem_upgrade":"Yükselt","mem_creator_meta":"700 dk/ay · tüm diller · transkript","mem_pro_meta":"1.500 dk/ay · öncelik · toplantı modu","mem_dev_byok":"Geliştirici (BYOK)","mem_your_key":"Kendi anahtarın","mem_byok_note":"Bu derleme kendi Gemini anahtarınla çalışır; abonelik yoktur. Anahtarı Genel sekmesinden yönet.","badge_upgrade":"Kaldırmak için yükselt →","auth_no_account":"Hesabın yok mu? ","auth_create":"Hesap oluştur","auth_forgot":"Şifreni mi unuttun?","auth_offline":"Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.","auth_retry":"Yeniden dene","store_view":"Microsoft Store'da görüntüle","open_file":"Dosyayı aç","open_folder":"Klasörü aç","transcript_folder":"Transkript klasörü","browse":"Gözat…","reset_default":"Varsayılana sıfırla","record_audio":"Sesi kaydet (kaynak + çeviri, ayrı dosyalar)","record_audio_hint":"Her oturumun kaynak sesini ve çevrilmiş sesini transkript klasörüne iki ayrı WAV dosyası olarak kaydeder. Kaynak parça gerçek insan sesi içerdiğinden varsayılan olarak kapalıdır. Yalnızca Video/Oyun modunda çalışır — Toplantı modunda otomatik olarak kapanır, böylece karşı tarafın canlı sesi asla kaydedilmez.","st_capture_lost":"Ses yakalama durdu (cihaz değişmiş olabilir). Oturumu yeniden başlat.","openai_key":"OpenAI API anahtarı","ph_oaikey":"sk-…","byok_openai_hint":"Opsiyonel — yalnızca OpenAI motorunu kullanmak için gerekli. ","privacy_policy_link":"Tam gizlilik politikası","report_open":"Sorun bildir","report_title":"Sorun bildir","report_notice":"Bu, Voxis destek ekibine küçük bir teknik özet gönderir: uygulama sürümü, kanal, Windows sürümünüz, ses modu, kalite ayarı ve dil çifti. Gizli bilgiler (API anahtarınız, oturum jetonunuz) ve Windows kullanıcı adınız asla gönderilmez. Konuşma metniniz yalnızca aşağıdaki kutuyu işaretlerseniz gönderilir.","report_category":"Kategori","report_cat_audio":"Ses","report_cat_translation":"Çeviri","report_cat_billing":"Üyelik / faturalandırma","report_cat_crash":"Çökme","report_cat_ui":"Arayüz","report_cat_other":"Diğer","report_severity":"Önem","report_sev_low":"Düşük","report_sev_normal":"Normal","report_sev_high":"Yüksek","report_message":"Sorunu kısaca anlat (isteğe bağlı)","report_message_ph":"Ne oldu? Boş bırakabilirsin — günlükten bakarız.","report_log_note":"Uygulama günlüğü otomatik eklenir (gizli bilgiler temizlenir).","report_pii_hint":"Şifre veya kişisel bilgi yazma.","report_repro":"Nasıl tekrarlanır (opsiyonel)","report_email":"E-posta (opsiyonel)","report_email_ph":"ornek@eposta.com","report_email_hint":"Yalnızca bu raporla ilgili yanıt istiyorsanız.","report_include_transcript":"Son konuşma metnimi ekle (varsayılan kapalı)","report_preview":"Gönderilecek veriyi önizle","report_cancel":"Vazgeç","report_send":"Gönder","report_sending":"Gönderiliyor…","report_close":"Kapat","report_copy":"Kopyala","report_done_intro":"Raporun gönderildi. Bizimle iletişime geçersen referans numaran:","report_done_keep":"Bizimle iletişime geçersen bu numarayı belirt.","report_queued":"Kaydedildi — Voxis'i bir sonraki açışında göndereceğiz.","report_err_empty":"Lütfen sorunu anlat.","report_err_failed":"Raporun gönderilemedi. Lütfen tekrar dene."},"de":{
@@ -3706,7 +5536,7 @@ const I18N_EXTRA = {"en":{"tab_membership":"Membership","tab_about":"About","al_
 Object.keys(I18N_EXTRA).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_EXTRA[l]; for(var k in s) I18N[l][k]=s[k]; });
 /* Bilingual-export toggle label (History footer). Fill-if-undefined so a locale
    that never defined it falls back cleanly. */
-const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "cs":"Dvojjazyčné", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา" };
+const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "cs":"Dvojjazyčné", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา", "ro":"Bilingv", "hi":"द्विभाषी", "hu":"Kétnyelvű", "sv":"Tvåspråkig", "sr":"Dvojezično", "zh-Hant":"雙語" };
 Object.keys(I18N_BILINGUAL).forEach(function(l){ if(!I18N[l]) I18N[l]={}; if(I18N[l]["history_bilingual"]===undefined) I18N[l]["history_bilingual"]=I18N_BILINGUAL[l]; });
 // Detect the boot language from the OS locale so the very first paint is not a
 // hardcoded Turkish flash: tr only when the locale starts with 'tr', else en.
@@ -4004,6 +5834,7 @@ async function init(){
       up.onclick = ()=>{ try{api().open_url('https://voxislive.com/pricing');}catch(_){} }; } }
   $('#uilang').value    = cfg.ui_language || LANG;
   document.querySelectorAll('.k').forEach(k=>k.textContent=cfg.hotkeys[k.dataset.hk]||'—');
+  updateTileTitles();
   // Official-release builds always run on the SaaS key — hide the BYOK input
   // entirely so the end-user UI never exposes a key field. Open-source builds
   // continue to expose it for developers.
@@ -4084,10 +5915,13 @@ document.querySelectorAll('.scenario').forEach(b=>{
   };
 });
 $('#stopbtn').onclick = ()=>api().stop();
-$('#savetxt').onclick = async ()=>{
+async function saveTranscript(){
   let r=null; try{ r=await api().save_txt(); }catch(_){}
   if(r && r.ok && r.file) addTranscriptActions(r.file);
-};
+}
+$('#savechip').onclick = saveTranscript;
+$('#soundcheckbtn').onclick = ()=>{ if(!SESSION_LIVE) openSoundcheck(); };
+$('#sc-close').onclick = closeSoundcheck;
 $('#clearstream').onclick = ()=>resetTranscript();
 
 /* ---------- transcript folder (Settings › General) ---------- */
@@ -4233,7 +6067,36 @@ function openConsent(){ $('#scrim').classList.add('open'); $('#consent-modal').c
 function closeConsent(){ $('#consent-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
 
 // Free-limit paywall card (SaaS only — OSS builds never hit a server quota wall).
-let SESSION_LIVE=false, limitShown=false, warn80Shown=false;
+let SESSION_LIVE=false, limitShown=false, warn80Shown=false, sessionT0=0;
+
+/* ---------- sound check ("do I hear this device?") ---------- */
+let scOpen=false, scHeard=false;
+function openSoundcheck(){
+  api().soundcheck_start().then(r=>{
+    scOpen=true; scHeard=false;
+    $('#sc-fill').style.width='0%';
+    const st=$('#sc-status'); st.classList.remove('ok','err');
+    if(r && r.ok===false){ st.textContent=T('sound_check_fail'); st.classList.add('err'); }
+    else { st.textContent=T('sound_check_wait'); }
+    $('#scrim').classList.add('open'); $('#soundcheck-modal').classList.add('open');
+    openModal($('#soundcheck-modal'), closeSoundcheck, $('#soundcheckbtn'));
+  });
+}
+function closeSoundcheck(){
+  scOpen=false;
+  try{ api().soundcheck_stop(); }catch(_){}
+  $('#soundcheck-modal').classList.remove('open');
+  if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open');
+  closeModal();
+}
+function driveSoundcheck(level){
+  if(typeof level!=='number') return;
+  $('#sc-fill').style.width=Math.min(100, Math.round(level*130))+'%';
+  if(!scHeard && level>0.05){
+    scHeard=true;
+    const st=$('#sc-status'); st.textContent=T('sound_check_ok'); st.classList.add('ok');
+  }
+}
 function openLimitModal(){ $('#scrim').classList.add('open'); $('#limit-modal').classList.add('open'); openModal($('#limit-modal'), closeLimitModal, null); }
 function closeLimitModal(){ $('#limit-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
 function showPaywallCard(){
@@ -4629,10 +6492,21 @@ document.querySelectorAll('.k').forEach(k=>k.onclick=async()=>{
   const combo = await api().capture_hotkey(k.dataset.hk);
   k.textContent = combo || STATE.cfg.hotkeys[k.dataset.hk] || '—';
   k.classList.remove('recording');
+  if(combo){ STATE.cfg.hotkeys[k.dataset.hk]=combo; updateTileTitles(); }
 });
+// Hotkeys are otherwise only discoverable inside Settings — surface each
+// scenario's assigned combo in its tile tooltip.
+function updateTileTitles(){
+  const hk=(STATE.cfg && STATE.cfg.hotkeys) || {};
+  const set=(id, label, key)=>{ const el=$(id); if(el) el.title = label + (hk[key] ? ' — '+hk[key] : ''); };
+  set('#m-video', T('video_t1'), 'video');
+  set('#m-meeting', T('meeting_t1'), 'meeting');
+}
 
 /* ---------- transkript ---------- */
-function emptyHtml(){ return `<div class="empty" id="empty"><div class="orb"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 9.5v5M8 6v12M12 9v6M16 4v16M20 8.5v7"/></svg></div><div class="big" data-i18n="empty_big">${T('empty_big')}</div><div class="small" data-i18n-html="empty_small">${T('empty_small')}</div></div>`; }
+function emptyHtml(){ return `<div class="empty" id="empty"><div class="orb"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 9.5v5M8 6v12M12 9v6M16 4v16M20 8.5v7"/></svg></div><div class="big" data-i18n="empty_big">${T('empty_big')}</div><div class="small" data-i18n-html="empty_small">${T('empty_small')}</div><button class="btn btn-primary emptystart" type="button"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><span data-i18n="start_cue">${T('start_cue')}</span><span class="dim">—</span><span data-i18n="video_t1">${T('video_t1')}</span></button></div>`; }
+// Delegated: the empty state is rebuilt on reset, the handler survives it.
+$('#scroll').addEventListener('click', e=>{ if(e.target.closest('.emptystart')) $('#m-video').click(); });
 let curTurn=null, curBubble=null;
 function trimScroll(){ const sc=$('#scroll'); while(sc.children.length>90) sc.removeChild(sc.firstChild); }
 function scrollEnd(){ const sc=$('#scroll'); sc.scrollTop=sc.scrollHeight; }
@@ -4706,7 +6580,29 @@ function onTrans(text, newline, spk){
   appendWords(curBubble, text);
   scrollEnd();
 }
+/* Live "heard now" ghost line: streams the source utterance as it is spoken.
+   Kept as the LAST element of the scroll; cleared when the paired source lands
+   on its turn (onSrc) or the session ends. NOT attached to the current turn —
+   source leads translation by the ear-voice lag, so the live text belongs to
+   the NEXT turn, not the one currently rendering. */
+function onHearLive(text){
+  const h=$('#hearline');
+  if(!$('#subs').checked || !text){ if(h) h.remove(); return; }
+  removeEmpty();
+  let line=h;
+  if(!line){
+    line=document.createElement('div'); line.id='hearline'; line.className='hearline';
+    const who=document.createElement('span'); who.className='who'; who.textContent=T('source');
+    const ht=document.createElement('span'); ht.className='ht';
+    line.appendChild(who); line.appendChild(ht);
+  }
+  $('#scroll').appendChild(line);           // re-append: always last
+  line.querySelector('.ht').textContent=text+'…';
+  scrollEnd();
+}
 function onSrc(text, spk){
+  // The utterance is being consumed by its turn — retire the ghost line.
+  { const h=$('#hearline'); if(h) h.remove(); }
   // Best-effort source caption beneath the turn that just finalized; also the
   // turn's definitive speaker label (replaces the live hint if it differed).
   const turn=curTurn; if(!turn) return;
@@ -4804,14 +6700,24 @@ async function poll(){
       if(ev[0]==='status'){ addSys(ev[1], ev[2] && ev[2].level); }
       else if(ev[0]==='trans'){ onTrans(ev[1], ev[2], ev[3]); }
       else if(ev[0]==='src'){ onSrc(ev[1], ev[2]); }
+      else if(ev[0]==='hear_live'){ onHearLive(ev[1]); }
       else if(ev[0]==='saved'){ addTranscriptActions(ev[1]); }
       else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
       else if(ev[0]==='quota_wall'){ showPaywallCard(); }
     });
+    if(scOpen) driveSoundcheck(p.sc);
     $('#badge').textContent = p.badge.text;
     setPillState(p);
     const liveSession = !!p.mode;
-    if(liveSession && !SESSION_LIVE){ limitShown=false; warn80Shown=false; }  // new session → re-arm paywall + toast
+    if(liveSession && !SESSION_LIVE){ limitShown=false; warn80Shown=false; sessionT0=Date.now(); }  // new session → re-arm paywall + toast
+    if(!liveSession && SESSION_LIVE){
+      // Session just ended: close the loop with how long it ran.
+      { const h=$('#hearline'); if(h) h.remove(); }
+      if(sessionT0) addSys(T('session_summary').replace('{m}', String(Math.max(1, Math.round((Date.now()-sessionT0)/60000)))));
+    }
+    // The Kaydet chip is THE save affordance (the rail card is gone): visible
+    // whenever there are turns to save — during and after a session.
+    $('#savechip').classList.toggle('on', !!document.querySelector('#scroll .turn'));
     SESSION_LIVE = liveSession;
     pollFast = liveSession;
     targetLevel = p.level || 0;
@@ -4824,8 +6730,6 @@ async function poll(){
     // Reduced-motion users get no rAF loop; still surface the input-level readout
     // each poll (the per-frame oscillation is what we skip, not the dB value).
     if(RM){ $('#meterdb').textContent = liveSession ? dbText(targetLevel) : '−∞ dB'; }
-    $('#sesstxt').textContent = p.session;
-    $('#sess').classList.toggle('on', liveSession);
     $('#streamhint').innerHTML = liveSession ? ('<span class="lv">●</span> '+T('live') + (p.latency ? (' · '+p.latency.toFixed(1)+T('behind_suffix')) : '')) : '';
     document.querySelectorAll('.scenario').forEach(b=>{
       b.classList.toggle('active', b.dataset.mode===p.mode);
@@ -4835,6 +6739,12 @@ async function poll(){
       b.disabled = !!p.mode;
     });
     $('#stopbtn').disabled = !p.mode;
+    // Outgoing language only feeds Meeting mode; lock it during a video
+    // session so the UI can't imply two-way translation there.
+    $('#send').disabled = (p.mode==='video');
+    $('#send-item').classList.toggle('lang-dim', p.mode==='video');
+    // Virtual-mic caveat is contextual: Meeting hover/focus (CSS) or live.
+    $('#meeting-caveat').classList.toggle('show', p.mode==='meeting');
   }catch(e){}
   setTimeout(poll, pollFast ? 70 : 250);
 }
@@ -4855,6 +6765,10 @@ async function bootAuth(){
 }
 window.addEventListener('pywebviewready', bootAuth);
 if(window.pywebview && window.pywebview.api) bootAuth();
+
+
+
+
 </script>
 </body>
 </html>

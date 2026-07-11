@@ -118,7 +118,10 @@ DEFAULTS = {
     },
     "original_audio": "duck",
     "show_subtitles": True,
-    "ui_language": "tr",
+    # "" = auto: resolve from the Windows display language at startup
+    # (i18n.resolve_language). Persisted only when the user explicitly picks a
+    # language in Settings, which then wins over the OS locale forever.
+    "ui_language": "",
     "tts_volume": 1.0,
     "overlay_enabled": False,
     "obs_subtitle_enabled": False,
@@ -466,7 +469,9 @@ SEED_WHITELIST = (
     "duck_gain",
     "tts_volume",
     "show_subtitles",
-    "ui_language",
+    # ui_language is deliberately NOT seeded: carrying the developer's language
+    # into the bundle made every fresh install worldwide boot in Turkish. The
+    # seed ships "" (= auto) and startup resolves the OS display language.
     "ui_theme",
     "engine",
     "model",

@@ -139,7 +139,12 @@ class Bridge:
         # app_launched: this fires on the FIRST check_auth regardless of login,
         # so the funnel can see opens that never reach authentication.
         self._opened_reported: bool = False
-        i18n.set_language(cfg.get("ui_language", "tr"))
+        # Resolve "" (= never explicitly chosen) to the Windows display
+        # language, and write the resolution back so get_init/JS and the
+        # Settings dropdown all see one concrete locale. Not persisted here:
+        # until the user picks a language, each launch follows the OS.
+        cfg["ui_language"] = i18n.resolve_language(cfg.get("ui_language", ""))
+        i18n.set_language(cfg["ui_language"])
 
         # Bounded like every other queue in the engine: if the webview stops
         # polling (hung/backgrounded window) events must not accumulate without
@@ -243,6 +248,12 @@ class Bridge:
         # synchronous fetch, so failures cost nothing.
         self._key_cache: dict[str, tuple] = {}
         self._key_cache_lock = threading.Lock()
+        # Idle-only sound-check probe ("do I hear this device?"): a loopback
+        # capture whose only output is a peak level for the UI meter. Never runs
+        # alongside a session (see soundcheck_start / _start).
+        self._sc = None
+        self._sc_level = 0.0
+        self._sc_timer = None
         # One-time move of transcripts from the old (virtualized) AppData location
         # to the user-facing default. Best-effort; never blocks startup.
         self._migrate_transcripts()
@@ -324,6 +335,12 @@ class Bridge:
                 self._src_spk = self._cur_spk
             self._src_buf += text
             self._last_src_t = now
+            # Live "heard now" feed: the accumulating source utterance streams to
+            # the UI's ghost line as it is spoken (the definitive, paired source
+            # still lands with the 'src' event when its translation finalizes —
+            # source LEADS translation by the ear-voice lag, so the live text
+            # must not be attached to the currently rendering turn).
+            self._put_event(("hear_live", self._src_buf.strip()))
             return
         # direction == "out": the translated text stream.
         if not self._session_start:
@@ -1550,6 +1567,9 @@ class Bridge:
                 return
             if not self._cable_ok(mode):
                 return
+            # A running sound-check probe must not coexist with the session's
+            # own capture — release it before the pipeline opens its stream.
+            self.soundcheck_stop()
             self._badge = (t("badge_connecting"), "#fbbf24", "warn")
             try:
                 # Per-target engine+key+model resolver (SaaS=server-routed,
@@ -2145,6 +2165,53 @@ class Bridge:
                 pass
         return True
 
+    # ---------- sound check (idle-only loopback level probe) ----------
+    def soundcheck_start(self):
+        """Start the 'do I hear this device?' probe: the same process-exclude
+        loopback the session uses, but its only output is a peak level for the
+        modal's meter (poll's 'sc' field). Refused while a session runs; auto
+        stops after 60 s so an abandoned modal can't hold the capture forever."""
+        if self.controller.mode or self._sc is not None:
+            return {"ok": self._sc is not None}
+        try:
+            from .process_loopback import ProcessExcludeLoopback  # noqa: PLC0415
+
+            def on_chunk(pcm):
+                try:
+                    samples = memoryview(pcm).cast("h")
+                    peak = max(abs(s) for s in samples) / 32768.0 if len(samples) else 0.0
+                except Exception:
+                    return
+                # Fast attack, slow decay so short transients stay visible a beat.
+                self._sc_level = max(peak, self._sc_level * 0.85)
+
+            self._sc = ProcessExcludeLoopback(on_chunk)
+            self._sc.start()
+            self._sc_timer = threading.Timer(60.0, self.soundcheck_stop)
+            self._sc_timer.daemon = True
+            self._sc_timer.start()
+            return {"ok": True}
+        except Exception:
+            _log.exception("soundcheck: could not start loopback probe")
+            self._sc = None
+            return {"ok": False}
+
+    def soundcheck_stop(self):
+        sc, self._sc = self._sc, None
+        timer, self._sc_timer = self._sc_timer, None
+        if timer is not None:
+            try:
+                timer.cancel()
+            except Exception:
+                pass
+        if sc is not None:
+            try:
+                sc.stop()
+            except Exception:
+                pass
+        self._sc_level = 0.0
+        return True
+
     # ---------- poll (UI invokes every 150 ms) ----------
     def poll(self):
         evs = []
@@ -2179,6 +2246,8 @@ class Bridge:
             "model": resolve_model(self.cfg, eng),
             "session": session,
             "maximized": bool(self._maximized),
+            # Sound-check meter level (0..1); only meaningful while the probe runs.
+            "sc": round(self._sc_level, 3) if self._sc is not None else None,
         }
 
     # ---------- helpers ----------
