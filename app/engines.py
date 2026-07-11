@@ -26,11 +26,17 @@ def resolve_engine_for_target(cfg, keys, target_lang):
 
 
 def make_translator(cfg, target_lang, *, engine, key, model=None,
-                    on_audio, on_text, on_status, name, noise_reduction=None):
+                    on_audio, on_text, on_status, name, noise_reduction=None,
+                    on_fatal=None):
     """Build the translator thread for an ALREADY-RESOLVED engine + key + model.
     The caller resolves per target (locally for BYOK, server-side for SaaS) so the
     capture send-rate can match. Returns an object honoring the translator
-    contract, tagged with `.engine`."""
+    contract, tagged with `.engine`.
+
+    on_fatal is invoked if the engine gives up mid-session (see
+    BaseTranslator._give_up) so the caller can substitute another engine. It is
+    attached after construction rather than threaded through all three subclass
+    signatures — nothing reads it until the reconnect loop is abandoned."""
     if not key:
         raise RuntimeError(f"no API key for engine '{engine}'")
     model = model or resolve_model(cfg, engine)
@@ -56,6 +62,7 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
             # its own workspace here, or the handshake 401s.
             workspace=cfg.get("qwen_workspace") or QWEN_WORKSPACE)
         tr.engine = engine
+        tr.on_fatal = on_fatal
         return tr
 
     if engine == ENGINE_OPENAI:
@@ -69,6 +76,7 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
             rotate_minutes=cfg.get("openai_rotate_minutes", 55), name=name,
             model=model, noise_reduction=noise_reduction)
         tr.engine = engine
+        tr.on_fatal = on_fatal
         return tr
 
     from .translator import LiveTranslator  # lazy: keep google.genai off cold start
@@ -80,4 +88,5 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
         temperature=float(cfg.get("gemini_temperature", 0.3)),
         model=model)
     tr.engine = engine
+    tr.on_fatal = on_fatal
     return tr

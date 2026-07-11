@@ -26,7 +26,7 @@ try:
 except ImportError:
     _premium = None
 from .audio_io import Capture, Player, find_device, resolve_name, _make_resampler
-from .config import ENGINE_OPENAI, ENGINE_QWEN, gate_params, stream_gated
+from .config import ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN, gate_params, stream_gated
 from .engines import make_translator
 from .i18n import t
 # LiveTranslator (google.genai) and SpeechGate (onnxruntime) are imported lazily
@@ -342,6 +342,12 @@ class IncomingPipeline:
         # Resolve engine + key + model for this target ONCE (locally for BYOK,
         # server-side for SaaS) so the capture send-rate matches the engine.
         self._engine, _key, _model = resolve(cfg["target_language_incoming"])
+        # Kept for the mid-session engine substitution below.
+        self.cfg = cfg
+        self._resolve = resolve
+        self._on_status = on_status
+        self._on_text = on_text
+        self._failover_done = False
 
         # Qwen's translated speech runs longer than the source and carries no
         # silence padding, so its stream is paced through a SyncStager (WSOLA
@@ -364,12 +370,16 @@ class IncomingPipeline:
                 self._stager.feed(data)
             else:
                 self.player.feed_tts_pcm16(data)
+        self._tts_sink = _tts_sink
         self.translator = make_translator(
             cfg, cfg["target_language_incoming"], engine=self._engine, key=_key, model=_model,
             on_audio=_tts_sink, on_text=on_text, on_status=on_status,
-            name=t("name_in"),
+            name=t("name_in"), on_fatal=self._failover_to_gemini,
         )
-        send_fn = self.translator.send_pcm16
+        # Bound through self, not to the translator instance, so a mid-session
+        # engine swap redirects the capture without rebuilding the gate/capture.
+        def send_fn(pcm: bytes):
+            self.translator.send_pcm16(pcm)
 
         self._original_mode = cfg["original_audio"]
         self._duck_gain = cfg["duck_gain"]
@@ -384,6 +394,9 @@ class IncomingPipeline:
         except Exception:
             self._teardown_resources()
             raise
+
+    def _failover_to_gemini(self, exc) -> bool:
+        return _swap_to_gemini(self, "target_language_incoming", t("name_in"), exc)
 
     def _acquire_capture(self, cfg, vad_cfg, send_fn, out_name, on_status):
         from .vad import SpeechGate  # noqa: PLC0415
@@ -614,6 +627,68 @@ class IncomingPipeline:
             d.close()
 
 
+def _swap_to_gemini(pipe, target_key, name, exc):
+    """Shared mid-session engine substitution for both directions.
+
+    A spent DashScope balance surfaces as a terminal 'arrearage'/'quota' reject.
+    The server cannot see it — the Qwen key is still configured, so every voiced
+    target keeps routing to Qwen — which would take the whole 29-language tier
+    dark, one dead session at a time. Gemini is the 79-language catch-all, so it
+    can serve whatever Qwen was serving.
+
+    Runs on the dying translator's thread (BaseTranslator._give_up), off the audio
+    path. True = handled, and the failure stays silent for the user. Never
+    retried: Gemini is the last resort, so a second failure is a real outage and
+    must surface."""
+    if pipe._failover_done or pipe._engine == ENGINE_GEMINI:
+        return False
+    pipe._failover_done = True
+
+    target = pipe.cfg[target_key]
+    try:
+        engine, key, model = pipe._resolve(target, force_gemini=True)
+    except Exception:
+        _log.exception("failover: could not obtain a Gemini key")
+        return False
+    if engine != ENGINE_GEMINI or not key:
+        return False
+
+    _log.warning("engine %s gave up (%s) — failing over to Gemini", pipe._engine, exc)
+    old = pipe.translator
+    try:
+        new = make_translator(
+            pipe.cfg, target, engine=ENGINE_GEMINI, key=key, model=model,
+            on_audio=pipe._tts_sink, on_text=pipe._on_text,
+            on_status=pipe._on_status, name=name,
+            # No on_fatal: Gemini is the last resort — a further failure must
+            # reach the user instead of looping.
+        )
+    except Exception:
+        _log.exception("failover: could not build the Gemini translator")
+        return False
+
+    # Qwen's stream needs WSOLA pacing; Gemini self-times. Retire the stager
+    # BEFORE the swap so the tts sink (which reads it live) never routes Gemini
+    # audio through it.
+    stager = getattr(pipe, "_stager", None)
+    if stager is not None:
+        pipe._stager = None
+        try:
+            stager.stop()
+        except Exception:
+            pass
+
+    pipe._engine = ENGINE_GEMINI
+    pipe.translator = new   # the send path indirects through pipe.translator
+    new.start()
+    try:
+        old.stop()
+    except Exception:
+        pass
+    pipe._on_status(t("st_engine_failover"))
+    return True
+
+
 class OutgoingPipeline:
     def __init__(self, cfg: dict, resolve, on_text, on_status):
         from .translator import LiveTranslator  # noqa: PLC0415
@@ -627,10 +702,18 @@ class OutgoingPipeline:
             tts_enhance=(_premium.enhance_tts if _premium is not None else None),
         )
         self._engine, _key, _model = resolve(cfg["target_language_outgoing"])
+        self.cfg = cfg
+        self._resolve = resolve
+        self._on_text = on_text
+        self._on_status = on_status
+        self._failover_done = False
+        # Outgoing feeds the virtual mic directly — no SyncStager on this leg.
+        self._tts_sink = self.player.feed_tts_pcm16
         self.translator = make_translator(
             cfg, cfg["target_language_outgoing"], engine=self._engine, key=_key, model=_model,
             on_audio=self.player.feed_tts_pcm16, on_text=on_text, on_status=on_status,
             name=t("name_out"), noise_reduction="near_field",
+            on_fatal=self._failover_to_gemini,
         )
         self.input_level = 0.0
         self.capture = None
@@ -643,7 +726,10 @@ class OutgoingPipeline:
         try:
             self.capture = Capture(mic_dev, self._on_mic)
             self._source = _GatedSource(
-                self.capture.rate, SpeechGate(**vad_cfg), self.translator.send_pcm16,
+                # Indirect through self so a mid-session engine swap
+                # (_failover_to_gemini) redirects the mic without rebuilding it.
+                self.capture.rate, SpeechGate(**vad_cfg),
+                lambda pcm: self.translator.send_pcm16(pcm),
                 smart=not stream_gated(cfg), send_rate=send_rate,
             )
         except Exception:
@@ -678,6 +764,9 @@ class OutgoingPipeline:
     def start(self):
         self.start_translator()
         self.start_io()
+
+    def _failover_to_gemini(self, exc) -> bool:
+        return _swap_to_gemini(self, "target_language_outgoing", t("name_out"), exc)
 
     def stop(self):
         _stop_all(self)
