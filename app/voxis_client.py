@@ -458,6 +458,29 @@ def get_quota() -> Optional[dict]:
         return None
 
 
+def _device_headers() -> dict:
+    """Raw device identifiers sent with /auth/session-key so the server can
+    enforce one free tier per machine at issuance (it peppers + SHA-256-hashes
+    them; raw values are never stored — see device_id). Best-effort: any
+    failure returns {} and the server fails open, so this can never block a
+    session start."""
+    try:
+        from . import device_id
+        fp = device_id.fingerprint()
+    except Exception:
+        return {}
+    headers = {}
+    for name, key in (("X-Voxis-Device-Primary", "primary"),
+                      ("X-Voxis-Device-Secondary", "secondary")):
+        # Header values must be printable ASCII; fingerprints are in practice,
+        # so strip anything else rather than risk the whole request failing.
+        v = (fp.get(key) or "").encode("ascii", "ignore").decode()
+        v = "".join(ch for ch in v if ch.isprintable()).strip()
+        if v:
+            headers[name] = v
+    return headers
+
+
 def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str], Optional[str]]:
     """SaaS execution path: retrieves a server-issued translation key. With
     caps='engine-routing' the server picks the engine by TARGET language and also
@@ -488,7 +511,7 @@ def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str],
     try:
         resp = _http.get(
             f"{_BASE_URL}/auth/session-key",
-            headers=_auth_headers(),
+            headers=_auth_headers() | _device_headers(),
             params=params,
             timeout=_TIMEOUT,
         )

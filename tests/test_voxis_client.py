@@ -101,3 +101,58 @@ def test_refresh_disabled_on_oss_build(refresh_env, monkeypatch):
     old = _make_jwt(exp=time.time() + 60)
     assert vc._maybe_refresh_jwt(old) == old
     assert refresh_env["posts"] == []
+
+
+# --- Device headers on /auth/session-key (one-free-tier-per-device) ---
+
+
+def test_device_headers_sanitized(monkeypatch):
+    import app.device_id as device_id
+    monkeypatch.setattr(
+        device_id, "fingerprint",
+        lambda: {"primary": " guid-1 ", "secondary": "board|üuid\x01"})
+    h = vc._device_headers()
+    # Whitespace stripped; non-ASCII and non-printable bytes dropped so the
+    # header can never make the HTTP request itself fail.
+    assert h["X-Voxis-Device-Primary"] == "guid-1"
+    assert h["X-Voxis-Device-Secondary"] == "board|uid"
+
+
+def test_device_headers_omit_empty_components(monkeypatch):
+    import app.device_id as device_id
+    monkeypatch.setattr(
+        device_id, "fingerprint", lambda: {"primary": "", "secondary": "hw"})
+    h = vc._device_headers()
+    assert "X-Voxis-Device-Primary" not in h
+    assert h["X-Voxis-Device-Secondary"] == "hw"
+
+
+def test_device_headers_fail_open(monkeypatch):
+    import app.device_id as device_id
+
+    def boom():
+        raise RuntimeError("wmi unavailable")
+
+    monkeypatch.setattr(device_id, "fingerprint", boom)
+    assert vc._device_headers() == {}
+
+
+def test_session_key_sends_device_headers(monkeypatch):
+    monkeypatch.setattr(vc, "IS_OFFICIAL_RELEASE", True)
+    monkeypatch.setattr(vc, "_valid_jwt", lambda: _make_jwt(exp=time.time() + 3600))
+    monkeypatch.setattr(vc, "_device_headers", lambda: {"X-Voxis-Device-Primary": "g"})
+    seen = {}
+
+    class _FakeHttp:
+        def get(self, url, headers=None, params=None, timeout=None):
+            seen["url"] = url
+            seen["headers"] = headers
+            return _FakeResp(200, {"key": "k", "engine": "gemini"})
+
+    monkeypatch.setattr(vc, "_http", _FakeHttp())
+    key, engine, *_rest, err = vc.get_session_key(target="cs", caps="engine-routing")
+    assert (key, engine, err) == ("k", "gemini", None)
+    assert seen["url"].endswith("/auth/session-key")
+    # Auth header intact, device fingerprint riding alongside it.
+    assert seen["headers"]["Authorization"].startswith("Bearer ")
+    assert seen["headers"]["X-Voxis-Device-Primary"] == "g"
