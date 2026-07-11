@@ -678,6 +678,7 @@ def _swap_to_gemini(pipe, target_key, name, exc):
         except Exception:
             pass
 
+    from_engine = pipe._engine
     pipe._engine = ENGINE_GEMINI
     pipe.translator = new   # the send path indirects through pipe.translator
     new.start()
@@ -686,6 +687,13 @@ def _swap_to_gemini(pipe, target_key, name, exc):
     except Exception:
         pass
     pipe._on_status(t("st_engine_failover"))
+    # Tell the server which engine died: the server cannot see a spent
+    # DashScope balance itself (the key stays configured), so its routing
+    # watcher counts these events and flips qwen_enabled off for everyone
+    # once several licenses report the same dead engine.
+    voxis_client.report_event_async("engine_failover", None, {
+        "from": from_engine, "reason": type(exc).__name__ if exc else "",
+    })
     return True
 
 
