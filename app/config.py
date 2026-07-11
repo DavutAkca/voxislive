@@ -58,6 +58,19 @@ ENGINE_QWEN = "qwen"
 VALID_ENGINES = (ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN)
 DEFAULT_ENGINE = ENGINE_GEMINI
 
+# A server-minted single-use Gemini Live token (Tier A5) is the v1alpha
+# AuthToken RESOURCE NAME ("auth_tokens/<id>") passed where an api_key goes —
+# that prefix is the API contract, so it is the discriminator between a raw
+# multi-use key and an ephemeral token everywhere in the client. Lives here
+# (not translator.py) so webui can test a key without importing google.genai.
+GEMINI_EPHEMERAL_KEY_PREFIX = "auth_tokens/"
+
+
+def is_ephemeral_key(key) -> bool:
+    """True when `key` is a single-use, model-locked Gemini Live auth token
+    (spent by ONE connect) rather than a raw multi-use API key."""
+    return bool(key) and str(key).startswith(GEMINI_EPHEMERAL_KEY_PREFIX)
+
 # OpenAI gpt-realtime-translate validated OUTPUT (target) languages (13), per
 # OpenAI's current official docs. English is #1 of the supported set.
 OPENAI_OUTPUT_LANGS = ["en", "es", "pt", "fr", "de", "it", "ru", "ja", "ko", "zh", "hi", "id", "vi"]
