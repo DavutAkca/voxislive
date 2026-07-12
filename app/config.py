@@ -166,6 +166,13 @@ DEFAULTS = {
     # after the app has actually worked (see webui._note_good_session).
     "good_sessions": 0,
     "review_prompted": False,
+    # One-time free-tier beats, each asked exactly once (webui.mark_seen):
+    #   ladder_seen    — the three-rung explainer (Pro taste / free / paid)
+    #   contrast_shown — the inverse demo: hear the FREE voice while still on Pro.
+    # Both exist because a user who never learns they are ON the paid engine
+    # cannot value losing it, and reads the free tier as a broken product.
+    "ladder_seen": False,
+    "contrast_shown": False,
     # Bumped when a load-time migration is added; see _migrate / load_config.
     "config_version": 2,
 }

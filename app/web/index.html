@@ -323,6 +323,23 @@ button{font-family:var(--font)}
 .quota-bar-wrap.unlimited .quota-bar-label{color:var(--accent)}
 .quota-bar-wrap.exhausted .quota-bar-label{color:var(--red)}
 
+/* ============ FREE-TIER TASTE CHIP ============ */
+/* Reads as a possession, not a warning: the paid voice is something the user
+   HAS right now. It turns amber only as it runs out. */
+.taste-chip{
+  display:none;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:var(--r-ctl);
+  border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);
+  background:color-mix(in srgb,var(--accent) 9%,transparent);
+  font-size:11.5px;color:var(--text-2);white-space:nowrap;
+}
+.taste-chip svg{flex:none;color:var(--accent)}
+.taste-chip b{color:var(--accent);font-weight:650;letter-spacing:.01em}
+.taste-chip #taste-count{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--text-1)}
+.taste-chip .taste-next{color:var(--text-3);border-left:1px solid var(--border);padding-left:8px}
+.taste-chip.low{border-color:color-mix(in srgb,var(--amber) 42%,transparent);background:color-mix(in srgb,var(--amber) 10%,transparent)}
+.taste-chip.low svg,.taste-chip.low b{color:var(--amber)}
+@media (max-width:1100px){ .taste-chip .taste-next{display:none} }
+
 .topactions{display:flex;align-items:center;gap:7px}
 /* Keycap at rest (mirrors .hkrow .k): the utility buttons read as pressable
    without hover — a bare ghost icon next to the window controls didn't. */
@@ -770,6 +787,31 @@ body.resizing,body.resizing *{user-select:none!important}
   color:var(--text);padding:9px 15px;border-radius:10px;font-size:12.5px;box-shadow:var(--shadow-float);
   display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px)}
 .quota-toast::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--amber);flex:none}
+
+/* ============ THREE-RUNG LADDER + INVERSE DEMO ============ */
+.ladder{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:9px}
+.rung{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;color:var(--text-2)}
+.rung .rn{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--mono);font-size:10.5px;font-weight:600;margin-top:1px;
+  background:var(--surface-3);color:var(--text-3);border:1px solid var(--border)}
+.rung.now{color:var(--text-1)}
+.rung.now .rn{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);
+  border-color:color-mix(in srgb,var(--accent) 34%,transparent)}
+.ladder-slogan{margin:0;padding-top:12px;border-top:1px solid var(--border);
+  font-size:12.5px;line-height:1.55;color:var(--text-3)}
+
+/* Non-blocking on purpose: it must never interrupt what the user came to watch. */
+.contrast-card{position:fixed;right:22px;bottom:22px;z-index:59;width:330px;max-width:calc(100vw - 44px);
+  display:flex;flex-direction:column;gap:9px;padding:14px 15px;border-radius:var(--r-card);
+  border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  background:var(--surface-1);box-shadow:0 14px 40px rgba(0,0,0,.34);
+  animation:ccIn .32s var(--ease)}
+@keyframes ccIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.cc-head{display:flex;align-items:center;gap:8px;color:var(--accent);font-size:13px}
+.cc-head b{font-weight:650;color:var(--text-1)}
+.contrast-card p{margin:0;font-size:12.5px;line-height:1.55;color:var(--text-2)}
+.cc-foot{display:flex;align-items:center;gap:8px;margin-top:2px}
+.contrast-card.busy .btn-primary{opacity:.65;pointer-events:none}
 .modal .mbody{padding:14px 24px 4px;font-size:13px;line-height:1.6;color:var(--text-2)}
 .modal .mbody p{margin-bottom:12px}
 .modal .mbody p:last-child{margin-bottom:0}
@@ -975,6 +1017,15 @@ body.resizing,body.resizing *{user-select:none!important}
     <div class="quota-bar-wrap" id="quota-bar-wrap">
       <div class="quota-bar-track"><div class="quota-bar-fill" id="quota-bar-fill"></div></div>
       <span class="quota-bar-label" id="quota-bar-label">—</span>
+    </div>
+    <!-- Free-tier taste chip. A countdown alone would only say "you are running
+         out"; it must also say WHAT you are running out OF and what replaces it,
+         or the user never learns they were on the paid voice at all. -->
+    <div class="taste-chip" id="taste-chip" style="display:none" role="status" aria-live="polite">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+      <b id="taste-pro">Pro ses</b>
+      <span id="taste-count">—</span>
+      <span class="taste-next" id="taste-next">sonrası ücretsiz ses</span>
     </div>
   </div>
   <div class="topactions">
@@ -1318,6 +1369,45 @@ body.resizing,body.resizing *{user-select:none!important}
   </div>
 </div>
 
+<!-- Three-rung explainer. Shown once, right after a free user's first sign-in:
+     what they have NOW (paid engine), what they get later (free/local voice),
+     and what buying restores. A user who never learns the rungs reads the drop
+     to the free voice as the product breaking. -->
+<div class="modal limitmodal" id="ladder-modal" role="dialog" aria-modal="true" aria-labelledby="ladder-title">
+  <div class="mhead">
+    <span class="micon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg></span>
+    <h2 id="ladder-title" data-i18n="ladder_title">Voxis'te üç basamak</h2>
+  </div>
+  <div class="mbody">
+    <ul class="ladder">
+      <li class="rung now"><span class="rn">1</span><span data-i18n="ladder_pro">Pro tadımı · 15 dakika, tek sefer — gerçek insan sesi, toplantı modu, 79 dil.</span></li>
+      <li class="rung"><span class="rn">2</span><span data-i18n="ladder_free">Ücretsiz · günde 10 dakika — aynı çeviri, yerel ses, video/oyun.</span></li>
+      <li class="rung"><span class="rn">3</span><span data-i18n="ladder_paid">Ücretli · gerçek ses geri gelir, toplantı açılır.</span></li>
+    </ul>
+    <p class="ladder-slogan" data-i18n="ladder_slogan">Aynı beyin, daha basit ses. Ücretsiz sürüm çevirir; ücretli sürüm konuşur.</p>
+  </div>
+  <div class="mfoot">
+    <span class="spacer"></span>
+    <button class="btn btn-primary" id="ladder-ok" style="width:auto" data-i18n="ladder_ok">Anladım</button>
+  </div>
+</div>
+
+<!-- The inverse demo. Offered ONCE, mid-taste, while the paid voice is still
+     theirs to come back to: hear the free voice on the line you just heard.
+     A comparison you can undo creates desire; one you cannot creates anger. -->
+<div id="contrast-card" class="contrast-card" style="display:none" role="dialog" aria-labelledby="contrast-title">
+  <div class="cc-head">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+    <b id="contrast-title" data-i18n="contrast_title">Şu an Pro sesi dinliyorsun</b>
+  </div>
+  <p id="contrast-body" data-i18n="contrast_body">Ücretsiz sürüm aynı çeviriyi yapar — ama yerel, daha basit bir sesle. Farkı şimdi, hâlâ Pro'dayken duy.</p>
+  <div class="cc-foot">
+    <button class="btn btn-ghost" id="contrast-dismiss" style="width:auto" data-i18n="contrast_dismiss">Şimdi değil</button>
+    <span class="spacer"></span>
+    <button class="btn btn-primary" id="contrast-cta" style="width:auto" data-i18n="contrast_cta">Ücretsiz sesi dinle</button>
+  </div>
+</div>
+
 <!-- soft ~80% warning (non-blocking, auto-dismiss) -->
 <div id="quota-toast" class="quota-toast" style="display:none" role="status" aria-live="polite"></div>
 
@@ -1517,7 +1607,7 @@ let STATE = {}, QUOTA = null;
 
 /* ---------- i18n ---------- */
 const I18N = {
-  tr: {"review_title":"Voxis işine yarıyor mu?","review_body":"Store'da henüz hiç puanımız yok — ve insanlar bizi neredeyse tamamen puanlardan buluyor. Puan vermek 10 saniye sürer.","review_cta":"Puan ver","review_dismiss":"Şimdi değil",
+  tr: {"taste_pro":"Pro ses","taste_next":"sonrası ücretsiz ses","taste_tip":"Şu an gerçek insan sesini duyuyorsun. Tadım bitince ücretsiz sürüme (yerel ses) geçersin.","contrast_title":"Şu an Pro sesi dinliyorsun","contrast_body":"Ücretsiz sürüm aynı çeviriyi yapar — ama yerel, daha basit bir sesle. Farkı şimdi, hâlâ Pro'dayken duy.","contrast_cta":"Ücretsiz sesi dinle","contrast_dismiss":"Şimdi değil","contrast_loading":"Ses hazırlanıyor…","contrast_playing":"Ücretsiz ses çalıyor…","contrast_novoice":"Bu dilde ücretsiz ses yok — ücretsiz sürüm bu dilde altyazı verir.","contrast_failed":"Ses çalınamadı.","ladder_title":"Voxis'te üç basamak","ladder_pro":"Pro tadımı · 15 dakika, tek sefer — gerçek insan sesi, toplantı modu, 79 dil.","ladder_free":"Ücretsiz · günde 10 dakika — aynı çeviri, yerel ses, video/oyun.","ladder_paid":"Ücretli · gerçek ses geri gelir, toplantı açılır.","ladder_slogan":"Aynı beyin, daha basit ses. Ücretsiz sürüm çevirir; ücretli sürüm konuşur.","ladder_ok":"Anladım","review_title":"Voxis işine yarıyor mu?","review_body":"Store'da henüz hiç puanımız yok — ve insanlar bizi neredeyse tamamen puanlardan buluyor. Puan vermek 10 saniye sürer.","review_cta":"Puan ver","review_dismiss":"Şimdi değil",
     auth_google:"Google ile devam et",
     auth_or:"veya",
     auth_browser_wait:"Girişi tarayıcında tamamla…",
@@ -1631,7 +1721,7 @@ const I18N = {
     show_tour:"Tanıtım turunu tekrar göster",
     update_now:"Şimdi güncelle", update_later:"Sonra", store_view:"Microsoft Store'da görüntüle",
   },
-  en: {"review_title":"Is Voxis working for you?","review_body":"We have no Store ratings yet — and that's most of how people find us. A rating takes ten seconds.","review_cta":"Rate Voxis","review_dismiss":"Not now",
+  en: {"taste_pro":"Pro voice","taste_next":"then the free voice","taste_tip":"You're hearing the real human voice right now. When the taste runs out you move to the free version (local voice).","contrast_title":"You're listening to the Pro voice","contrast_body":"The free version translates exactly the same — but with a simpler, local voice. Hear the difference now, while you still have Pro.","contrast_cta":"Hear the free voice","contrast_dismiss":"Not now","contrast_loading":"Preparing voice…","contrast_playing":"Free voice playing…","contrast_novoice":"No free voice for this language — the free version gives subtitles here.","contrast_failed":"Couldn't play the voice.","ladder_title":"Voxis has three rungs","ladder_pro":"Pro taste · 15 minutes, once — real human voice, meeting mode, 79 languages.","ladder_free":"Free · 10 minutes a day — same translation, local voice, video/game.","ladder_paid":"Paid · the real voice returns, meeting mode unlocks.","ladder_slogan":"Same brain, simpler voice. The free version translates; the paid version speaks.","ladder_ok":"Got it","review_title":"Is Voxis working for you?","review_body":"We have no Store ratings yet — and that's most of how people find us. A rating takes ten seconds.","review_cta":"Rate Voxis","review_dismiss":"Not now",
     auth_google:"Continue with Google",
     auth_or:"or",
     auth_browser_wait:"Complete sign-in in your browser…",
@@ -1746,7 +1836,7 @@ const I18N = {
     cable_manual:"This version can't install drivers for you. Download VB-CABLE free from vb-audio.com, install it, then restart Voxis.",
     update_now:"Update now", update_later:"Later", store_view:"View in Microsoft Store",
   },
-  cs:{"review_title":"Funguje vám Voxis?","review_body":"V obchodě zatím nemáme žádná hodnocení — a právě podle nich nás lidé nacházejí. Hodnocení zabere deset sekund.","review_cta":"Ohodnotit Voxis","review_dismiss":"Teď ne",
+  cs:{"taste_pro":"Pro hlas","taste_next":"poté bezplatný hlas","taste_tip":"Právě slyšíš skutečný lidský hlas. Až ochutnávka skončí, přejdeš na bezplatnou verzi (místní hlas).","contrast_title":"Právě posloucháš Pro hlas","contrast_body":"Bezplatná verze překládá úplně stejně — ale jednodušším, místním hlasem. Slyš ten rozdíl teď, dokud Pro ještě máš.","contrast_cta":"Poslechnout bezplatný hlas","contrast_dismiss":"Teď ne","contrast_loading":"Připravuji hlas…","contrast_playing":"Přehrávám bezplatný hlas…","contrast_novoice":"Pro tento jazyk není bezplatný hlas — bezplatná verze zde dává titulky.","contrast_failed":"Hlas se nepodařilo přehrát.","ladder_title":"Voxis má tři stupně","ladder_pro":"Pro ochutnávka · 15 minut, jednou — skutečný lidský hlas, režim schůzky, 79 jazyků.","ladder_free":"Zdarma · 10 minut denně — stejný překlad, místní hlas, video/hra.","ladder_paid":"Placené · skutečný hlas se vrací, odemyká se režim schůzky.","ladder_slogan":"Stejný mozek, jednodušší hlas. Bezplatná verze překládá; placená mluví.","ladder_ok":"Rozumím","review_title":"Funguje vám Voxis?","review_body":"V obchodě zatím nemáme žádná hodnocení — a právě podle nich nás lidé nacházejí. Hodnocení zabere deset sekund.","review_cta":"Ohodnotit Voxis","review_dismiss":"Teď ne",
     about_powered:"Překlad pomocí pokročilé umělé inteligence.",
     start_cue:"Spustit",
     to_other_hint:"Používá se pouze v režimu schůzky",
@@ -1992,7 +2082,7 @@ const I18N = {
     vol_label:"Hlasitost překladu",
     waiting_signal:"Čeká se na vstupní zvuk"
   },
-  de: {"review_title":"Läuft Voxis gut für Sie?","review_body":"Wir haben noch keine Store-Bewertungen — und genau so finden uns die meisten Leute. Eine Bewertung dauert zehn Sekunden.","review_cta":"Voxis bewerten","review_dismiss":"Jetzt nicht",
+  de: {"taste_pro":"Pro-Stimme","taste_next":"danach die kostenlose Stimme","taste_tip":"Du hörst gerade die echte menschliche Stimme. Wenn die Probe endet, wechselst du zur kostenlosen Version (lokale Stimme).","contrast_title":"Du hörst gerade die Pro-Stimme","contrast_body":"Die kostenlose Version übersetzt genauso — aber mit einer einfacheren, lokalen Stimme. Höre den Unterschied jetzt, solange du Pro noch hast.","contrast_cta":"Kostenlose Stimme hören","contrast_dismiss":"Jetzt nicht","contrast_loading":"Stimme wird vorbereitet…","contrast_playing":"Kostenlose Stimme läuft…","contrast_novoice":"Für diese Sprache gibt es keine kostenlose Stimme — die kostenlose Version zeigt hier Untertitel.","contrast_failed":"Die Stimme konnte nicht abgespielt werden.","ladder_title":"Voxis hat drei Stufen","ladder_pro":"Pro-Probe · 15 Minuten, einmalig — echte menschliche Stimme, Meeting-Modus, 79 Sprachen.","ladder_free":"Kostenlos · 10 Minuten pro Tag — gleiche Übersetzung, lokale Stimme, Video/Spiel.","ladder_paid":"Bezahlt · die echte Stimme kehrt zurück, der Meeting-Modus wird freigeschaltet.","ladder_slogan":"Gleiches Gehirn, einfachere Stimme. Die kostenlose Version übersetzt; die bezahlte spricht.","ladder_ok":"Verstanden","review_title":"Läuft Voxis gut für Sie?","review_body":"Wir haben noch keine Store-Bewertungen — und genau so finden uns die meisten Leute. Eine Bewertung dauert zehn Sekunden.","review_cta":"Voxis bewerten","review_dismiss":"Jetzt nicht",
     auth_google:"Mit Google fortfahren",
     auth_or:"oder",
     auth_browser_wait:"Schließe die Anmeldung im Browser ab…",
@@ -2107,7 +2197,7 @@ const I18N = {
     show_tour:"Tour erneut anzeigen",
     update_now:"Jetzt aktualisieren", update_later:"Später",
   },
-  fr: {"review_title":"Voxis vous est utile ?","review_body":"Nous n'avons encore aucune note sur le Store — et c'est ainsi que la plupart des gens nous trouvent. Cela prend dix secondes.","review_cta":"Noter Voxis","review_dismiss":"Pas maintenant",
+  fr: {"taste_pro":"Voix Pro","taste_next":"puis la voix gratuite","taste_tip":"Vous entendez actuellement la vraie voix humaine. À la fin de l'essai, vous passez à la version gratuite (voix locale).","contrast_title":"Vous écoutez la voix Pro","contrast_body":"La version gratuite traduit exactement pareil — mais avec une voix locale, plus simple. Entendez la différence maintenant, tant que vous avez encore Pro.","contrast_cta":"Écouter la voix gratuite","contrast_dismiss":"Pas maintenant","contrast_loading":"Préparation de la voix…","contrast_playing":"Voix gratuite en lecture…","contrast_novoice":"Pas de voix gratuite pour cette langue — la version gratuite affiche des sous-titres ici.","contrast_failed":"Impossible de lire la voix.","ladder_title":"Voxis a trois niveaux","ladder_pro":"Essai Pro · 15 minutes, une seule fois — vraie voix humaine, mode réunion, 79 langues.","ladder_free":"Gratuit · 10 minutes par jour — même traduction, voix locale, vidéo/jeu.","ladder_paid":"Payant · la vraie voix revient, le mode réunion se débloque.","ladder_slogan":"Même cerveau, voix plus simple. La version gratuite traduit ; la version payante parle.","ladder_ok":"Compris","review_title":"Voxis vous est utile ?","review_body":"Nous n'avons encore aucune note sur le Store — et c'est ainsi que la plupart des gens nous trouvent. Cela prend dix secondes.","review_cta":"Noter Voxis","review_dismiss":"Pas maintenant",
     auth_google:"Continuer avec Google",
     auth_or:"ou",
     auth_browser_wait:"Terminez la connexion dans votre navigateur…",
@@ -2222,7 +2312,7 @@ const I18N = {
     show_tour:"Revoir la visite guidée",
     update_now:"Mettre à jour maintenant", update_later:"Plus tard",
   },
-  es: {"review_title":"¿Voxis te está sirviendo?","review_body":"Todavía no tenemos ninguna valoración en la Store — y así es como casi todos nos encuentran. Son diez segundos.","review_cta":"Valorar Voxis","review_dismiss":"Ahora no",
+  es: {"taste_pro":"Voz Pro","taste_next":"luego la voz gratuita","taste_tip":"Ahora mismo escuchas la voz humana real. Cuando termine la prueba pasarás a la versión gratuita (voz local).","contrast_title":"Estás escuchando la voz Pro","contrast_body":"La versión gratuita traduce exactamente igual — pero con una voz local más sencilla. Escucha la diferencia ahora, mientras aún tienes Pro.","contrast_cta":"Escuchar la voz gratuita","contrast_dismiss":"Ahora no","contrast_loading":"Preparando la voz…","contrast_playing":"Sonando la voz gratuita…","contrast_novoice":"No hay voz gratuita para este idioma — aquí la versión gratuita da subtítulos.","contrast_failed":"No se pudo reproducir la voz.","ladder_title":"Voxis tiene tres niveles","ladder_pro":"Prueba Pro · 15 minutos, una sola vez — voz humana real, modo reunión, 79 idiomas.","ladder_free":"Gratis · 10 minutos al día — misma traducción, voz local, vídeo/juego.","ladder_paid":"De pago · vuelve la voz real y se desbloquea el modo reunión.","ladder_slogan":"El mismo cerebro, una voz más sencilla. La versión gratuita traduce; la de pago habla.","ladder_ok":"Entendido","review_title":"¿Voxis te está sirviendo?","review_body":"Todavía no tenemos ninguna valoración en la Store — y así es como casi todos nos encuentran. Son diez segundos.","review_cta":"Valorar Voxis","review_dismiss":"Ahora no",
     auth_google:"Continuar con Google",
     auth_or:"o",
     auth_browser_wait:"Completa el inicio de sesión en tu navegador…",
@@ -2337,7 +2427,7 @@ const I18N = {
     show_tour:"Ver el tour de nuevo",
     update_now:"Actualizar ahora", update_later:"Más tarde",
   },
-  pt: {"review_title":"O Voxis está te ajudando?","review_body":"Ainda não temos nenhuma avaliação na Store — e é assim que quase todos nos encontram. Leva dez segundos.","review_cta":"Avaliar o Voxis","review_dismiss":"Agora não",
+  pt: {"taste_pro":"Voz Pro","taste_next":"depois a voz gratuita","taste_tip":"Você está a ouvir a voz humana real. Quando a amostra acabar, passa para a versão gratuita (voz local).","contrast_title":"Está a ouvir a voz Pro","contrast_body":"A versão gratuita traduz exatamente igual — mas com uma voz local, mais simples. Ouça a diferença agora, enquanto ainda tem Pro.","contrast_cta":"Ouvir a voz gratuita","contrast_dismiss":"Agora não","contrast_loading":"A preparar a voz…","contrast_playing":"Voz gratuita a tocar…","contrast_novoice":"Não há voz gratuita para este idioma — aqui a versão gratuita dá legendas.","contrast_failed":"Não foi possível reproduzir a voz.","ladder_title":"O Voxis tem três degraus","ladder_pro":"Amostra Pro · 15 minutos, uma vez — voz humana real, modo reunião, 79 idiomas.","ladder_free":"Grátis · 10 minutos por dia — mesma tradução, voz local, vídeo/jogo.","ladder_paid":"Pago · a voz real regressa e o modo reunião é desbloqueado.","ladder_slogan":"O mesmo cérebro, uma voz mais simples. A versão gratuita traduz; a paga fala.","ladder_ok":"Entendi","review_title":"O Voxis está te ajudando?","review_body":"Ainda não temos nenhuma avaliação na Store — e é assim que quase todos nos encontram. Leva dez segundos.","review_cta":"Avaliar o Voxis","review_dismiss":"Agora não",
     auth_google:"Continuar com o Google",
     auth_or:"ou",
     auth_browser_wait:"Conclua o login no seu navegador…",
@@ -2452,7 +2542,7 @@ const I18N = {
     show_tour:"Ver o tour novamente",
     update_now:"Atualizar agora", update_later:"Depois",
   },
-  ja: {"review_title":"Voxis はお役に立っていますか？","review_body":"Voxis にはまだストアの評価がありません。評価は、私たちを見つけてもらうためのほぼ唯一の手がかりです。10 秒で終わります。","review_cta":"Voxis を評価する","review_dismiss":"今はしない",
+  ja: {"taste_pro":"Proの音声","taste_next":"その後は無料の音声","taste_tip":"いまは本物の人間の声を聞いています。お試しが終わると無料版（ローカル音声）に切り替わります。","contrast_title":"いまProの音声を聞いています","contrast_body":"無料版の翻訳はまったく同じです。ただし、よりシンプルなローカル音声になります。Proがあるうちに違いを聞いてみてください。","contrast_cta":"無料の音声を聞く","contrast_dismiss":"あとで","contrast_loading":"音声を準備中…","contrast_playing":"無料の音声を再生中…","contrast_novoice":"この言語には無料の音声がありません。無料版では字幕になります。","contrast_failed":"音声を再生できませんでした。","ladder_title":"Voxis には3つの段階があります","ladder_pro":"Proお試し · 15分、1回限り — 本物の人間の声、会議モード、79言語。","ladder_free":"無料 · 1日10分 — 翻訳は同じ、ローカル音声、動画/ゲームのみ。","ladder_paid":"有料 · 本物の声が戻り、会議モードが使えます。","ladder_slogan":"同じ頭脳、よりシンプルな声。無料版は翻訳し、有料版は話します。","ladder_ok":"わかりました","review_title":"Voxis はお役に立っていますか？","review_body":"Voxis にはまだストアの評価がありません。評価は、私たちを見つけてもらうためのほぼ唯一の手がかりです。10 秒で終わります。","review_cta":"Voxis を評価する","review_dismiss":"今はしない",
     auth_google:"Google で続行",
     auth_or:"または",
     auth_browser_wait:"ブラウザでサインインを完了してください…",
@@ -2567,7 +2657,7 @@ const I18N = {
     show_tour:"ツアーをもう一度表示",
     update_now:"今すぐ更新", update_later:"後で",
   },
-  ko: {"review_title":"Voxis가 도움이 되고 있나요?","review_body":"아직 스토어 평가가 하나도 없습니다. 사람들이 저희를 찾는 거의 유일한 길이 평가입니다. 10초면 됩니다.","review_cta":"Voxis 평가하기","review_dismiss":"나중에",
+  ko: {"taste_pro":"Pro 음성","taste_next":"이후에는 무료 음성","taste_tip":"지금은 진짜 사람 목소리를 듣고 있습니다. 체험이 끝나면 무료 버전(로컬 음성)으로 전환됩니다.","contrast_title":"지금 Pro 음성을 듣고 있습니다","contrast_body":"무료 버전도 번역은 똑같습니다 — 다만 더 단순한 로컬 음성입니다. Pro가 있는 지금 그 차이를 들어보세요.","contrast_cta":"무료 음성 들어보기","contrast_dismiss":"나중에","contrast_loading":"음성 준비 중…","contrast_playing":"무료 음성 재생 중…","contrast_novoice":"이 언어에는 무료 음성이 없습니다 — 무료 버전은 자막으로 제공됩니다.","contrast_failed":"음성을 재생하지 못했습니다.","ladder_title":"Voxis에는 세 단계가 있습니다","ladder_pro":"Pro 체험 · 15분, 단 한 번 — 진짜 사람 목소리, 회의 모드, 79개 언어.","ladder_free":"무료 · 하루 10분 — 같은 번역, 로컬 음성, 영상/게임.","ladder_paid":"유료 · 진짜 목소리가 돌아오고 회의 모드가 열립니다.","ladder_slogan":"같은 두뇌, 더 단순한 목소리. 무료 버전은 번역하고, 유료 버전은 말합니다.","ladder_ok":"알겠습니다","review_title":"Voxis가 도움이 되고 있나요?","review_body":"아직 스토어 평가가 하나도 없습니다. 사람들이 저희를 찾는 거의 유일한 길이 평가입니다. 10초면 됩니다.","review_cta":"Voxis 평가하기","review_dismiss":"나중에",
     auth_google:"Google로 계속하기",
     auth_or:"또는",
     auth_browser_wait:"브라우저에서 로그인을 완료하세요…",
@@ -2682,7 +2772,7 @@ const I18N = {
     show_tour:"둘러보기 다시 보기",
     update_now:"지금 업데이트", update_later:"나중에",
   },
-  ru: {"review_title":"Voxis вам помогает?","review_body":"У нас пока нет ни одной оценки в Store — а именно так нас и находят. Это займёт десять секунд.","review_cta":"Оценить Voxis","review_dismiss":"Не сейчас",
+  ru: {"taste_pro":"Голос Pro","taste_next":"затем бесплатный голос","taste_tip":"Сейчас вы слышите настоящий человеческий голос. Когда пробный период закончится, вы перейдёте на бесплатную версию (локальный голос).","contrast_title":"Сейчас вы слушаете голос Pro","contrast_body":"Бесплатная версия переводит точно так же — но более простым локальным голосом. Услышьте разницу сейчас, пока Pro ещё у вас.","contrast_cta":"Послушать бесплатный голос","contrast_dismiss":"Не сейчас","contrast_loading":"Готовим голос…","contrast_playing":"Играет бесплатный голос…","contrast_novoice":"Для этого языка нет бесплатного голоса — здесь бесплатная версия даёт субтитры.","contrast_failed":"Не удалось воспроизвести голос.","ladder_title":"У Voxis три ступени","ladder_pro":"Проба Pro · 15 минут, один раз — настоящий человеческий голос, режим встречи, 79 языков.","ladder_free":"Бесплатно · 10 минут в день — тот же перевод, локальный голос, видео/игры.","ladder_paid":"Платно · настоящий голос возвращается, открывается режим встречи.","ladder_slogan":"Тот же мозг, более простой голос. Бесплатная версия переводит; платная — говорит.","ladder_ok":"Понятно","review_title":"Voxis вам помогает?","review_body":"У нас пока нет ни одной оценки в Store — а именно так нас и находят. Это займёт десять секунд.","review_cta":"Оценить Voxis","review_dismiss":"Не сейчас",
     auth_google:"Продолжить с Google",
     auth_or:"или",
     auth_browser_wait:"Завершите вход в браузере…",
@@ -2797,7 +2887,7 @@ const I18N = {
     show_tour:"Показать тур снова",
     update_now:"Обновить сейчас", update_later:"Позже",
   },
-  zh: {"review_title":"Voxis 用着还顺手吗？","review_body":"我们在商店里还没有任何评分——而人们几乎全靠评分找到我们。只需十秒。","review_cta":"去评分","review_dismiss":"以后再说",
+  zh: {"taste_pro":"Pro 语音","taste_next":"之后为免费语音","taste_tip":"你现在听到的是真实的人声。试用结束后将切换到免费版（本地语音）。","contrast_title":"你正在听 Pro 语音","contrast_body":"免费版的翻译完全相同——只是使用更简单的本地语音。趁你还拥有 Pro，现在就听听差别。","contrast_cta":"听听免费语音","contrast_dismiss":"暂不","contrast_loading":"正在准备语音…","contrast_playing":"正在播放免费语音…","contrast_novoice":"该语言暂无免费语音——免费版在此提供字幕。","contrast_failed":"无法播放语音。","ladder_title":"Voxis 有三个层级","ladder_pro":"Pro 试用 · 15 分钟，仅一次——真实人声、会议模式、79 种语言。","ladder_free":"免费 · 每天 10 分钟——翻译相同，本地语音，仅视频/游戏。","ladder_paid":"付费 · 真实人声回归，解锁会议模式。","ladder_slogan":"同样的大脑，更简单的声音。免费版翻译；付费版开口说话。","ladder_ok":"知道了","review_title":"Voxis 用着还顺手吗？","review_body":"我们在商店里还没有任何评分——而人们几乎全靠评分找到我们。只需十秒。","review_cta":"去评分","review_dismiss":"以后再说",
     auth_google:"使用 Google 继续",
     auth_or:"或",
     auth_browser_wait:"请在浏览器中完成登录…",
@@ -2912,7 +3002,7 @@ const I18N = {
     show_tour:"再次查看引导",
     update_now:"立即更新", update_later:"稍后",
   },
-  pl: {"review_title":"Czy Voxis się sprawdza?","review_body":"Nie mamy jeszcze żadnych ocen w Store — a to właśnie dzięki nim ludzie nas znajdują. Zajmie dziesięć sekund.","review_cta":"Oceń Voxis","review_dismiss":"Nie teraz",
+  pl: {"taste_pro":"Głos Pro","taste_next":"potem darmowy głos","taste_tip":"Teraz słyszysz prawdziwy ludzki głos. Gdy próbka się skończy, przejdziesz na wersję darmową (głos lokalny).","contrast_title":"Słuchasz teraz głosu Pro","contrast_body":"Wersja darmowa tłumaczy dokładnie tak samo — ale prostszym, lokalnym głosem. Usłysz różnicę teraz, póki masz jeszcze Pro.","contrast_cta":"Posłuchaj darmowego głosu","contrast_dismiss":"Nie teraz","contrast_loading":"Przygotowuję głos…","contrast_playing":"Odtwarzam darmowy głos…","contrast_novoice":"Brak darmowego głosu dla tego języka — wersja darmowa daje tu napisy.","contrast_failed":"Nie udało się odtworzyć głosu.","ladder_title":"Voxis ma trzy poziomy","ladder_pro":"Próbka Pro · 15 minut, jednorazowo — prawdziwy ludzki głos, tryb spotkania, 79 języków.","ladder_free":"Darmowo · 10 minut dziennie — to samo tłumaczenie, głos lokalny, wideo/gry.","ladder_paid":"Płatnie · prawdziwy głos wraca, odblokowuje się tryb spotkania.","ladder_slogan":"Ten sam mózg, prostszy głos. Wersja darmowa tłumaczy; płatna mówi.","ladder_ok":"Rozumiem","review_title":"Czy Voxis się sprawdza?","review_body":"Nie mamy jeszcze żadnych ocen w Store — a to właśnie dzięki nim ludzie nas znajdują. Zajmie dziesięć sekund.","review_cta":"Oceń Voxis","review_dismiss":"Nie teraz",
     auth_google:"Kontynuuj z Google",
     auth_or:"lub",
     auth_browser_wait:"Dokończ logowanie w przeglądarce…",
@@ -3027,7 +3117,7 @@ const I18N = {
     show_tour:"Pokaż przewodnik ponownie",
     update_now:"Aktualizuj teraz", update_later:"Później",
   },
-  it: {"review_title":"Voxis ti sta tornando utile?","review_body":"Non abbiamo ancora nessuna valutazione sullo Store — ed è così che la gente ci trova. Bastano dieci secondi.","review_cta":"Valuta Voxis","review_dismiss":"Non ora",
+  it: {"taste_pro":"Voce Pro","taste_next":"poi la voce gratuita","taste_tip":"In questo momento senti la vera voce umana. Quando la prova finisce passi alla versione gratuita (voce locale).","contrast_title":"Stai ascoltando la voce Pro","contrast_body":"La versione gratuita traduce esattamente allo stesso modo — ma con una voce locale più semplice. Ascolta la differenza ora, finché hai ancora Pro.","contrast_cta":"Ascolta la voce gratuita","contrast_dismiss":"Non ora","contrast_loading":"Preparazione della voce…","contrast_playing":"Riproduzione della voce gratuita…","contrast_novoice":"Nessuna voce gratuita per questa lingua — qui la versione gratuita fornisce i sottotitoli.","contrast_failed":"Impossibile riprodurre la voce.","ladder_title":"Voxis ha tre livelli","ladder_pro":"Prova Pro · 15 minuti, una volta sola — vera voce umana, modalità riunione, 79 lingue.","ladder_free":"Gratis · 10 minuti al giorno — stessa traduzione, voce locale, video/gioco.","ladder_paid":"A pagamento · torna la voce vera e si sblocca la modalità riunione.","ladder_slogan":"Stesso cervello, voce più semplice. La versione gratuita traduce; quella a pagamento parla.","ladder_ok":"Ho capito","review_title":"Voxis ti sta tornando utile?","review_body":"Non abbiamo ancora nessuna valutazione sullo Store — ed è così che la gente ci trova. Bastano dieci secondi.","review_cta":"Valuta Voxis","review_dismiss":"Non ora",
     auth_google:"Continua con Google",
     auth_or:"oppure",
     auth_browser_wait:"Completa l'accesso nel browser…",
@@ -3142,7 +3232,7 @@ const I18N = {
     show_tour:"Rivedi il tour",
     update_now:"Aggiorna ora", update_later:"Più tardi",
   },
-  id: {"review_title":"Voxis membantu kamu?","review_body":"Kami belum punya rating apa pun di Store — dan dari situlah orang menemukan kami. Cuma sepuluh detik.","review_cta":"Beri rating","review_dismiss":"Nanti saja",
+  id: {"taste_pro":"Suara Pro","taste_next":"lalu suara gratis","taste_tip":"Kamu sedang mendengar suara manusia asli. Saat masa coba habis, kamu beralih ke versi gratis (suara lokal).","contrast_title":"Kamu sedang mendengarkan suara Pro","contrast_body":"Versi gratis menerjemahkan persis sama — tetapi dengan suara lokal yang lebih sederhana. Dengar bedanya sekarang, selagi Pro masih ada.","contrast_cta":"Dengarkan suara gratis","contrast_dismiss":"Nanti saja","contrast_loading":"Menyiapkan suara…","contrast_playing":"Memutar suara gratis…","contrast_novoice":"Tidak ada suara gratis untuk bahasa ini — versi gratis memberi subtitle di sini.","contrast_failed":"Tidak bisa memutar suara.","ladder_title":"Voxis punya tiga tingkat","ladder_pro":"Coba Pro · 15 menit, sekali saja — suara manusia asli, mode rapat, 79 bahasa.","ladder_free":"Gratis · 10 menit per hari — terjemahan sama, suara lokal, video/game.","ladder_paid":"Berbayar · suara asli kembali, mode rapat terbuka.","ladder_slogan":"Otak yang sama, suara yang lebih sederhana. Versi gratis menerjemahkan; versi berbayar berbicara.","ladder_ok":"Mengerti","review_title":"Voxis membantu kamu?","review_body":"Kami belum punya rating apa pun di Store — dan dari situlah orang menemukan kami. Cuma sepuluh detik.","review_cta":"Beri rating","review_dismiss":"Nanti saja",
     auth_google:"Lanjutkan dengan Google",
     auth_or:"atau",
     auth_browser_wait:"Selesaikan proses masuk di browser Anda…",
@@ -3257,7 +3347,7 @@ const I18N = {
     show_tour:"Lihat tur lagi",
     update_now:"Perbarui sekarang", update_later:"Nanti",
   },
-  nl: {"review_title":"Werkt Voxis goed voor je?","review_body":"We hebben nog geen enkele Store-beoordeling — en zo vinden mensen ons. Het kost tien seconden.","review_cta":"Voxis beoordelen","review_dismiss":"Niet nu",
+  nl: {"taste_pro":"Pro-stem","taste_next":"daarna de gratis stem","taste_tip":"Je hoort nu de echte menselijke stem. Als de proef afloopt, ga je over naar de gratis versie (lokale stem).","contrast_title":"Je luistert naar de Pro-stem","contrast_body":"De gratis versie vertaalt precies hetzelfde — maar met een eenvoudigere, lokale stem. Hoor het verschil nu, nu je Pro nog hebt.","contrast_cta":"Hoor de gratis stem","contrast_dismiss":"Niet nu","contrast_loading":"Stem voorbereiden…","contrast_playing":"Gratis stem speelt…","contrast_novoice":"Geen gratis stem voor deze taal — de gratis versie geeft hier ondertitels.","contrast_failed":"Kon de stem niet afspelen.","ladder_title":"Voxis heeft drie treden","ladder_pro":"Pro-proef · 15 minuten, eenmalig — echte menselijke stem, vergadermodus, 79 talen.","ladder_free":"Gratis · 10 minuten per dag — dezelfde vertaling, lokale stem, video/game.","ladder_paid":"Betaald · de echte stem keert terug, vergadermodus wordt ontgrendeld.","ladder_slogan":"Zelfde brein, eenvoudigere stem. De gratis versie vertaalt; de betaalde spreekt.","ladder_ok":"Begrepen","review_title":"Werkt Voxis goed voor je?","review_body":"We hebben nog geen enkele Store-beoordeling — en zo vinden mensen ons. Het kost tien seconden.","review_cta":"Voxis beoordelen","review_dismiss":"Niet nu",
     auth_google:"Doorgaan met Google",
     auth_or:"of",
     auth_browser_wait:"Voltooi het aanmelden in je browser…",
@@ -3372,7 +3462,7 @@ const I18N = {
     show_tour:"Rondleiding opnieuw bekijken",
     update_now:"Nu bijwerken", update_later:"Later",
   },
-  vi: {"review_title":"Voxis có hữu ích với bạn không?","review_body":"Chúng tôi chưa có đánh giá nào trên Store — và đó là cách hầu hết mọi người tìm thấy chúng tôi. Chỉ mất mười giây.","review_cta":"Đánh giá Voxis","review_dismiss":"Để sau",
+  vi: {"taste_pro":"Giọng Pro","taste_next":"sau đó là giọng miễn phí","taste_tip":"Bạn đang nghe giọng người thật. Khi hết bản dùng thử, bạn sẽ chuyển sang bản miễn phí (giọng cục bộ).","contrast_title":"Bạn đang nghe giọng Pro","contrast_body":"Bản miễn phí dịch y hệt — nhưng bằng một giọng cục bộ đơn giản hơn. Hãy nghe sự khác biệt ngay bây giờ, khi bạn vẫn còn Pro.","contrast_cta":"Nghe giọng miễn phí","contrast_dismiss":"Để sau","contrast_loading":"Đang chuẩn bị giọng…","contrast_playing":"Đang phát giọng miễn phí…","contrast_novoice":"Ngôn ngữ này chưa có giọng miễn phí — bản miễn phí sẽ hiển thị phụ đề.","contrast_failed":"Không phát được giọng nói.","ladder_title":"Voxis có ba bậc","ladder_pro":"Dùng thử Pro · 15 phút, một lần duy nhất — giọng người thật, chế độ họp, 79 ngôn ngữ.","ladder_free":"Miễn phí · 10 phút mỗi ngày — cùng bản dịch, giọng cục bộ, video/game.","ladder_paid":"Trả phí · giọng thật quay lại, mở khóa chế độ họp.","ladder_slogan":"Cùng bộ não, giọng đơn giản hơn. Bản miễn phí dịch; bản trả phí cất tiếng nói.","ladder_ok":"Đã hiểu","review_title":"Voxis có hữu ích với bạn không?","review_body":"Chúng tôi chưa có đánh giá nào trên Store — và đó là cách hầu hết mọi người tìm thấy chúng tôi. Chỉ mất mười giây.","review_cta":"Đánh giá Voxis","review_dismiss":"Để sau",
     auth_google:"Tiếp tục với Google",
     auth_or:"hoặc",
     auth_browser_wait:"Hoàn tất đăng nhập trong trình duyệt của bạn…",
@@ -3487,7 +3577,7 @@ const I18N = {
     show_tour:"Xem lại hướng dẫn",
     update_now:"Cập nhật ngay", update_later:"Để sau",
   },
-  th: {"review_title":"Voxis ช่วยคุณได้ไหม","review_body":"เรายังไม่มีคะแนนใน Store เลย — และนั่นคือทางที่คนส่วนใหญ่เจอเรา ใช้เวลาสิบวินาที","review_cta":"ให้คะแนน Voxis","review_dismiss":"ไว้ทีหลัง",
+  th: {"taste_pro":"เสียง Pro","taste_next":"จากนั้นเป็นเสียงฟรี","taste_tip":"ตอนนี้คุณกำลังฟังเสียงมนุษย์จริง เมื่อช่วงทดลองหมด คุณจะเปลี่ยนไปใช้เวอร์ชันฟรี (เสียงในเครื่อง)","contrast_title":"คุณกำลังฟังเสียง Pro","contrast_body":"เวอร์ชันฟรีแปลเหมือนกันทุกประการ — แต่ใช้เสียงในเครื่องที่เรียบง่ายกว่า ลองฟังความต่างตอนนี้ ขณะที่คุณยังมี Pro","contrast_cta":"ฟังเสียงฟรี","contrast_dismiss":"ไว้ก่อน","contrast_loading":"กำลังเตรียมเสียง…","contrast_playing":"กำลังเล่นเสียงฟรี…","contrast_novoice":"ภาษานี้ยังไม่มีเสียงฟรี — เวอร์ชันฟรีจะให้คำบรรยายแทน","contrast_failed":"เล่นเสียงไม่สำเร็จ","ladder_title":"Voxis มีสามระดับ","ladder_pro":"ทดลอง Pro · 15 นาที ครั้งเดียว — เสียงมนุษย์จริง โหมดประชุม 79 ภาษา","ladder_free":"ฟรี · วันละ 10 นาที — แปลเหมือนเดิม เสียงในเครื่อง วิดีโอ/เกม","ladder_paid":"เสียเงิน · เสียงจริงกลับมา และปลดล็อกโหมดประชุม","ladder_slogan":"สมองเดียวกัน เสียงเรียบง่ายกว่า เวอร์ชันฟรีแปล ส่วนเวอร์ชันเสียเงินพูด","ladder_ok":"เข้าใจแล้ว","review_title":"Voxis ช่วยคุณได้ไหม","review_body":"เรายังไม่มีคะแนนใน Store เลย — และนั่นคือทางที่คนส่วนใหญ่เจอเรา ใช้เวลาสิบวินาที","review_cta":"ให้คะแนน Voxis","review_dismiss":"ไว้ทีหลัง",
     auth_google:"ดำเนินการต่อด้วย Google",
     auth_or:"หรือ",
     auth_browser_wait:"ทำการเข้าสู่ระบบให้เสร็จในเบราว์เซอร์ของคุณ…",
@@ -3602,7 +3692,7 @@ const I18N = {
     show_tour:"ดูทัวร์อีกครั้ง",
     update_now:"อัปเดตตอนนี้", update_later:"ภายหลัง",
   },
-  "ro":{"review_title":"Voxis îți este de folos?","review_body":"Încă nu avem nicio evaluare în Store — și așa ne găsesc oamenii. Durează zece secunde.","review_cta":"Evaluează Voxis","review_dismiss":"Nu acum",
+  "ro":{"taste_pro":"Voce Pro","taste_next":"apoi vocea gratuită","taste_tip":"Acum auzi vocea umană reală. Când se termină proba, treci la versiunea gratuită (voce locală).","contrast_title":"Asculți vocea Pro","contrast_body":"Versiunea gratuită traduce exact la fel — dar cu o voce locală, mai simplă. Ascultă diferența acum, cât încă ai Pro.","contrast_cta":"Ascultă vocea gratuită","contrast_dismiss":"Nu acum","contrast_loading":"Se pregătește vocea…","contrast_playing":"Se redă vocea gratuită…","contrast_novoice":"Nu există voce gratuită pentru această limbă — aici versiunea gratuită oferă subtitrări.","contrast_failed":"Vocea nu a putut fi redată.","ladder_title":"Voxis are trei trepte","ladder_pro":"Probă Pro · 15 minute, o singură dată — voce umană reală, mod ședință, 79 de limbi.","ladder_free":"Gratuit · 10 minute pe zi — aceeași traducere, voce locală, video/joc.","ladder_paid":"Plătit · vocea reală revine, se deblochează modul ședință.","ladder_slogan":"Același creier, o voce mai simplă. Versiunea gratuită traduce; cea plătită vorbește.","ladder_ok":"Am înțeles","review_title":"Voxis îți este de folos?","review_body":"Încă nu avem nicio evaluare în Store — și așa ne găsesc oamenii. Durează zece secunde.","review_cta":"Evaluează Voxis","review_dismiss":"Nu acum",
     "about_powered":"Propulsat de traducere AI avansată.",
     "al_contact":"Contact",
     "al_pricing":"Prețuri",
@@ -3848,7 +3938,7 @@ const I18N = {
     "vol_label":"Volumul traducerii",
     "waiting_signal":"Se așteaptă semnal de intrare",
   },
-  "hi":{"review_title":"क्या Voxis आपके काम आ रहा है?","review_body":"Store पर हमारी अभी एक भी रेटिंग नहीं है — और लोग हमें ज़्यादातर इसी से ढूँढते हैं। दस सेकंड लगेंगे।","review_cta":"रेटिंग दें","review_dismiss":"अभी नहीं",
+  "hi":{"taste_pro":"Pro आवाज़","taste_next":"फिर मुफ़्त आवाज़","taste_tip":"अभी आप असली इंसानी आवाज़ सुन रहे हैं। ट्रायल खत्म होने पर आप मुफ़्त संस्करण (लोकल आवाज़) पर चले जाएंगे।","contrast_title":"आप अभी Pro आवाज़ सुन रहे हैं","contrast_body":"मुफ़्त संस्करण बिल्कुल वैसा ही अनुवाद करता है — बस आवाज़ सरल, लोकल होती है। फ़र्क अभी सुनें, जब तक Pro आपके पास है।","contrast_cta":"मुफ़्त आवाज़ सुनें","contrast_dismiss":"अभी नहीं","contrast_loading":"आवाज़ तैयार हो रही है…","contrast_playing":"मुफ़्त आवाज़ चल रही है…","contrast_novoice":"इस भाषा के लिए मुफ़्त आवाज़ नहीं है — यहाँ मुफ़्त संस्करण सबटाइटल देता है।","contrast_failed":"आवाज़ नहीं चल सकी।","ladder_title":"Voxis में तीन पायदान हैं","ladder_pro":"Pro ट्रायल · 15 मिनट, सिर्फ़ एक बार — असली इंसानी आवाज़, मीटिंग मोड, 79 भाषाएँ।","ladder_free":"मुफ़्त · रोज़ 10 मिनट — वही अनुवाद, लोकल आवाज़, वीडियो/गेम।","ladder_paid":"सशुल्क · असली आवाज़ लौट आती है, मीटिंग मोड खुल जाता है।","ladder_slogan":"वही दिमाग़, सरल आवाज़। मुफ़्त संस्करण अनुवाद करता है; सशुल्क संस्करण बोलता है।","ladder_ok":"समझ गया","review_title":"क्या Voxis आपके काम आ रहा है?","review_body":"Store पर हमारी अभी एक भी रेटिंग नहीं है — और लोग हमें ज़्यादातर इसी से ढूँढते हैं। दस सेकंड लगेंगे।","review_cta":"रेटिंग दें","review_dismiss":"अभी नहीं",
     "about_powered":"उन्नत AI अनुवाद द्वारा संचालित।",
     "al_contact":"संपर्क",
     "al_pricing":"मूल्य निर्धारण",
@@ -4094,7 +4184,7 @@ const I18N = {
     "vol_label":"अनुवाद वॉल्यूम",
     "waiting_signal":"इनपुट सिग्नल की प्रतीक्षा",
   },
-  "hu":{"review_title":"Beválik neked a Voxis?","review_body":"Még egyetlen Store-értékelésünk sincs — pedig jórészt így találnak ránk. Tíz másodperc az egész.","review_cta":"Értékelem","review_dismiss":"Most nem",
+  "hu":{"taste_pro":"Pro hang","taste_next":"utána az ingyenes hang","taste_tip":"Most valódi emberi hangot hallasz. Amikor a kóstoló véget ér, átkerülsz az ingyenes változatra (helyi hang).","contrast_title":"Most a Pro hangot hallgatod","contrast_body":"Az ingyenes változat pontosan ugyanúgy fordít — csak egyszerűbb, helyi hangon. Halld a különbséget most, amíg még Pro-d van.","contrast_cta":"Hallgasd meg az ingyenes hangot","contrast_dismiss":"Most nem","contrast_loading":"Hang előkészítése…","contrast_playing":"Ingyenes hang szól…","contrast_novoice":"Ehhez a nyelvhez nincs ingyenes hang — itt az ingyenes változat feliratot ad.","contrast_failed":"A hangot nem sikerült lejátszani.","ladder_title":"A Voxisnak három fokozata van","ladder_pro":"Pro kóstoló · 15 perc, egyszer — valódi emberi hang, értekezlet mód, 79 nyelv.","ladder_free":"Ingyenes · napi 10 perc — ugyanaz a fordítás, helyi hang, videó/játék.","ladder_paid":"Fizetős · visszatér a valódi hang, feloldódik az értekezlet mód.","ladder_slogan":"Ugyanaz az agy, egyszerűbb hang. Az ingyenes változat fordít; a fizetős beszél.","ladder_ok":"Értem","review_title":"Beválik neked a Voxis?","review_body":"Még egyetlen Store-értékelésünk sincs — pedig jórészt így találnak ránk. Tíz másodperc az egész.","review_cta":"Értékelem","review_dismiss":"Most nem",
     "about_powered":"Fejlett AI-fordítással működik.",
     "al_contact":"Kapcsolat",
     "al_pricing":"Árak",
@@ -4340,7 +4430,7 @@ const I18N = {
     "vol_label":"Fordítás hangereje",
     "waiting_signal":"Várakozás bemeneti jelre",
   },
-  "sv":{"review_title":"Fungerar Voxis bra för dig?","review_body":"Vi har inga betyg i Store än — och det är så folk hittar oss. Det tar tio sekunder.","review_cta":"Betygsätt Voxis","review_dismiss":"Inte nu",
+  "sv":{"taste_pro":"Pro-röst","taste_next":"sedan den kostnadsfria rösten","taste_tip":"Just nu hör du den riktiga mänskliga rösten. När provet tar slut går du över till gratisversionen (lokal röst).","contrast_title":"Du lyssnar på Pro-rösten","contrast_body":"Gratisversionen översätter exakt likadant — men med en enklare, lokal röst. Hör skillnaden nu, medan du fortfarande har Pro.","contrast_cta":"Hör den kostnadsfria rösten","contrast_dismiss":"Inte nu","contrast_loading":"Förbereder rösten…","contrast_playing":"Kostnadsfri röst spelas…","contrast_novoice":"Ingen kostnadsfri röst för det här språket — gratisversionen ger undertexter här.","contrast_failed":"Kunde inte spela upp rösten.","ladder_title":"Voxis har tre steg","ladder_pro":"Pro-prov · 15 minuter, en gång — riktig mänsklig röst, mötesläge, 79 språk.","ladder_free":"Gratis · 10 minuter om dagen — samma översättning, lokal röst, video/spel.","ladder_paid":"Betald · den riktiga rösten kommer tillbaka och mötesläget låses upp.","ladder_slogan":"Samma hjärna, enklare röst. Gratisversionen översätter; den betalda talar.","ladder_ok":"Uppfattat","review_title":"Fungerar Voxis bra för dig?","review_body":"Vi har inga betyg i Store än — och det är så folk hittar oss. Det tar tio sekunder.","review_cta":"Betygsätt Voxis","review_dismiss":"Inte nu",
     "about_powered":"Drivs av avancerad AI-översättning.",
     "al_contact":"Kontakt",
     "al_pricing":"Priser",
@@ -4586,7 +4676,7 @@ const I18N = {
     "vol_label":"Översättningsvolym",
     "waiting_signal":"Väntar på insignal",
   },
-  "sr":{"review_title":"Da li ti Voxis koristi?","review_body":"Još uvek nemamo nijednu ocenu u Store-u — a ljudi nas uglavnom tako i pronalaze. Traje deset sekundi.","review_cta":"Oceni Voxis","review_dismiss":"Ne sada",
+  "sr":{"taste_pro":"Pro glas","taste_next":"zatim besplatni glas","taste_tip":"Sada čuješ pravi ljudski glas. Kada proba istekne, prelaziš na besplatnu verziju (lokalni glas).","contrast_title":"Slušaš Pro glas","contrast_body":"Besplatna verzija prevodi potpuno isto — ali jednostavnijim, lokalnim glasom. Čuj razliku sada, dok još imaš Pro.","contrast_cta":"Poslušaj besplatni glas","contrast_dismiss":"Ne sada","contrast_loading":"Pripremam glas…","contrast_playing":"Besplatni glas se reprodukuje…","contrast_novoice":"Za ovaj jezik nema besplatnog glasa — besplatna verzija ovde daje titlove.","contrast_failed":"Glas nije mogao da se reprodukuje.","ladder_title":"Voxis ima tri stepenika","ladder_pro":"Pro proba · 15 minuta, jednom — pravi ljudski glas, režim sastanka, 79 jezika.","ladder_free":"Besplatno · 10 minuta dnevno — isti prevod, lokalni glas, video/igra.","ladder_paid":"Plaćeno · pravi glas se vraća, otključava se režim sastanka.","ladder_slogan":"Isti mozak, jednostavniji glas. Besplatna verzija prevodi; plaćena govori.","ladder_ok":"Razumem","review_title":"Da li ti Voxis koristi?","review_body":"Još uvek nemamo nijednu ocenu u Store-u — a ljudi nas uglavnom tako i pronalaze. Traje deset sekundi.","review_cta":"Oceni Voxis","review_dismiss":"Ne sada",
     "about_powered":"Pokreće ga napredni AI prevod.",
     "al_contact":"Kontakt",
     "al_pricing":"Cene",
@@ -4832,7 +4922,7 @@ const I18N = {
     "vol_label":"Jačina prevoda",
     "waiting_signal":"Čekanje ulaznog signala",
   },
-  "zh-Hant":{"review_title":"Voxis 用起來還順手嗎？","review_body":"我們在商店裡還沒有任何評分——而人們幾乎全靠評分找到我們。只需十秒。","review_cta":"去評分","review_dismiss":"以後再說",
+  "zh-Hant":{"taste_pro":"Pro 語音","taste_next":"之後為免費語音","taste_tip":"你現在聽到的是真實的人聲。試用結束後將切換到免費版（本地語音）。","contrast_title":"你正在聽 Pro 語音","contrast_body":"免費版的翻譯完全相同——只是使用更簡單的本地語音。趁你還擁有 Pro，現在就聽聽差別。","contrast_cta":"聽聽免費語音","contrast_dismiss":"暫不","contrast_loading":"正在準備語音…","contrast_playing":"正在播放免費語音…","contrast_novoice":"該語言暫無免費語音——免費版在此提供字幕。","contrast_failed":"無法播放語音。","ladder_title":"Voxis 有三個層級","ladder_pro":"Pro 試用 · 15 分鐘，僅一次——真實人聲、會議模式、79 種語言。","ladder_free":"免費 · 每天 10 分鐘——翻譯相同，本地語音，僅影片/遊戲。","ladder_paid":"付費 · 真實人聲回歸，解鎖會議模式。","ladder_slogan":"同樣的大腦，更簡單的聲音。免費版翻譯；付費版開口說話。","ladder_ok":"知道了","review_title":"Voxis 用起來還順手嗎？","review_body":"我們在商店裡還沒有任何評分——而人們幾乎全靠評分找到我們。只需十秒。","review_cta":"去評分","review_dismiss":"以後再說",
     "about_powered":"由先進的 AI 翻譯技術驅動。",
     "al_contact":"聯絡我們",
     "al_pricing":"價格",
@@ -5759,7 +5849,7 @@ $('#limit-dismiss').onclick = e => { e.preventDefault(); closeLimitModal(); };
 })();
 
 /* ── QUOTA BAR ──────────────────────────────────────────────────────────── */
-function renderQuotaBadge(quota){ renderQuotaBar(quota); }
+function renderQuotaBadge(quota){ renderQuotaBar(quota); renderTasteChip(quota); maybeShowLadder(quota); }
 function renderQuotaBar(quota){
   const wrap = $('#quota-bar-wrap'); const fill = $('#quota-bar-fill'); const label = $('#quota-bar-label');
   if(!quota){ wrap.style.display='none'; return; }
@@ -6139,6 +6229,92 @@ function showReviewCard(){
   $('#scrim').classList.add('open'); $('#review-modal').classList.add('open');
   openModal($('#review-modal'), closeReviewModal, null);
 }
+/* ── FREE-TIER JOURNEY: taste chip · three-rung ladder · inverse demo ──────
+   The whole point of these three: a user must never reach the wall without
+   having (a) known they were on the paid voice, (b) known what replaces it,
+   and (c) HEARD the difference while it was still reversible. */
+function isTasteTier(q){
+  // The taste is a FREE-tier state: a paying user is not tasting anything.
+  // Fails CLOSED on an unknown/absent tier — telling a paying customer their
+  // voice is about to be taken away is a far worse error than staying quiet.
+  if(!STATE.official_release || !q || q.unlimited) return false;
+  return String(q.tier || q.plan || '').toLowerCase() === 'free';
+}
+function renderTasteChip(q){
+  const chip = $('#taste-chip'); if(!chip) return;
+  if(!isTasteTier(q)){ chip.style.display='none'; return; }
+  const allowed = q.allowed_minutes || 0;
+  const rem = q.remaining ?? Math.max(0, allowed - (q.used_minutes||0));
+  if(rem <= 0){ chip.style.display='none'; return; }   // past the taste; the wall speaks now
+  chip.style.display='inline-flex';
+  chip.classList.toggle('low', rem <= 3);
+  $('#taste-pro').textContent  = T('taste_pro');
+  $('#taste-count').textContent= Math.max(1, Math.round(rem)) + T('min_left');
+  $('#taste-next').textContent = T('taste_next');
+  chip.title = T('taste_tip');
+}
+function closeLadder(){ $('#ladder-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
+function maybeShowLadder(q){
+  // Once, on a free user's first sign-in — BEFORE the minutes start burning.
+  if(!isTasteTier(q) || (STATE.cfg && STATE.cfg.ladder_seen)) return;
+  if(STATE.cfg) STATE.cfg.ladder_seen = true;
+  try{ api().mark_seen('ladder_seen'); }catch(_){}
+  $('#scrim').classList.add('open'); $('#ladder-modal').classList.add('open');
+  openModal($('#ladder-modal'), closeLadder, null);
+}
+$('#ladder-ok').onclick = e => { e.preventDefault(); closeLadder(); };
+
+const CONTRAST_AFTER_MS = 120000;   // let them settle into the content first
+let contrastArmed=false, contrastLines=0;
+function hideContrast(){ const c=$('#contrast-card'); if(c) c.style.display='none'; }
+function maybeOfferContrast(){
+  // Conditions, all of them: free tier · never asked before · session running for
+  // two minutes · Voxis has actually produced a line worth replaying. Asking
+  // before it works would demo silence.
+  if(contrastArmed || !SESSION_LIVE || !isTasteTier(QUOTA)) return;
+  if(STATE.cfg && STATE.cfg.contrast_shown) return;
+  if(contrastLines < 1 || (Date.now() - sessionT0) < CONTRAST_AFTER_MS) return;
+  contrastArmed = true;
+  if(STATE.cfg) STATE.cfg.contrast_shown = true;
+  try{ api().mark_seen('contrast_shown'); }catch(_){}   // asked = spent, even if dismissed
+  const c=$('#contrast-card'); if(!c) return;
+  c.classList.remove('busy');
+  $('#contrast-body').textContent = T('contrast_body');
+  $('#contrast-cta').textContent  = T('contrast_cta');
+  c.style.display='flex';
+}
+$('#contrast-dismiss').onclick = e => { e.preventDefault(); hideContrast(); };
+$('#contrast-cta').onclick = async e => {
+  e.preventDefault();
+  const c=$('#contrast-card');
+  c.classList.add('busy');
+  $('#contrast-cta').textContent = T('contrast_loading');
+  try{
+    const r = await api().free_voice_preview();
+    if(r && r.ok === false) onPreviewEvent({state:'error', code:r.code});
+  }catch(_){ onPreviewEvent({state:'error', code:'failed'}); }
+};
+// Progress from the Python side. It sends codes, never strings, so the copy
+// stays in one place (the i18n tables) and this stays localizable.
+function onPreviewEvent(p){
+  if(!p) return;
+  const c=$('#contrast-card'), cta=$('#contrast-cta'), body=$('#contrast-body');
+  if(p.state==='loading'){ if(cta) cta.textContent=T('contrast_loading'); return; }
+  if(p.state==='playing'){ if(cta) cta.textContent=T('contrast_playing'); return; }
+  if(p.state==='done'){
+    // The paid voice is already back. Close on a high note rather than lingering.
+    if(c){ c.classList.remove('busy'); }
+    setTimeout(hideContrast, 900);
+    return;
+  }
+  if(p.state==='error'){
+    if(c) c.classList.remove('busy');
+    if(body) body.textContent = (p.code==='no_voice') ? T('contrast_novoice') : T('contrast_failed');
+    if(cta) cta.style.display='none';
+    setTimeout(hideContrast, 6000);
+  }
+}
+
 $('#review-dismiss').onclick = e => { e.preventDefault(); closeReviewModal(); };
 $('#review-cta').onclick = async e => {
   e.preventDefault();
@@ -6609,6 +6785,9 @@ function appendWords(el, text){
 }
 let latencyNoteShown=false;
 function onTrans(text, newline, spk){
+  // Counted before the subtitle gate: the inverse demo replays the last line
+  // Voxis SPOKE, which happens whether or not captions are switched on.
+  if(newline) contrastLines++;
   if(!$('#subs').checked) return;
   // Honest-latency: the caption renders the instant a token arrives, ahead of the
   // TTS audio. The first turn of a session also drops a one-time in-context note
@@ -6745,17 +6924,20 @@ async function poll(){
       else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
       else if(ev[0]==='quota_wall'){ showPaywallCard(); }
       else if(ev[0]==='review'){ showReviewCard(); }
+      else if(ev[0]==='preview'){ onPreviewEvent(ev[1]); }
     });
     if(scOpen) driveSoundcheck(p.sc);
     $('#badge').textContent = p.badge.text;
     setPillState(p);
     const liveSession = !!p.mode;
-    if(liveSession && !SESSION_LIVE){ limitShown=false; warn80Shown=false; sessionT0=Date.now(); }  // new session → re-arm paywall + toast
+    if(liveSession && !SESSION_LIVE){ limitShown=false; warn80Shown=false; sessionT0=Date.now(); contrastLines=0; }  // new session → re-arm paywall + toast
     if(!liveSession && SESSION_LIVE){
       // Session just ended: close the loop with how long it ran.
       { const h=$('#hearline'); if(h) h.remove(); }
       if(sessionT0) addSys(T('session_summary').replace('{m}', String(Math.max(1, Math.round((Date.now()-sessionT0)/60000)))));
+      hideContrast();   // the offer only makes sense while the paid voice is speaking
     }
+    if(liveSession) maybeOfferContrast();
     // The Kaydet chip is THE save affordance (the rail card is gone): visible
     // whenever there are turns to save — during and after a session.
     $('#savechip').classList.toggle('on', !!document.querySelector('#scroll .turn'));

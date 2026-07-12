@@ -359,6 +359,12 @@ class IncomingPipeline:
             from .qwen_translator import SyncStager  # noqa: PLC0415
             self._stager = SyncStager(self.player, on_status=on_status)
 
+        # While the free-voice preview speaks, the paid voice stands down: two
+        # voices over one another would demo nothing. Captions keep flowing and
+        # the recorder keeps its faithful copy of what the engine produced —
+        # only playback is withheld, and only for the length of the clip.
+        self._preview_mute = False
+
         def _tts_sink(data: bytes):
             # Gate the first-audio metric on AUDIBLE output: an initial near-silent
             # / padding chunk (OpenAI pads its stream) would understate latency.
@@ -367,6 +373,8 @@ class IncomingPipeline:
             self._rtt.mark_tts(audible=audible)
             if self._recorder is not None:
                 self._recorder.feed_translated(data)
+            if self._preview_mute:
+                return
             if self._stager is not None:
                 self._stager.feed(data)
             else:
@@ -613,6 +621,28 @@ class IncomingPipeline:
                 except Exception:
                     pass
 
+    def play_free_preview(self, pcm: bytes, seconds: float):
+        """Speak `pcm` (the free tier's voice, same 24 kHz PCM16 contract) in place
+        of the paid voice, then hand the paid voice back. The clip is dropped into
+        the live Player, so it lands on the same device, gain and limiter the user
+        is already listening to — the comparison is honest only if nothing else
+        about the path changes. Best-effort: a timer failure must not strand the
+        paid voice muted, so the unmute is also attempted on stop()."""
+        self._preview_mute = True
+        try:
+            self.player.clear_tts()      # drop paid audio already queued
+            self.player.feed_tts_pcm16(pcm)
+        except Exception:
+            self._preview_mute = False
+            raise
+        # +0.4 s so the ring finishes draining before the paid voice resumes.
+        t = threading.Timer(max(0.5, seconds) + 0.4, self._end_free_preview)
+        t.daemon = True
+        t.start()
+
+    def _end_free_preview(self):
+        self._preview_mute = False
+
     @staticmethod
     def capture_rate(dev) -> int:
         return audio_io.device_rate(dev, "input")
@@ -632,6 +662,9 @@ class IncomingPipeline:
         self.start_io()
 
     def stop(self):
+        # A preview timer that never fired must not leave the next session's paid
+        # voice muted — this object is torn down, but clear the flag regardless.
+        self._preview_mute = False
         _stop_all(self)
         d = getattr(self, "_sducker", None)
         if d is not None:
@@ -1248,6 +1281,15 @@ class ModeController:
         for p in self._pipelines:
             if isinstance(p, IncomingPipeline) and hasattr(p, "_original_mode"):
                 p._original_mode = mode
+
+    def incoming(self) -> "IncomingPipeline | None":
+        """The live incoming pipeline, if a session is running. The free-voice
+        preview borrows its Player so the comparison plays on exactly the path
+        the user is already hearing."""
+        for p in self._pipelines:
+            if isinstance(p, IncomingPipeline):
+                return p
+        return None
 
     # ---------- UI telemetry ----------
     def current_level(self) -> float:

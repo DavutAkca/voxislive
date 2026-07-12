@@ -139,6 +139,10 @@ class Bridge:
         # app_launched: this fires on the FIRST check_auth regardless of login,
         # so the funnel can see opens that never reach authentication.
         self._opened_reported: bool = False
+        # The free-voice preview loads a voice (and may download one) off the UI
+        # thread; one at a time, so a double click can't race two downloads.
+        self._preview_lock = threading.Lock()
+        self._preview_busy: bool = False
         # Resolve "" (= never explicitly chosen) to the Windows display
         # language, and write the resolution back so get_init/JS and the
         # Settings dropdown all see one concrete locale. Not persisted here:
@@ -1679,6 +1683,66 @@ class Bridge:
         """Open the Store's own rating sheet. Nothing is offered in return — see
         store_review for why that matters."""
         return store_review.open_review_page()
+
+    # ---------- the inverse demo (free-voice preview) ----------
+    def free_voice_preview(self):
+        """Speak the line the user just heard in the FREE tier's voice, then hand
+        the paid voice straight back. See free_preview for why the comparison has
+        to happen HERE — mid-taste, reversible — and not at the wall.
+
+        Returns immediately: the first call may download a ~60 MB voice, which
+        must not block the UI thread. Progress arrives as ('preview', {...})
+        events; JS localizes the `code`, so no string crosses this boundary."""
+        with self._preview_lock:
+            if self._preview_busy:
+                return {"ok": False, "code": "busy"}
+            self._preview_busy = True
+        threading.Thread(target=self._preview_thread, daemon=True).start()
+        return {"ok": True}
+
+    def _preview_thread(self):
+        try:
+            from . import free_preview  # noqa: PLC0415 - lazy: pulls sherpa
+            pipe = self.controller.incoming()
+            if pipe is None:
+                self._preview_event("error", "no_session")
+                return
+            with self._text_lock:
+                line = self._lines[-1] if self._lines else ""
+            if not line.strip():
+                self._preview_event("error", "no_line")
+                return
+            lang = self.cfg.get("target_language_incoming") or "en"
+            if not free_preview.voice_available(lang):
+                # Not a failure — the honest shape of the free tier in this
+                # language. Saying so is worth more than hiding the button.
+                self._preview_event("error", "no_voice")
+                return
+            self._preview_event("loading", None)
+            pcm = free_preview.synth_pcm16(lang, line)
+            secs = free_preview.duration_seconds(pcm)
+            pipe.play_free_preview(pcm, secs)
+            self._preview_event("playing", None, seconds=round(secs, 1))
+            time.sleep(secs + 0.6)
+            self._preview_event("done", None)
+        except Exception as exc:  # noqa: BLE001 - a favour asked of the user must never crash it
+            logging.getLogger("voxis").info("free-voice preview failed: %s", exc)
+            self._preview_event("error", "failed")
+        finally:
+            with self._preview_lock:
+                self._preview_busy = False
+
+    def _preview_event(self, state, code, **extra):
+        self._put_event(("preview", {"state": state, "code": code, **extra}))
+
+    def mark_seen(self, key):
+        """Persist a one-time UI beat (the ladder explainer, the contrast card) so
+        it never asks twice. Whitelisted: JS must not be able to write arbitrary
+        config keys through this door."""
+        if key not in ("ladder_seen", "contrast_shown"):
+            return False
+        self.cfg[key] = True
+        return self._save_cfg()
 
     def stop(self):
         threading.Thread(target=self._stop_thread, daemon=True).start()
