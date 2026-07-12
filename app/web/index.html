@@ -7015,7 +7015,12 @@ function onTrans(text, newline, spk){
   // Honest-latency: the caption renders the instant a token arrives, ahead of the
   // TTS audio. The first turn of a session also drops a one-time in-context note
   // explaining the model's inherent ~3s interpreter delay.
-  if(!latencyNoteShown){ latencyNoteShown=true; addSys(T('latency_note')); }
+  if(!latencyNoteShown && !(STATE.cfg && STATE.cfg.latency_note_seen)){
+    latencyNoteShown=true;
+    if(STATE.cfg) STATE.cfg.latency_note_seen = true;
+    try{ api().mark_seen('latency_note_seen'); }catch(_){}
+    addSys(T('latency_note'));
+  }
   // spk is the LIVE hint for the streaming line (the definitive label lands
   // with the src event when the turn finalizes).
   if(newline || !curBubble){ if(curBubble) curBubble.classList.remove('active'); newTurn(spk); }
@@ -7180,7 +7185,10 @@ async function poll(){
     // Reduced-motion users get no rAF loop; still surface the input-level readout
     // each poll (the per-frame oscillation is what we skip, not the dB value).
     if(RM){ $('#meterdb').textContent = liveSession ? dbText(targetLevel) : '−∞ dB'; }
-    $('#streamhint').innerHTML = liveSession ? ('<span class="lv">●</span> '+T('live') + (p.latency ? (' · '+p.latency.toFixed(1)+T('behind_suffix')) : '')) : '';
+    // Just "● live". The latency number used to render here permanently —
+    // an on-screen proof of lag that reframed simultaneous interpretation as
+    // lateness. The one-time first-session note still sets the expectation.
+    $('#streamhint').innerHTML = liveSession ? ('<span class="lv">●</span> '+T('live')) : '';
     document.querySelectorAll('.scenario').forEach(b=>{
       b.classList.toggle('active', b.dataset.mode===p.mode);
       // Only hard-disable while a session is active. Quota-blocked tiles stay

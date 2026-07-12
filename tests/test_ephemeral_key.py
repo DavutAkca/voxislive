@@ -85,7 +85,7 @@ def test_session_key_returns_key_type_ephemeral(monkeypatch):
     caps = seen["params"]["caps"].split(",")
     assert "engine-routing" in caps
     assert "ephemeral" in caps
-    assert "cascade" in caps
+    assert "cascade-wall" in caps
 
 
 def test_session_key_defaults_key_type_raw(monkeypatch):

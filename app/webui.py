@@ -1842,7 +1842,7 @@ class Bridge:
         """Persist a one-time UI beat (the ladder explainer, the contrast card) so
         it never asks twice. Whitelisted: JS must not be able to write arbitrary
         config keys through this door."""
-        if key not in ("ladder_seen", "contrast_shown"):
+        if key not in ("ladder_seen", "contrast_shown", "latency_note_seen"):
             return False
         self.cfg[key] = True
         return self._save_cfg()

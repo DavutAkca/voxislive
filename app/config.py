@@ -173,6 +173,12 @@ DEFAULTS = {
     # cannot value losing it, and reads the free tier as a broken product.
     "ladder_seen": False,
     "contrast_shown": False,
+    #   latency_note_seen — the "translation runs a few seconds behind" note now
+    # shows once EVER, not once per session: explaining the delay to a new user
+    # manages expectations, re-proving it at the top of every session just
+    # advertises lag (owner call, 2026-07-13 — same reason the on-screen
+    # "· 2.3s behind" readout was removed).
+    "latency_note_seen": False,
     # Bumped when a load-time migration is added; see _migrate / load_config.
     "config_version": 2,
 }

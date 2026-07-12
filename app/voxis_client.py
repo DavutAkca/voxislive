@@ -487,12 +487,15 @@ def _device_headers() -> dict:
 # whether one is actually issued is the server-side gemini_ephemeral setting
 # (staged rollout), so sending the cap is always safe.
 #
-# "cascade" cap (1.0.39+) tells the server this client can RUN the free-tier
-# cascade (cloud text + a local voice). The server must never answer an older
-# client with engine="cascade": it would not recognise the name, fall back to
-# Gemini, and a spent free account would silently get the PAID engine. Sending
-# the cap is what makes the free tier safe to enable server-side.
-SESSION_KEY_CAPS = "engine-routing,ephemeral,cascade"
+# "cascade-wall" cap (1.0.40+) tells the server this client can run the free-tier
+# cascade AND carries the taste-wall experience around it. Two things hide in
+# that name. Older-than-1.0.39 clients must never see engine="cascade" at all —
+# they'd fall back to Gemini and a spent free account would silently get the
+# PAID engine. And 1.0.39 specifically sent plain "cascade" while shipping the
+# broken hot swap (UI said Pro while Piper spoke, start button locked at zero
+# quota) — so the cap was RENAMED rather than kept: the server can't read a
+# client's version, but it can refuse a capability the broken build never sends.
+SESSION_KEY_CAPS = "engine-routing,ephemeral,cascade-wall"
 
 
 def get_session_key(target=None, caps=None, engine=None, mode=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str], Optional[str], Optional[str]]:
