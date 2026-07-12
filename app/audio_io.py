@@ -611,6 +611,10 @@ class Player:
         self.rate = device_rate(device, "output")
         self.channels = channels
         self.tts_gain = 1.0
+        # The user's system volume, mirrored onto our output. Only ever moved off
+        # 1.0 in vbcable mode, where Windows' default endpoint is the cable and the
+        # volume keys therefore no longer reach what the user is hearing.
+        self.master_gain = 1.0
         self.width = 1.25
         self.mid_gain = 1.0
         self.route_ambient = False
@@ -685,6 +689,12 @@ class Player:
                 amb = np.zeros((frames, 2), dtype=np.float32)
                 stereo = _mix_to_stereo(tts_mono, amb, tts_gain, width, False)
             y = self._limiter.process(stereo)
+            # The user's own volume control, applied AFTER the limiter: the limiter
+            # protects the mix, the volume scales what leaves the app. 1.0 unless a
+            # mirror is running (see endpoint_volume — vbcable mode only).
+            master = self.master_gain
+            if master != 1.0:
+                y = y * master
             # Cheap finite-value safety net on the device-bound buffer: a single
             # non-finite sample reaching the driver can blast the speakers.
             y = np.nan_to_num(y, nan=0.0, posinf=0.0, neginf=0.0)

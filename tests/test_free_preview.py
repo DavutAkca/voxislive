@@ -88,6 +88,31 @@ def test_preview_mutes_the_paid_voice_then_hands_it_back():
     assert pipe._preview_mute is False         # …and the paid voice is back
 
 
+def _ring_pipe():
+    pipe = types.SimpleNamespace(_pro_ring=__import__("collections").deque(),
+                                 _pro_ring_bytes=0,
+                                 PRO_RING_BYTES=IncomingPipeline.PRO_RING_BYTES)
+    return pipe
+
+
+def test_pro_ring_is_bounded_to_the_last_few_seconds():
+    # It exists to be replayed after the session; it must not grow with it.
+    pipe = _ring_pipe()
+    chunk = b"\x01\x02" * 24000          # 1 s of 24 kHz PCM16
+    for _ in range(30):
+        IncomingPipeline._keep_pro_audio(pipe, chunk)
+    pcm = IncomingPipeline.recent_pro_pcm(pipe)
+    assert len(pcm) <= IncomingPipeline.PRO_RING_BYTES
+    assert free_preview.duration_seconds(pcm) == pytest.approx(8.0, abs=1.0)
+
+
+def test_ring_keeps_the_most_recent_audio():
+    pipe = _ring_pipe()
+    IncomingPipeline._keep_pro_audio(pipe, b"\xaa\xaa" * 24000 * 9)   # 9 s, evicted
+    IncomingPipeline._keep_pro_audio(pipe, b"\xbb\xbb" * 100)         # newest
+    assert IncomingPipeline.recent_pro_pcm(pipe).endswith(b"\xbb\xbb" * 100)
+
+
 def test_a_failing_player_does_not_strand_the_mute():
     pipe = _fake_pipe()
 

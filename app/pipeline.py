@@ -364,6 +364,12 @@ class IncomingPipeline:
         # the recorder keeps its faithful copy of what the engine produced —
         # only playback is withheld, and only for the length of the clip.
         self._preview_mute = False
+        # A few seconds of the paid voice, kept so it can be replayed back-to-back
+        # against the free voice AFTER the session — which is the only moment the
+        # user is reliably looking at Voxis rather than at what they came to watch.
+        # Bounded and audible-only: silence would replay as a dead button.
+        self._pro_ring: collections.deque = collections.deque()
+        self._pro_ring_bytes = 0
 
         def _tts_sink(data: bytes):
             # Gate the first-audio metric on AUDIBLE output: an initial near-silent
@@ -374,7 +380,9 @@ class IncomingPipeline:
             if self._recorder is not None:
                 self._recorder.feed_translated(data)
             if self._preview_mute:
-                return
+                return          # not heard → not part of "what you just heard"
+            if audible:
+                self._keep_pro_audio(data)
             if self._stager is not None:
                 self._stager.feed(data)
             else:
@@ -620,6 +628,21 @@ class IncomingPipeline:
                     comp.stop()
                 except Exception:
                     pass
+
+    # ~8 s of paid voice at 24 kHz PCM16 — long enough to recognise a voice,
+    # short enough that the ring is never a memory concern.
+    PRO_RING_BYTES = 8 * 24000 * 2
+
+    def _keep_pro_audio(self, data: bytes):
+        self._pro_ring.append(data)
+        self._pro_ring_bytes += len(data)
+        while self._pro_ring_bytes > self.PRO_RING_BYTES and len(self._pro_ring) > 1:
+            self._pro_ring_bytes -= len(self._pro_ring.popleft())
+
+    def recent_pro_pcm(self) -> bytes:
+        """The last few seconds the paid voice actually SPOKE. Survives stop() on
+        purpose: the A/B card is offered once the user comes back to the window."""
+        return b"".join(self._pro_ring)
 
     def play_free_preview(self, pcm: bytes, seconds: float):
         """Speak `pcm` (the free tier's voice, same 24 kHz PCM16 contract) in place
@@ -907,6 +930,8 @@ class ModeController:
         self._session_failed = threading.Event()
         self._capture_dead_notified = False
         self._pipelines: list = []
+        # Survives the session so the post-session A/B card can replay it.
+        self._last_pro_pcm: bytes = b""
         self.mode: str | None = None
         self._session_id: str | None = None
         self._session_start: float | None = None
@@ -1232,6 +1257,12 @@ class ModeController:
                     self._switch_defaults(mode)
                 except Exception as e:
                     self.on_status(t("st_autoswitch_fail", e=e))
+                # AFTER the default endpoint has been flipped, never before: the
+                # mirror follows whichever endpoint the user's volume keys reach,
+                # and in vbcable mode that only becomes the cable here. Starting it
+                # earlier latched it onto the headphones and the keys did nothing —
+                # which is exactly the bug this fixes.
+                self._start_volume_mirror()
                 self.on_status(t("st_mode_started", mode=mode))
                 voxis_client.report_event_async("session_live", sid, {
                     "mode": mode,
@@ -1291,6 +1322,44 @@ class ModeController:
                 return p
         return None
 
+    def _start_volume_mirror(self):
+        """vbcable only: the session has just made the CABLE the default endpoint,
+        so the volume keys, the OSD and the mute key now act on the cable — not on
+        the headphones Voxis plays to. Mirror the cable's level onto our output so
+        the user's own volume control reaches what they actually hear.
+
+        Driverless never needs this: there the default endpoint IS our output
+        device, so Windows already attenuates us — mirroring would attenuate twice.
+        Best-effort; a missing mirror is a nuisance, a crashed session is not."""
+        self._vol_mirror = None
+        if self.cfg.get("capture_backend", "driverless") != "vbcable":
+            return
+        inc = self.incoming()
+        if inc is None:
+            return
+        try:
+            from .endpoint_volume import EndpointVolumeMirror  # noqa: PLC0415
+            self._vol_mirror = EndpointVolumeMirror(inc.player)
+            self._vol_mirror.start()
+        except Exception:
+            _log.info("endpoint volume mirror not started", exc_info=True)
+
+    def _stop_volume_mirror(self):
+        m = getattr(self, "_vol_mirror", None)
+        if m is not None:
+            m.stop()          # also hands the player's gain back at full scale
+            self._vol_mirror = None
+
+    def recent_pro_pcm(self) -> bytes:
+        """The last seconds the paid voice spoke — during the session from the live
+        ring, after it from the snapshot taken at stop()."""
+        inc = self.incoming()
+        if inc is not None:
+            live = inc.recent_pro_pcm()
+            if live:
+                return live
+        return getattr(self, "_last_pro_pcm", b"")
+
     # ---------- UI telemetry ----------
     def current_level(self) -> float:
         """Smoothed input level (0..1) across active pipelines, for the UI meter."""
@@ -1338,6 +1407,18 @@ class ModeController:
         # session_id is cleared so an immediate restart cannot lose it.
         sid, delta, source = self._consume_minutes(accrue=accrue)
         tail_engine = self.current_engine() or "gemini"  # capture before pipelines clear
+
+        self._stop_volume_mirror()
+
+        # Keep the last seconds of paid voice before the pipelines are dropped:
+        # the A/B card is offered AFTER the session, when the user is finally
+        # looking at Voxis instead of at what they came to watch.
+        inc = self.incoming()
+        if inc is not None:
+            try:
+                self._last_pro_pcm = inc.recent_pro_pcm()
+            except Exception:
+                pass
 
         for p in self._pipelines:
             try:

@@ -16,6 +16,7 @@ what the user hears here is exactly what the free tier sounds like.
 from __future__ import annotations
 
 import threading
+import time
 
 from . import local_tts
 from .cascade_translator import OUT_RATE, _resample_to_out
@@ -62,3 +63,27 @@ def synth_pcm16(lang: str, text: str, on_status=None) -> bytes:
 
 def duration_seconds(pcm: bytes) -> float:
     return len(pcm) / (OUT_RATE * 2.0)
+
+
+def play_standalone(cfg: dict, pcm: bytes) -> float:
+    """Play a clip with no session running — the A/B card lives AFTER the session,
+    because that is the only moment the user is reliably looking at Voxis rather
+    than at the film they came to watch.
+
+    Opens a short-lived Player on the user's configured output device (the same
+    class the session uses, so gain and limiter are identical) and blocks for the
+    length of the clip. Callers must be off the UI thread."""
+    from . import audio_io  # noqa: PLC0415 - heavy (PortAudio); session path only
+
+    dev = audio_io.find_device(cfg["devices"]["headphones_output"], "output",
+                               fallback_default=True)
+    player = audio_io.Player(dev, tts_in_rate=OUT_RATE)
+    player.tts_gain = float(cfg.get("tts_volume", 1.0))
+    secs = duration_seconds(pcm)
+    player.start()
+    try:
+        player.feed_tts_pcm16(pcm)
+        time.sleep(secs + 0.5)   # let the ring drain before the device closes
+    finally:
+        player.stop()
+    return secs

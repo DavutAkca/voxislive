@@ -143,6 +143,11 @@ class Bridge:
         # thread; one at a time, so a double click can't race two downloads.
         self._preview_lock = threading.Lock()
         self._preview_busy: bool = False
+        # The last line Voxis SPOKE, kept apart from self._lines because stop()
+        # clears those once the transcript is saved — and the A/B card is offered
+        # precisely AFTER stop, when the user is finally looking at the window.
+        # Without this the demo has nothing to replay at the one moment it runs.
+        self._last_line: str = ""
         # Resolve "" (= never explicitly chosen) to the Windows display
         # language, and write the resolution back so get_init/JS and the
         # Settings dropdown all see one concrete locale. Not persisted here:
@@ -386,6 +391,7 @@ class Bridge:
             # Record the finalized turn with its start offset and paired source.
             if finished and not dup:
                 self._lines.append(finished)
+                self._last_line = finished   # survives stop(); see Bridge.__init__
                 turn = {
                     "t": max(0.0, self._turn_start - self._session_start),
                     "dir": "out",
@@ -1703,13 +1709,10 @@ class Bridge:
     def _preview_thread(self):
         try:
             from . import free_preview  # noqa: PLC0415 - lazy: pulls sherpa
-            pipe = self.controller.incoming()
-            if pipe is None:
-                self._preview_event("error", "no_session")
-                return
             with self._text_lock:
-                line = self._lines[-1] if self._lines else ""
+                line = self._last_line
             if not line.strip():
+                logging.getLogger("voxis").info("free-voice preview: no line to replay")
                 self._preview_event("error", "no_line")
                 return
             lang = self.cfg.get("target_language_incoming") or "en"
@@ -1720,10 +1723,7 @@ class Bridge:
                 return
             self._preview_event("loading", None)
             pcm = free_preview.synth_pcm16(lang, line)
-            secs = free_preview.duration_seconds(pcm)
-            pipe.play_free_preview(pcm, secs)
-            self._preview_event("playing", None, seconds=round(secs, 1))
-            time.sleep(secs + 0.6)
+            self._play_clip(pcm, "playing")
             self._preview_event("done", None)
         except Exception as exc:  # noqa: BLE001 - a favour asked of the user must never crash it
             logging.getLogger("voxis").info("free-voice preview failed: %s", exc)
@@ -1731,6 +1731,50 @@ class Bridge:
         finally:
             with self._preview_lock:
                 self._preview_busy = False
+
+    def pro_voice_replay(self):
+        """Replay the paid voice, so the two can be heard back to back. Offered
+        after the free clip, when the contrast is freshest — the highest-intent
+        moment of the whole taste."""
+        with self._preview_lock:
+            if self._preview_busy:
+                return {"ok": False, "code": "busy"}
+            self._preview_busy = True
+        threading.Thread(target=self._pro_replay_thread, daemon=True).start()
+        return {"ok": True}
+
+    def _pro_replay_thread(self):
+        try:
+            from . import free_preview  # noqa: PLC0415
+            pcm = self.controller.recent_pro_pcm()
+            if not pcm:
+                logging.getLogger("voxis").info("pro-voice replay: nothing buffered")
+                self._preview_event("error", "no_pro")
+                return
+            self._play_clip(pcm, "playing_pro")
+            self._preview_event("done", None)
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger("voxis").info("pro-voice replay failed: %s", exc)
+            self._preview_event("error", "failed")
+        finally:
+            with self._preview_lock:
+                self._preview_busy = False
+
+    def _play_clip(self, pcm: bytes, state: str):
+        """Play a demo clip wherever the user happens to be. During a session it
+        borrows the live Player (and the paid voice stands down for the clip's
+        length); afterwards it opens its own — the A/B card lives after the
+        session, because that is when the user is actually looking at Voxis."""
+        from . import free_preview  # noqa: PLC0415
+
+        secs = free_preview.duration_seconds(pcm)
+        self._preview_event(state, None, seconds=round(secs, 1))
+        pipe = self.controller.incoming()
+        if pipe is not None:
+            pipe.play_free_preview(pcm, secs)
+            time.sleep(secs + 0.6)
+        else:
+            free_preview.play_standalone(self.cfg, pcm)
 
     def _preview_event(self, state, code, **extra):
         self._put_event(("preview", {"state": state, "code": code, **extra}))

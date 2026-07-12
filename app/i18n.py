@@ -266,7 +266,7 @@ STRINGS = {
         "profile": "Profil",
         "profile_custom": "Vlastní",
         "profile_meeting": "Schůzka",
-        "profile_film": "Film / video",
+        "profile_film": "Film / Video",
         "profile_conference": "Konference",
         "quality": "Kvalita překladu",
         "quality_max_quality": "Maximální kvalita",
