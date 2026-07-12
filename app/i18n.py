@@ -79,6 +79,7 @@ STRINGS = {
         "st_conn_err": "{name}: bağlantı hatası, {s:.0f}s sonra yeniden: {e}",
         "st_capture_lost": "Ses yakalama durdu (cihaz değişmiş olabilir). Oturumu yeniden başlat.",
         "st_engine_failover": "Çeviri motoru yanıt vermedi — yedek motora geçildi.",
+        "st_downgraded_free": "Pro dakikaların doldu — ücretsiz sese geçildi. Çeviri devam ediyor.",
         "st_session_failed": "Çeviri bağlantısı koptu ve yeniden kurulamadı — oturum durduruldu. Tekrar başlatmayı dene.",
         "st_classic_capture_warning": "Gelişmiş ses yakalama açılamadı ({e}); uyumluluk moduna geçildi. Sürekli konuşmalı içerikte çeviri ilk cümleden sonra durabilir. En iyi sonuç için Windows'u güncelleyip Voxis'i yeniden başlatın.",
         "st_server_unreachable": "Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.",
@@ -190,6 +191,7 @@ STRINGS = {
         "st_conn_err": "{name}: connection error, retrying in {s:.0f}s: {e}",
         "st_capture_lost": "Audio capture stopped (the device may have changed). Restart the session.",
         "st_engine_failover": "Translation engine unavailable — switched to the backup engine.",
+        "st_downgraded_free": "Your Pro minutes are used up — switched to the free voice. Translation continues.",
         "st_session_failed": "The translation connection was lost and could not be restored — session stopped. Try starting again.",
         "st_classic_capture_warning": "Advanced audio capture couldn't start ({e}); switched to compatibility mode. On continuous speech, translation may stop after the first sentence. For best results, update Windows and restart Voxis.",
         "st_server_unreachable": "Could not reach the server. Check your internet connection.",
@@ -266,7 +268,7 @@ STRINGS = {
         "profile": "Profil",
         "profile_custom": "Vlastní",
         "profile_meeting": "Schůzka",
-        "profile_film": "Film / video",
+        "profile_film": "Film / Video",
         "profile_conference": "Konference",
         "quality": "Kvalita překladu",
         "quality_max_quality": "Maximální kvalita",
@@ -300,6 +302,7 @@ STRINGS = {
         "st_conn_err": "{name}: chyba připojení, nový pokus za {s:.0f} s: {e}",
         "st_capture_lost": "Zachytávání zvuku se zastavilo (zařízení se možná změnilo). Restartujte relaci.",
         "st_engine_failover": "Překladový engine není dostupný — přepnuto na záložní engine.",
+        "st_downgraded_free": "Tvoje Pro minuty došly — přepnuto na bezplatný hlas. Překlad pokračuje.",
         "st_session_failed": "Spojení s překladem bylo ztraceno a nepodařilo se ho obnovit — relace byla zastavena. Zkuste ji spustit znovu.",
         "st_classic_capture_warning": "Pokročilé zachytávání zvuku se nepodařilo spustit ({e}); přepnuto do kompatibilního režimu. U souvislé řeči se může překlad zastavit po první větě. Pro nejlepší výsledky aktualizujte Windows a restartujte Voxis.",
         "st_server_unreachable": "Server je nedostupný. Zkontrolujte internetové připojení.",
@@ -419,6 +422,7 @@ STRINGS = {
         "st_no_voice_warning": "Übersetzte Stimme nicht erkannt (Untertitel funktionieren) — falls die Beta-Engine aktiv ist, schalte sie aus oder starte die Sitzung neu.",
         "st_capture_lost": "Audioaufnahme gestoppt (das Gerät hat sich möglicherweise geändert). Starte die Sitzung neu.",
         "st_engine_failover": "Übersetzungs-Engine nicht verfügbar — auf die Ersatz-Engine umgeschaltet.",
+        "st_downgraded_free": "Deine Pro-Minuten sind aufgebraucht — auf die kostenlose Stimme umgeschaltet. Die Übersetzung läuft weiter.",
         "st_session_failed": "Die Übersetzungsverbindung wurde unterbrochen und konnte nicht wiederhergestellt werden — Sitzung beendet. Versuche es erneut.",
         "st_quota_exceeded": "Dein Kontingent ist aufgebraucht — Sitzung beendet. Upgrade deinen Plan, um fortzufahren.",
         "st_meeting_listen_only": "Kein virtuelles Audiokabel — Meeting läuft im NUR-ZUHÖREN-Modus: "
@@ -529,6 +533,7 @@ STRINGS = {
         "st_no_voice_warning": "Voix traduite non détectée (les sous-titres fonctionnent) — si le moteur bêta est activé, désactivez-le ou redémarrez la session.",
         "st_capture_lost": "La capture audio s'est arrêtée (l'appareil a peut-être changé). Redémarrez la session.",
         "st_engine_failover": "Moteur de traduction indisponible — bascule sur le moteur de secours.",
+        "st_downgraded_free": "Vos minutes Pro sont épuisées — passage à la voix gratuite. La traduction continue.",
         "st_session_failed": "La connexion de traduction a été perdue et n'a pas pu être rétablie — session arrêtée. Réessayez.",
         "st_quota_exceeded": "Votre quota est épuisé — session arrêtée. Mettez votre forfait à niveau pour continuer.",
         "st_meeting_listen_only": "Pas de câble audio virtuel — la réunion fonctionne en mode ÉCOUTE "
@@ -639,6 +644,7 @@ STRINGS = {
         "st_no_voice_warning": "No se detecta la voz traducida (los subtítulos funcionan) — si el motor beta está activado, desactívalo o reinicia la sesión.",
         "st_capture_lost": "Se detuvo la captura de audio (es posible que el dispositivo haya cambiado). Reinicia la sesión.",
         "st_engine_failover": "Motor de traducción no disponible: se cambió al motor de respaldo.",
+        "st_downgraded_free": "Tus minutos Pro se han agotado — se ha cambiado a la voz gratuita. La traducción continúa.",
         "st_session_failed": "Se perdió la conexión de traducción y no se pudo restablecer — sesión detenida. Intenta iniciarla de nuevo.",
         "st_quota_exceeded": "Has agotado tu cuota — sesión detenida. Mejora tu plan para continuar.",
         "st_meeting_listen_only": "Sin cable de audio virtual — la reunión funciona en modo SOLO "
@@ -749,6 +755,7 @@ STRINGS = {
         "st_no_voice_warning": "Voz traduzida não detectada (as legendas funcionam) — se o motor beta estiver ativado, desative-o ou reinicie a sessão.",
         "st_capture_lost": "A captura de áudio parou (o dispositivo pode ter mudado). Reinicie a sessão.",
         "st_engine_failover": "Motor de tradução indisponível — alternado para o motor reserva.",
+        "st_downgraded_free": "Os teus minutos Pro acabaram — mudámos para a voz gratuita. A tradução continua.",
         "st_session_failed": "A conexão de tradução foi perdida e não pôde ser restaurada — sessão interrompida. Tente iniciar novamente.",
         "st_quota_exceeded": "Você esgotou sua cota — sessão interrompida. Faça upgrade do seu plano para continuar.",
         "st_meeting_listen_only": "Sem cabo de áudio virtual — a reunião funciona no modo SOMENTE "
@@ -858,6 +865,7 @@ STRINGS = {
         "st_no_voice_warning": "翻訳音声が検出されません（字幕は動作しています）。ベータエンジンがオンの場合はオフにするか、セッションを再開してください。",
         "st_capture_lost": "音声のキャプチャが停止しました (デバイスが変更された可能性があります)。セッションを再開してください。",
         "st_engine_failover": "翻訳エンジンが利用できません — バックアップエンジンに切り替えました。",
+        "st_downgraded_free": "Proの時間を使い切りました。無料の音声に切り替えました。翻訳は続きます。",
         "st_session_failed": "翻訳接続が切断され、復元できませんでした — セッションを停止しました。もう一度開始してください。",
         "st_quota_exceeded": "利用枠を使い切りました — セッションを停止しました。続けるにはプランをアップグレードしてください。",
         "st_meeting_listen_only": "仮想オーディオケーブルがありません — ミーティングは聴取専用モードで動作します: "
@@ -967,6 +975,7 @@ STRINGS = {
         "st_no_voice_warning": "번역 음성이 감지되지 않습니다(자막은 작동 중) — 베타 엔진이 켜져 있으면 끄거나 세션을 다시 시작하세요.",
         "st_capture_lost": "오디오 캡처가 중단되었습니다(장치가 변경되었을 수 있습니다). 세션을 다시 시작하세요.",
         "st_engine_failover": "번역 엔진을 사용할 수 없어 백업 엔진으로 전환했습니다.",
+        "st_downgraded_free": "Pro 시간을 모두 사용했습니다 — 무료 음성으로 전환했습니다. 번역은 계속됩니다.",
         "st_session_failed": "번역 연결이 끊어져 복구하지 못했습니다 — 세션이 중지되었습니다. 다시 시작해 보세요.",
         "st_quota_exceeded": "사용량을 모두 사용했습니다 — 세션이 중지되었습니다. 계속하려면 플랜을 업그레이드하세요.",
         "st_meeting_listen_only": "가상 오디오 케이블 없음 — 미팅이 듣기 전용 모드로 실행됩니다: "
@@ -1076,6 +1085,7 @@ STRINGS = {
         "st_no_voice_warning": "Переведённый голос не обнаружен (субтитры работают) — если включён бета-движок, отключите его или перезапустите сеанс.",
         "st_capture_lost": "Захват звука остановлен (возможно, изменилось устройство). Перезапустите сеанс.",
         "st_engine_failover": "Движок перевода недоступен — выполнено переключение на резервный.",
+        "st_downgraded_free": "Минуты Pro закончились — переключено на бесплатный голос. Перевод продолжается.",
         "st_session_failed": "Соединение перевода потеряно и не восстановлено — сеанс остановлен. Попробуйте запустить снова.",
         "st_quota_exceeded": "Ваша квота исчерпана — сеанс остановлен. Повысьте план, чтобы продолжить.",
         "st_meeting_listen_only": "Виртуальный аудиокабель отсутствует — совещание работает в режиме "
@@ -1186,6 +1196,7 @@ STRINGS = {
         "st_no_voice_warning": "未检测到翻译语音（字幕正常）——如果启用了测试版引擎，请将其关闭，或重新启动会话。",
         "st_capture_lost": "音频采集已停止（设备可能已更改）。请重新启动会话。",
         "st_engine_failover": "翻译引擎不可用 — 已切换到备用引擎。",
+        "st_downgraded_free": "Pro 时长已用完——已切换到免费语音。翻译继续。",
         "st_session_failed": "翻译连接已断开且无法恢复 — 会话已停止。请重新启动。",
         "st_quota_exceeded": "你的配额已用完 — 会话已停止。升级你的套餐以继续。",
         "st_meeting_listen_only": "没有虚拟音频线缆 — 会议以仅听模式运行："
@@ -1295,6 +1306,7 @@ STRINGS = {
         "st_no_voice_warning": "Nie wykryto przetłumaczonego głosu (napisy działają) — jeśli silnik beta jest włączony, wyłącz go lub uruchom sesję ponownie.",
         "st_capture_lost": "Przechwytywanie dźwięku zostało zatrzymane (urządzenie mogło się zmienić). Uruchom sesję ponownie.",
         "st_engine_failover": "Silnik tłumaczenia niedostępny — przełączono na zapasowy.",
+        "st_downgraded_free": "Minuty Pro się skończyły — przełączono na darmowy głos. Tłumaczenie trwa dalej.",
         "st_session_failed": "Połączenie tłumaczenia zostało przerwane i nie udało się go przywrócić — sesja zatrzymana. Spróbuj ponownie.",
         "st_quota_exceeded": "Twój limit został wyczerpany — sesja zatrzymana. Ulepsz plan, aby kontynuować.",
         "st_meeting_listen_only": "Brak wirtualnego kabla audio — spotkanie działa w trybie TYLKO "
@@ -1405,6 +1417,7 @@ STRINGS = {
         "st_no_voice_warning": "Voce tradotta non rilevata (i sottotitoli funzionano) — se il motore beta è attivo, disattivalo o riavvia la sessione.",
         "st_capture_lost": "Acquisizione audio interrotta (il dispositivo potrebbe essere cambiato). Riavvia la sessione.",
         "st_engine_failover": "Motore di traduzione non disponibile — passato al motore di riserva.",
+        "st_downgraded_free": "I tuoi minuti Pro sono esauriti — passato alla voce gratuita. La traduzione continua.",
         "st_session_failed": "La connessione di traduzione è stata persa e non è stato possibile ripristinarla — sessione interrotta. Riprova.",
         "st_quota_exceeded": "Hai esaurito la tua quota — sessione interrotta. Esegui l'upgrade del piano per continuare.",
         "st_meeting_listen_only": "Nessun cavo audio virtuale — la riunione funziona in modalità "
@@ -1515,6 +1528,7 @@ STRINGS = {
         "st_no_voice_warning": "Suara terjemahan tidak terdeteksi (subtitel berfungsi) — jika mesin beta aktif, matikan, atau mulai ulang sesi.",
         "st_capture_lost": "Perekaman audio berhenti (perangkat mungkin berubah). Mulai ulang sesi.",
         "st_engine_failover": "Mesin terjemahan tidak tersedia — beralih ke mesin cadangan.",
+        "st_downgraded_free": "Menit Pro-mu habis — beralih ke suara gratis. Terjemahan tetap berjalan.",
         "st_session_failed": "Koneksi terjemahan terputus dan tidak dapat dipulihkan — sesi dihentikan. Coba mulai lagi.",
         "st_quota_exceeded": "Kuota Anda habis — sesi dihentikan. Tingkatkan paket Anda untuk melanjutkan.",
         "st_meeting_listen_only": "Tidak ada kabel audio virtual — rapat berjalan dalam mode DENGARKAN "
@@ -1624,6 +1638,7 @@ STRINGS = {
         "st_no_voice_warning": "Vertaalde stem niet gedetecteerd (ondertitels werken) — als de beta-engine aan staat, schakel deze uit of start de sessie opnieuw.",
         "st_capture_lost": "Audio-opname gestopt (het apparaat is mogelijk gewijzigd). Start de sessie opnieuw.",
         "st_engine_failover": "Vertaalengine niet beschikbaar — overgeschakeld naar de reserve-engine.",
+        "st_downgraded_free": "Je Pro-minuten zijn op — overgeschakeld naar de gratis stem. De vertaling gaat door.",
         "st_session_failed": "De vertaalverbinding is verbroken en kon niet worden hersteld — sessie gestopt. Probeer opnieuw te starten.",
         "st_quota_exceeded": "Je tegoed is op — sessie gestopt. Upgrade je abonnement om door te gaan.",
         "st_meeting_listen_only": "Geen virtuele audiokabel — vergadering loopt in ALLEEN-LUISTEREN-modus: "
@@ -1733,6 +1748,7 @@ STRINGS = {
         "st_no_voice_warning": "Không phát hiện giọng nói đã dịch (phụ đề vẫn hoạt động) — nếu công cụ beta đang bật, hãy tắt nó hoặc khởi động lại phiên.",
         "st_capture_lost": "Đã dừng thu âm thanh (thiết bị có thể đã thay đổi). Hãy khởi động lại phiên.",
         "st_engine_failover": "Công cụ dịch không khả dụng — đã chuyển sang công cụ dự phòng.",
+        "st_downgraded_free": "Bạn đã dùng hết phút Pro — đã chuyển sang giọng miễn phí. Bản dịch vẫn tiếp tục.",
         "st_session_failed": "Kết nối dịch đã mất và không thể khôi phục — phiên đã dừng. Hãy thử bắt đầu lại.",
         "st_quota_exceeded": "Bạn đã dùng hết hạn mức — phiên đã dừng. Nâng cấp gói của bạn để tiếp tục.",
         "st_meeting_listen_only": "Không có cáp âm thanh ảo — cuộc họp chạy ở chế độ CHỈ NGHE: "
@@ -1842,6 +1858,7 @@ STRINGS = {
         "st_no_voice_warning": "ไม่พบเสียงที่แปล (คำบรรยายทำงานอยู่) — หากเปิดเอนจินเบต้าอยู่ ให้ปิด หรือเริ่มเซสชันใหม่",
         "st_capture_lost": "การจับเสียงหยุดลง (อุปกรณ์อาจมีการเปลี่ยนแปลง) โปรดเริ่มเซสชันใหม่",
         "st_engine_failover": "เครื่องมือแปลไม่พร้อมใช้งาน — สลับไปยังเครื่องมือสำรองแล้ว",
+        "st_downgraded_free": "นาที Pro ของคุณหมดแล้ว — เปลี่ยนไปใช้เสียงฟรี การแปลยังทำงานต่อ",
         "st_session_failed": "การเชื่อมต่อการแปลขาดหายและไม่สามารถกู้คืนได้ — เซสชันหยุดลง โปรดลองเริ่มใหม่",
         "st_quota_exceeded": "คุณใช้โควต้าหมดแล้ว — เซสชันหยุดลง อัปเกรดแพ็กเกจเพื่อใช้งานต่อ",
         "st_meeting_listen_only": "ไม่มีสายเคเบิลเสียงเสมือน — การประชุมทำงานในโหมดฟังอย่างเดียว: "
@@ -1932,6 +1949,7 @@ STRINGS = {
         "st_conn_err": "{name}: eroare de conexiune, reîncercare în {s:.0f}s: {e}",
         "st_connected": "{name}: conectat (țintă: {lang})",
         "st_engine_failover": "Motorul de traducere este indisponibil — s-a trecut pe motorul de rezervă.",
+        "st_downgraded_free": "Minutele Pro s-au terminat — s-a trecut la vocea gratuită. Traducerea continuă.",
         "st_meeting_listen_only": "Nu există cablu audio virtual — întâlnirea rulează DOAR ÎN ASCULTARE: îi auzi pe ceilalți în limba ta, iar vocea ta pleacă netradusă. (Modul bidirecțional necesită un driver de microfon virtual.)",
         "st_mode_started": "Mod pornit: {mode}",
         "st_no_key": "Cheia API nu este setată — adaugă una din Setări (dreapta sus).",
@@ -2034,6 +2052,7 @@ STRINGS = {
         "st_conn_err": "{name}: कनेक्शन त्रुटि, {s:.0f} सेकंड में पुनः प्रयास: {e}",
         "st_connected": "{name}: कनेक्ट हुआ (लक्ष्य: {lang})",
         "st_engine_failover": "अनुवाद इंजन उपलब्ध नहीं — बैकअप इंजन पर स्विच किया गया।",
+        "st_downgraded_free": "आपके Pro मिनट खत्म हो गए — मुफ़्त आवाज़ पर स्विच किया गया। अनुवाद जारी है।",
         "st_meeting_listen_only": "कोई वर्चुअल ऑडियो केबल नहीं — मीटिंग केवल-सुनने मोड में चलेगी: आप उन्हें अपनी भाषा में सुनेंगे, आपकी आवाज़ बिना अनुवाद के जाएगी। (दोतरफ़ा के लिए वर्चुअल माइक ड्राइवर चाहिए।)",
         "st_mode_started": "मोड शुरू: {mode}",
         "st_no_key": "API कुंजी सेट नहीं है — ऊपर दाईं ओर सेटिंग्स से जोड़ें।",
@@ -2136,6 +2155,7 @@ STRINGS = {
         "st_conn_err": "{name}: kapcsolati hiba, újrapróbálás {s:.0f} mp múlva: {e}",
         "st_connected": "{name}: csatlakozva (cél: {lang})",
         "st_engine_failover": "A fordítómotor nem érhető el — átváltás a tartalék motorra.",
+        "st_downgraded_free": "Elfogytak a Pro perceid — átváltottunk az ingyenes hangra. A fordítás folytatódik.",
         "st_meeting_listen_only": "Nincs virtuális hangkábel — a megbeszélés CSAK HALLGATÁS módban fut: te a saját nyelveden hallod a másik felet, a hangod fordítás nélkül megy ki. (A kétirányú működéshez virtuális mikrofon-illesztőprogram szükséges.)",
         "st_mode_started": "Mód elindítva: {mode}",
         "st_no_key": "Nincs beállítva API-kulcs — add meg a Beállításokban (jobb felül).",
@@ -2238,6 +2258,7 @@ STRINGS = {
         "st_conn_err": "{name}: anslutningsfel, försöker igen om {s:.0f}s: {e}",
         "st_connected": "{name}: ansluten (mål: {lang})",
         "st_engine_failover": "Översättningsmotorn är otillgänglig — bytte till reservmotorn.",
+        "st_downgraded_free": "Dina Pro-minuter är slut — bytte till den kostnadsfria rösten. Översättningen fortsätter.",
         "st_meeting_listen_only": "Ingen virtuell ljudkabel — mötet körs i läget ENDAST LYSSNING: du hör dem på ditt språk, din röst går ut oöversatt. (Tvåvägs kräver en virtuell mikrofondrivrutin.)",
         "st_mode_started": "Läge startat: {mode}",
         "st_no_key": "API-nyckel saknas — lägg till en via Inställningar (uppe till höger).",
@@ -2340,6 +2361,7 @@ STRINGS = {
         "st_conn_err": "{name}: greška u vezi, novi pokušaj za {s:.0f}s: {e}",
         "st_connected": "{name}: povezano (cilj: {lang})",
         "st_engine_failover": "Motor za prevođenje nije dostupan — prebačeno na rezervni motor.",
+        "st_downgraded_free": "Potrošio si Pro minute — prešli smo na besplatni glas. Prevod se nastavlja.",
         "st_meeting_listen_only": "Nema virtuelnog audio kabla — sastanak radi u režimu SAMO SLUŠANJE: sagovornika čuješ na svom jeziku, a tvoj glas ide neprevedeno. (Za dvosmerni rad potreban je drajver virtuelnog mikrofona.)",
         "st_mode_started": "Režim pokrenut: {mode}",
         "st_no_key": "API ključ nije podešen — dodaj ga u Podešavanjima (gore desno).",
@@ -2442,6 +2464,7 @@ STRINGS = {
         "st_conn_err": "{name}：連線錯誤，{s:.0f} 秒後重試：{e}",
         "st_connected": "{name}：已連線（目標：{lang}）",
         "st_engine_failover": "翻譯引擎無法使用——已切換至備援引擎。",
+        "st_downgraded_free": "Pro 時數已用完——已切換到免費語音。翻譯繼續。",
         "st_meeting_listen_only": "沒有虛擬音訊線——會議將以「僅聆聽」模式執行：你會以自己的語言聽到對方，而你的聲音會未經翻譯直接送出。（雙向功能需要虛擬麥克風驅動程式。）",
         "st_mode_started": "模式已啟動：{mode}",
         "st_no_key": "尚未設定 API 金鑰——請從右上角的「設定」新增。",

@@ -139,6 +139,15 @@ class Bridge:
         # app_launched: this fires on the FIRST check_auth regardless of login,
         # so the funnel can see opens that never reach authentication.
         self._opened_reported: bool = False
+        # The free-voice preview loads a voice (and may download one) off the UI
+        # thread; one at a time, so a double click can't race two downloads.
+        self._preview_lock = threading.Lock()
+        self._preview_busy: bool = False
+        # The last line Voxis SPOKE, kept apart from self._lines because stop()
+        # clears those once the transcript is saved — and the A/B card is offered
+        # precisely AFTER stop, when the user is finally looking at the window.
+        # Without this the demo has nothing to replay at the one moment it runs.
+        self._last_line: str = ""
         # Resolve "" (= never explicitly chosen) to the Windows display
         # language, and write the resolution back so get_init/JS and the
         # Settings dropdown all see one concrete locale. Not persisted here:
@@ -382,6 +391,7 @@ class Bridge:
             # Record the finalized turn with its start offset and paired source.
             if finished and not dup:
                 self._lines.append(finished)
+                self._last_line = finished   # survives stop(); see Bridge.__init__
                 turn = {
                     "t": max(0.0, self._turn_start - self._session_start),
                     "dir": "out",
@@ -466,18 +476,37 @@ class Bridge:
 
     def _on_quota_exceeded(self):
         """Server reported the license is exhausted (402 on /usage/report). The
-        server isn't in the audio path, so the cutoff is enforced here: surface a
-        status line, push a quota refresh, and stop the session. Runs on a
-        usage-report worker thread; self.stop() dispatches teardown to its own
-        thread under the session lock, so calling it here is safe."""
-        self._last_error_code = "st_quota_exceeded"
-        self._session_error = True
-        self._emit_status(t("st_quota_exceeded"), "warn")
+        server isn't in the audio path, so the cutoff is enforced here.
+
+        First we try to DOWNGRADE rather than cut off: a free user whose taste has
+        just run out keeps watching, and only the voice changes (see
+        pipeline._swap_to_cascade). Killing a session mid-film is how a paywall
+        earns resentment instead of a sale — and the voice change IS the pitch.
+        The hard stop stays as the fallback: a paid account out of minutes, a
+        disabled cascade, a spent daily cap, or Meeting mode all land here.
+
+        Runs on a usage-report worker thread; self.stop() dispatches teardown to
+        its own thread under the session lock, so calling it here is safe."""
         # A key prefetched before the quota ran out must not let the next Start
         # sail past the paywall — drop it so the start re-asks the server.
         with self._key_cache_lock:
             self._key_cache.clear()
         self._put_event(("quota_refresh", None))
+
+        try:
+            if self.controller.downgrade_to_cascade():
+                # Not an error: the session is alive and translating. Leaving
+                # _session_error unset also keeps the rating prompt honest.
+                self._last_error_code = None
+                self._emit_status(t("st_downgraded_free"), "warn")
+                self._put_event(("downgraded", None))
+                return
+        except Exception:  # noqa: BLE001 - a failed downgrade must still stop the session
+            logging.getLogger("voxis").exception("downgrade to cascade failed")
+
+        self._last_error_code = "st_quota_exceeded"
+        self._session_error = True
+        self._emit_status(t("st_quota_exceeded"), "warn")
         # Raise the in-app paywall card at the mid-session cutoff (the highest-
         # intent moment) instead of a silent stop. JS reads the live QUOTA global
         # for the number; this only fires once per session (guarded upstream).
@@ -1545,7 +1574,8 @@ class Bridge:
                 else:
                     _log.info("Qwen beta has no voice for target %r; using standard routing", target)
                 key, engine, model, quality, quota, workspace, _kt, err2 = voxis_client.get_session_key(
-                    target=target, caps=voxis_client.SESSION_KEY_CAPS)
+                    target=target, caps=voxis_client.SESSION_KEY_CAPS,
+                    mode=getattr(self, "_starting_mode", None))
                 if key:
                     if isinstance(quota, dict):
                         self._last_quota = quota
@@ -1575,7 +1605,8 @@ class Bridge:
                 self._apply_qwen_workspace(engine, workspace)
                 return engine, key, (model or resolve_model(self.cfg, engine))
             key, engine, model, quality, quota, workspace, _kt, err = voxis_client.get_session_key(
-                target=target, caps=voxis_client.SESSION_KEY_CAPS)
+                target=target, caps=voxis_client.SESSION_KEY_CAPS,
+                mode=getattr(self, "_starting_mode", None))
             if key:
                 if isinstance(quota, dict):
                     self._last_quota = quota  # keeps the paid-badge gate fresh
@@ -1602,6 +1633,10 @@ class Bridge:
                 return
             if not self._cable_ok(mode):
                 return
+            # The key resolvers run per pipeline and only know the TARGET; the
+            # server needs the mode too, because it refuses to cascade a meeting
+            # (the other party would hear a synthetic voice speaking as the user).
+            self._starting_mode = mode
             # A running sound-check probe must not coexist with the session's
             # own capture — release it before the pipeline opens its stream.
             self.soundcheck_stop()
@@ -1679,6 +1714,104 @@ class Bridge:
         """Open the Store's own rating sheet. Nothing is offered in return — see
         store_review for why that matters."""
         return store_review.open_review_page()
+
+    # ---------- the inverse demo (free-voice preview) ----------
+    def free_voice_preview(self):
+        """Speak the line the user just heard in the FREE tier's voice, then hand
+        the paid voice straight back. See free_preview for why the comparison has
+        to happen HERE — mid-taste, reversible — and not at the wall.
+
+        Returns immediately: the first call may download a ~60 MB voice, which
+        must not block the UI thread. Progress arrives as ('preview', {...})
+        events; JS localizes the `code`, so no string crosses this boundary."""
+        with self._preview_lock:
+            if self._preview_busy:
+                return {"ok": False, "code": "busy"}
+            self._preview_busy = True
+        threading.Thread(target=self._preview_thread, daemon=True).start()
+        return {"ok": True}
+
+    def _preview_thread(self):
+        try:
+            from . import free_preview  # noqa: PLC0415 - lazy: pulls sherpa
+            with self._text_lock:
+                line = self._last_line
+            if not line.strip():
+                logging.getLogger("voxis").info("free-voice preview: no line to replay")
+                self._preview_event("error", "no_line")
+                return
+            lang = self.cfg.get("target_language_incoming") or "en"
+            if not free_preview.voice_available(lang):
+                # Not a failure — the honest shape of the free tier in this
+                # language. Saying so is worth more than hiding the button.
+                self._preview_event("error", "no_voice")
+                return
+            self._preview_event("loading", None)
+            pcm = free_preview.synth_pcm16(lang, line)
+            self._play_clip(pcm, "playing")
+            self._preview_event("done", None)
+        except Exception as exc:  # noqa: BLE001 - a favour asked of the user must never crash it
+            logging.getLogger("voxis").info("free-voice preview failed: %s", exc)
+            self._preview_event("error", "failed")
+        finally:
+            with self._preview_lock:
+                self._preview_busy = False
+
+    def pro_voice_replay(self):
+        """Replay the paid voice, so the two can be heard back to back. Offered
+        after the free clip, when the contrast is freshest — the highest-intent
+        moment of the whole taste."""
+        with self._preview_lock:
+            if self._preview_busy:
+                return {"ok": False, "code": "busy"}
+            self._preview_busy = True
+        threading.Thread(target=self._pro_replay_thread, daemon=True).start()
+        return {"ok": True}
+
+    def _pro_replay_thread(self):
+        try:
+            from . import free_preview  # noqa: PLC0415
+            pcm = self.controller.recent_pro_pcm()
+            if not pcm:
+                logging.getLogger("voxis").info("pro-voice replay: nothing buffered")
+                self._preview_event("error", "no_pro")
+                return
+            self._play_clip(pcm, "playing_pro")
+            self._preview_event("done", None)
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger("voxis").info("pro-voice replay failed: %s", exc)
+            self._preview_event("error", "failed")
+        finally:
+            with self._preview_lock:
+                self._preview_busy = False
+
+    def _play_clip(self, pcm: bytes, state: str):
+        """Play a demo clip wherever the user happens to be. During a session it
+        borrows the live Player (and the paid voice stands down for the clip's
+        length); afterwards it opens its own — the A/B card lives after the
+        session, because that is when the user is actually looking at Voxis."""
+        from . import free_preview  # noqa: PLC0415
+
+        secs = free_preview.duration_seconds(pcm)
+        self._preview_event(state, None, seconds=round(secs, 1))
+        pipe = self.controller.incoming()
+        if pipe is not None:
+            pipe.play_free_preview(pcm, secs)
+            time.sleep(secs + 0.6)
+        else:
+            free_preview.play_standalone(self.cfg, pcm)
+
+    def _preview_event(self, state, code, **extra):
+        self._put_event(("preview", {"state": state, "code": code, **extra}))
+
+    def mark_seen(self, key):
+        """Persist a one-time UI beat (the ladder explainer, the contrast card) so
+        it never asks twice. Whitelisted: JS must not be able to write arbitrary
+        config keys through this door."""
+        if key not in ("ladder_seen", "contrast_shown"):
+            return False
+        self.cfg[key] = True
+        return self._save_cfg()
 
     def stop(self):
         threading.Thread(target=self._stop_thread, daemon=True).start()

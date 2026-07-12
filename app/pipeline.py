@@ -349,6 +349,8 @@ class IncomingPipeline:
         self._on_status = on_status
         self._on_text = on_text
         self._failover_done = False
+        # At most one taste→free downgrade per session (see _swap_to_cascade).
+        self._downgraded = False
 
         # Qwen's translated speech runs longer than the source and carries no
         # silence padding, so its stream is paced through a SyncStager (WSOLA
@@ -359,6 +361,18 @@ class IncomingPipeline:
             from .qwen_translator import SyncStager  # noqa: PLC0415
             self._stager = SyncStager(self.player, on_status=on_status)
 
+        # While the free-voice preview speaks, the paid voice stands down: two
+        # voices over one another would demo nothing. Captions keep flowing and
+        # the recorder keeps its faithful copy of what the engine produced —
+        # only playback is withheld, and only for the length of the clip.
+        self._preview_mute = False
+        # A few seconds of the paid voice, kept so it can be replayed back-to-back
+        # against the free voice AFTER the session — which is the only moment the
+        # user is reliably looking at Voxis rather than at what they came to watch.
+        # Bounded and audible-only: silence would replay as a dead button.
+        self._pro_ring: collections.deque = collections.deque()
+        self._pro_ring_bytes = 0
+
         def _tts_sink(data: bytes):
             # Gate the first-audio metric on AUDIBLE output: an initial near-silent
             # / padding chunk (OpenAI pads its stream) would understate latency.
@@ -367,6 +381,10 @@ class IncomingPipeline:
             self._rtt.mark_tts(audible=audible)
             if self._recorder is not None:
                 self._recorder.feed_translated(data)
+            if self._preview_mute:
+                return          # not heard → not part of "what you just heard"
+            if audible:
+                self._keep_pro_audio(data)
             if self._stager is not None:
                 self._stager.feed(data)
             else:
@@ -613,6 +631,43 @@ class IncomingPipeline:
                 except Exception:
                     pass
 
+    # ~8 s of paid voice at 24 kHz PCM16 — long enough to recognise a voice,
+    # short enough that the ring is never a memory concern.
+    PRO_RING_BYTES = 8 * 24000 * 2
+
+    def _keep_pro_audio(self, data: bytes):
+        self._pro_ring.append(data)
+        self._pro_ring_bytes += len(data)
+        while self._pro_ring_bytes > self.PRO_RING_BYTES and len(self._pro_ring) > 1:
+            self._pro_ring_bytes -= len(self._pro_ring.popleft())
+
+    def recent_pro_pcm(self) -> bytes:
+        """The last few seconds the paid voice actually SPOKE. Survives stop() on
+        purpose: the A/B card is offered once the user comes back to the window."""
+        return b"".join(self._pro_ring)
+
+    def play_free_preview(self, pcm: bytes, seconds: float):
+        """Speak `pcm` (the free tier's voice, same 24 kHz PCM16 contract) in place
+        of the paid voice, then hand the paid voice back. The clip is dropped into
+        the live Player, so it lands on the same device, gain and limiter the user
+        is already listening to — the comparison is honest only if nothing else
+        about the path changes. Best-effort: a timer failure must not strand the
+        paid voice muted, so the unmute is also attempted on stop()."""
+        self._preview_mute = True
+        try:
+            self.player.clear_tts()      # drop paid audio already queued
+            self.player.feed_tts_pcm16(pcm)
+        except Exception:
+            self._preview_mute = False
+            raise
+        # +0.4 s so the ring finishes draining before the paid voice resumes.
+        t = threading.Timer(max(0.5, seconds) + 0.4, self._end_free_preview)
+        t.daemon = True
+        t.start()
+
+    def _end_free_preview(self):
+        self._preview_mute = False
+
     @staticmethod
     def capture_rate(dev) -> int:
         return audio_io.device_rate(dev, "input")
@@ -632,10 +687,77 @@ class IncomingPipeline:
         self.start_io()
 
     def stop(self):
+        # A preview timer that never fired must not leave the next session's paid
+        # voice muted — this object is torn down, but clear the flag regardless.
+        self._preview_mute = False
         _stop_all(self)
         d = getattr(self, "_sducker", None)
         if d is not None:
             d.close()
+
+
+def _swap_to_cascade(pipe, target_key, name) -> bool:
+    """Hand the session over to the free voice instead of killing it.
+
+    The taste has just run out (402 on the usage heartbeat). Stopping here is what
+    the app used to do, and it is the worst possible moment: the user is in the
+    middle of a film, everything goes silent, and the loss reads as a fault. So we
+    do the same thing the engine-failover path does — swap the translator under a
+    live session — except the destination is the free tier's cascade. The film
+    keeps playing; only the VOICE changes. That change is the product's strongest
+    argument, and the user hears it in their own content.
+
+    Capture, VAD and the player are untouched (the send path indirects through
+    pipe.translator). Returns False when the server does not offer a cascade —
+    then the caller falls back to the hard stop, which is still correct."""
+    if getattr(pipe, "_downgraded", False):
+        return False
+
+    target = pipe.cfg[target_key]
+    try:
+        # The SERVER decides: a free tier past its taste is answered with
+        # engine=cascade; anyone else (or a disabled cascade) is not, and this
+        # simply returns their normal engine — which we refuse below.
+        engine, key, model = pipe._resolve(target)
+    except Exception:
+        _log.info("downgrade: server would not issue a cascade key", exc_info=True)
+        return False
+    if engine != ENGINE_CASCADE or not key:
+        return False
+
+    old = pipe.translator
+    try:
+        new = make_translator(
+            pipe.cfg, target, engine=ENGINE_CASCADE, key=key, model=model,
+            on_audio=pipe._tts_sink, on_text=pipe._on_text,
+            on_status=pipe._on_status, name=name,
+            # No on_fatal: the free tier is the floor. A failure here must reach
+            # the user rather than loop looking for something cheaper.
+        )
+    except Exception:
+        _log.exception("downgrade: could not build the cascade translator")
+        return False
+
+    # Qwen's stream needs WSOLA pacing; the cascade paces itself. Retire the
+    # stager BEFORE the swap so no cascade audio is routed through it.
+    stager = getattr(pipe, "_stager", None)
+    if stager is not None:
+        pipe._stager = None
+        try:
+            stager.stop()
+        except Exception:
+            pass
+
+    _log.info("taste spent — downgrading %s → cascade mid-session", pipe._engine)
+    pipe._downgraded = True
+    pipe._engine = ENGINE_CASCADE
+    pipe.translator = new   # do NOT re-bind the send path; it reads this attribute
+    new.start()
+    try:
+        old.stop()
+    except Exception:
+        pass
+    return True
 
 
 def _swap_to_gemini(pipe, target_key, name, exc):
@@ -874,6 +996,8 @@ class ModeController:
         self._session_failed = threading.Event()
         self._capture_dead_notified = False
         self._pipelines: list = []
+        # Survives the session so the post-session A/B card can replay it.
+        self._last_pro_pcm: bytes = b""
         self.mode: str | None = None
         self._session_id: str | None = None
         self._session_start: float | None = None
@@ -1199,6 +1323,12 @@ class ModeController:
                     self._switch_defaults(mode)
                 except Exception as e:
                     self.on_status(t("st_autoswitch_fail", e=e))
+                # AFTER the default endpoint has been flipped, never before: the
+                # mirror follows whichever endpoint the user's volume keys reach,
+                # and in vbcable mode that only becomes the cable here. Starting it
+                # earlier latched it onto the headphones and the keys did nothing —
+                # which is exactly the bug this fixes.
+                self._start_volume_mirror()
                 self.on_status(t("st_mode_started", mode=mode))
                 voxis_client.report_event_async("session_live", sid, {
                     "mode": mode,
@@ -1249,6 +1379,74 @@ class ModeController:
             if isinstance(p, IncomingPipeline) and hasattr(p, "_original_mode"):
                 p._original_mode = mode
 
+    def incoming(self) -> "IncomingPipeline | None":
+        """The live incoming pipeline, if a session is running. The free-voice
+        preview borrows its Player so the comparison plays on exactly the path
+        the user is already hearing."""
+        for p in self._pipelines:
+            if isinstance(p, IncomingPipeline):
+                return p
+        return None
+
+    def downgrade_to_cascade(self) -> bool:
+        """The taste just ran out. Try to keep the session alive on the free voice
+        rather than cutting the user off mid-film. False = the server did not offer
+        a cascade (paid tier, cascade disabled, daily cap already spent), and the
+        caller must fall back to stopping.
+
+        Meeting mode is never downgraded: the other party would hear a synthetic
+        voice speaking for the user, which is exactly what the free tier must not
+        do. There the hard stop remains correct."""
+        if self.mode == "meeting":
+            return False
+        inc = self.incoming()
+        if inc is None:
+            return False
+        ok = _swap_to_cascade(inc, "target_language_incoming", t("name_in"))
+        if ok:
+            # Re-arm the one-shot: the free tier has a daily cap of its own, and a
+            # 402 against THAT must still be able to stop the session.
+            self._quota_exhausted.clear()
+        return ok
+
+    def _start_volume_mirror(self):
+        """vbcable only: the session has just made the CABLE the default endpoint,
+        so the volume keys, the OSD and the mute key now act on the cable — not on
+        the headphones Voxis plays to. Mirror the cable's level onto our output so
+        the user's own volume control reaches what they actually hear.
+
+        Driverless never needs this: there the default endpoint IS our output
+        device, so Windows already attenuates us — mirroring would attenuate twice.
+        Best-effort; a missing mirror is a nuisance, a crashed session is not."""
+        self._vol_mirror = None
+        if self.cfg.get("capture_backend", "driverless") != "vbcable":
+            return
+        inc = self.incoming()
+        if inc is None:
+            return
+        try:
+            from .endpoint_volume import EndpointVolumeMirror  # noqa: PLC0415
+            self._vol_mirror = EndpointVolumeMirror(inc.player)
+            self._vol_mirror.start()
+        except Exception:
+            _log.info("endpoint volume mirror not started", exc_info=True)
+
+    def _stop_volume_mirror(self):
+        m = getattr(self, "_vol_mirror", None)
+        if m is not None:
+            m.stop()          # also hands the player's gain back at full scale
+            self._vol_mirror = None
+
+    def recent_pro_pcm(self) -> bytes:
+        """The last seconds the paid voice spoke — during the session from the live
+        ring, after it from the snapshot taken at stop()."""
+        inc = self.incoming()
+        if inc is not None:
+            live = inc.recent_pro_pcm()
+            if live:
+                return live
+        return getattr(self, "_last_pro_pcm", b"")
+
     # ---------- UI telemetry ----------
     def current_level(self) -> float:
         """Smoothed input level (0..1) across active pipelines, for the UI meter."""
@@ -1296,6 +1494,18 @@ class ModeController:
         # session_id is cleared so an immediate restart cannot lose it.
         sid, delta, source = self._consume_minutes(accrue=accrue)
         tail_engine = self.current_engine() or "gemini"  # capture before pipelines clear
+
+        self._stop_volume_mirror()
+
+        # Keep the last seconds of paid voice before the pipelines are dropped:
+        # the A/B card is offered AFTER the session, when the user is finally
+        # looking at Voxis instead of at what they came to watch.
+        inc = self.incoming()
+        if inc is not None:
+            try:
+                self._last_pro_pcm = inc.recent_pro_pcm()
+            except Exception:
+                pass
 
         for p in self._pipelines:
             try:

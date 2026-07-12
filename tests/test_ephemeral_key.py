@@ -77,7 +77,15 @@ def test_session_key_returns_key_type_ephemeral(monkeypatch):
     key, engine, *_mid, key_type, err = vc.get_session_key(
         target="el", caps=vc.SESSION_KEY_CAPS)
     assert (key, engine, key_type, err) == ("auth_tokens/t1", "gemini", "ephemeral", None)
-    assert seen["params"]["caps"] == "engine-routing,ephemeral"
+    # The caps list grows as the client learns new tricks (cascade landed in
+    # 1.0.39). What must never regress is that each capability is actually SENT:
+    # the server gates every staged feature on the client claiming it, and a
+    # dropped cap silently downgrades the user — an ephemeral-capable client
+    # would be handed the raw master key, a cascade-capable one the paywall.
+    caps = seen["params"]["caps"].split(",")
+    assert "engine-routing" in caps
+    assert "ephemeral" in caps
+    assert "cascade" in caps
 
 
 def test_session_key_defaults_key_type_raw(monkeypatch):
