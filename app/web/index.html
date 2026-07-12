@@ -5919,6 +5919,10 @@ function renderQuotaBar(quota){
     const allowed = quota.allowed_minutes || 0;
     const used    = quota.used_minutes    || 0;
     const rem     = quota.remaining ?? Math.max(0, allowed - used);
+    // On the free tier past the taste there is no license balance left to show,
+    // and a red "0 minutes left" would flatly contradict the chip next to it,
+    // which is busy explaining that Voxis still works. The chip carries the state.
+    if(rem <= 0 && quota.cascade_ready === true){ wrap.style.display='none'; return; }
     const pct     = allowed > 0 ? Math.min(1, used / allowed) : 1;
     wrap.className = 'quota-bar-wrap' + (rem <= 0 ? ' exhausted' : '');
     fill.style.width = (pct * 100).toFixed(1) + '%';
@@ -5930,7 +5934,12 @@ function isQuotaOk(quota){
   if(!quota) return true;
   if(quota.unlimited) return true;
   const rem = quota.remaining ?? Math.max(0, (quota.allowed_minutes ?? 1) - (quota.used_minutes ?? 0));
-  return rem > 0;
+  if(rem > 0) return true;
+  // Out of minutes is not out of Voxis. A free tier whose taste is spent keeps
+  // translating on the cascade — the server will hand it over on request. Greying
+  // the Start button out here made the entire free tier unreachable: the server
+  // was ready to serve it and the client never asked.
+  return quota.cascade_ready === true;
 }
 function applyQuotaGate(quota){
   const ok = isQuotaOk(quota);
