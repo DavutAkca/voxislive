@@ -24,6 +24,7 @@ import re
 import shutil
 import subprocess
 import pathlib
+from xml.sax.saxutils import escape
 
 from PIL import Image
 
@@ -40,11 +41,22 @@ ASSETS_DIR = LAYOUT_DIR / "Assets"
 IDENTITY_NAME = "Voxis.Voxis"
 PUBLISHER = "CN=B793784D-B600-465E-9306-01ACA6831D2A"
 PUBLISHER_DISPLAY = "Voxis"
-# Store listing title = MSIX manifest <DisplayName>. Must exactly match a name
-# reserved in Partner Center. Keyword-forward for MS Store search discovery
-# (brand-only "Voxis" ranked for nothing); competitors anchor on
-# "real-time" + "voice translator", both head terms here.
-APP_DISPLAY = "Voxis — Real-Time Voice Translator"
+# Store listing title = MSIX manifest <Properties><DisplayName>. Must match a name
+# RESERVED in Partner Center, character for character — a mismatch fails
+# certification, so do not "tidy" the dash or the ampersands.
+#
+# Long on purpose. The Store's cheapest lever is the title: brand-only "Voxis"
+# ranked for nothing, and we were outside the top 20 on all nine core searches.
+# The category leader ("Live Subtitles") sits at #1-2 on `subtitle` / `live
+# caption` / `live translation` with a 93-character keyword title, beating apps
+# with ten times its reviews. Dubbing leads because that is the one thing every
+# rival does not do.
+APP_DISPLAY = ("Voxis — Live AI Dubbing & Real-Time Voice Translator "
+               "for Games, Films, Streams & Meetings")
+# What Windows itself shows — Start menu, taskbar, app list. The keyword title
+# belongs in the Store, not on a tile: VisualElements is free of the reserved-name
+# rule, so the brand stays short where a human actually reads it.
+TILE_DISPLAY = "Voxis"
 APP_DESCRIPTION = (
     "Real-time voice translation for Windows — translate any video, game, or "
     "meeting and hear it in your own language, live."
@@ -139,6 +151,11 @@ def generate_assets():
 
 
 def write_manifest(version: str):
+    # The reserved title carries two ampersands. Dropped into the XML raw they
+    # produce a malformed manifest and certification dies on an error that says
+    # nothing about the name. Escape here, keep APP_DISPLAY the literal reserved
+    # string (it has to match Partner Center character for character).
+    APP_DISPLAY_XML = escape(APP_DISPLAY)  # noqa: N806 - mirrors the template name
     manifest = f"""<?xml version="1.0" encoding="utf-8"?>
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -150,7 +167,7 @@ def write_manifest(version: str):
             Version="{version}"
             ProcessorArchitecture="x64" />
   <Properties>
-    <DisplayName>{APP_DISPLAY}</DisplayName>
+    <DisplayName>{APP_DISPLAY_XML}</DisplayName>
     <PublisherDisplayName>{PUBLISHER_DISPLAY}</PublisherDisplayName>
     <Logo>Assets\\StoreLogo.png</Logo>
   </Properties>
@@ -164,7 +181,7 @@ def write_manifest(version: str):
   <Applications>
     <Application Id="Voxis" Executable="VoxisLive.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="{APP_DISPLAY}"
+        DisplayName="{TILE_DISPLAY}"
         Description="{APP_DESCRIPTION}"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\\Square150x150Logo.png"
