@@ -22,3 +22,6 @@ pycaw==20251023
 # re-evaluate before each release — a scoped hotkey lib may replace it.
 keyboard==0.13.5
 PyAudioWPatch==0.2.12.8
+# Local neural TTS for the cascade free tier (app/local_tts.py). Piper VITS
+# voices run on the bundled onnxruntime; voice models download at runtime.
+sherpa-onnx==1.13.4

@@ -11,7 +11,8 @@ factory so cold app startup is not slowed by an engine that won't be used.
 """
 from __future__ import annotations
 
-from .config import ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN, resolve_model, route_engine
+from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN,
+                     resolve_model, route_engine)
 
 
 def resolve_engine_for_target(cfg, keys, target_lang):
@@ -44,6 +45,21 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
     if not key:
         raise RuntimeError(f"no API key for engine '{engine}'")
     model = model or resolve_model(cfg, engine)
+
+    if engine == ENGINE_CASCADE:
+        # Free-tier half-cascade: the cloud leg is the SAME Live translate
+        # model/key (resolve_model falls through to the Gemini branch for
+        # unknown engines), so key/ephemeral/rotation infra is shared.
+        from .cascade_translator import CascadeTranslator  # lazy
+        tr = CascadeTranslator(
+            key, target_lang,
+            on_audio=on_audio, on_text=on_text, on_status=on_status,
+            rotate_minutes=cfg.get("session_rotate_minutes", 13), name=name,
+            model=model, voice=cfg.get("gemini_voice", "Aoede"),
+            temperature=float(cfg.get("gemini_temperature", 0.3)),
+            key_provider=key_provider)
+        tr.on_fatal = on_fatal
+        return tr
 
     if engine == ENGINE_QWEN:
         # BETA engine: reachable only through the server-gated Beta opt-in (the

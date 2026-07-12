@@ -110,3 +110,6 @@ panel/
 # hash-verified + auto-downloaded on first use (app/speaker_id.py), and the
 # official build bundles the local copy via build_official's models/ add-data.
 models/speaker_campplus.onnx
+
+# Runtime-downloaded local TTS voice models (cascade free tier)
+tts_models/

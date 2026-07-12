@@ -25,7 +25,7 @@ from .config import (
 from .i18n import t
 from .pipeline import ModeController
 from .paths import icon_path, legacy_transcripts_dir, transcripts_dir, user_path, web_dir
-from . import transcript_store
+from . import store_review, transcript_store
 
 WEB_DIR = web_dir()
 OBS_FILE = user_path("obs_subtitle.txt")
@@ -241,6 +241,10 @@ class Bridge:
         # report's diagnostics. Bounded so it can never grow unbounded.
         self._status_log: list[str] = []
         self._last_error_code = ""
+        # Per-session failure flag. _last_error_code is sticky across sessions (it
+        # rides into problem reports); the rating prompt needs to know whether
+        # THIS session failed, so it gets its own flag, reset on every start.
+        self._session_error = False
         # Prefetched /auth/session-key result per incoming target (official
         # build): warmed in the background at login / target change / session
         # stop so pressing Start skips the issuance round-trip (~200-400 ms).
@@ -467,6 +471,7 @@ class Bridge:
         usage-report worker thread; self.stop() dispatches teardown to its own
         thread under the session lock, so calling it here is safe."""
         self._last_error_code = "st_quota_exceeded"
+        self._session_error = True
         self._emit_status(t("st_quota_exceeded"), "warn")
         # A key prefetched before the quota ran out must not let the next Start
         # sail past the paywall — drop it so the start re-asks the server.
@@ -490,6 +495,7 @@ class Bridge:
         translator is a connection failure, and mislabeling it as a capture
         fault poisons field diagnosis (error_reason rides into problem reports)."""
         self._last_error_code = "st_session_failed"
+        self._session_error = True
         self._emit_status(t("st_session_failed"), "error")
         self.stop()
 
@@ -541,6 +547,11 @@ class Bridge:
             "engines": engines,
             "engine": resolve_engine(self.cfg),
             "official_release": IS_OFFICIAL_RELEASE,
+            # Dev-only free-tier preview state (checkbox in the BYOK section;
+            # the official build hides that whole section, and the setter below
+            # refuses anyway, so this never leaks into production behavior).
+            "cascade_preview": (not IS_OFFICIAL_RELEASE
+                                and bool(self.cfg.get("cascade_preview", False))),
             "badge_removable": self._badge_removable(),
             "onboarding_done": bool(self.cfg.get("onboarding_done", False)),
             "cfg": self._cfg_view(outs, mics),
@@ -591,6 +602,16 @@ class Bridge:
         except Exception as e:
             _log.exception("open_store_page failed")
             return {"ok": False, "error": str(e)}
+
+    def set_cascade_preview(self, enabled):
+        """DEV-ONLY: force the free-tier cascade engine for the next session
+        (Settings checkbox inside the BYOK section). Double-gated like every
+        dev affordance: the official build hides the UI and refuses here."""
+        if IS_OFFICIAL_RELEASE:
+            return False
+        self.cfg["cascade_preview"] = bool(enabled)
+        save_config(self.cfg)
+        return True
 
     def _cfg_view(self, outs=None, mics=None):
         outs = outs or list_device_names("output")
@@ -1430,6 +1451,20 @@ class Bridge:
             from .config import ENGINE_GEMINI, ENGINE_QWEN
             uid = self._ensure_user_id()
             keys = byok_store.load_byok(uid) if uid else {}
+            # Dev free-tier preview WINS over every other dev route (a leftover
+            # beta/qwen config must not shadow it — that is exactly what shipped
+            # Qwen instead of cascade on the first field try). force_gemini
+            # (mid-session failover) still yields the real engine.
+            if self.cfg.get("cascade_preview") and keys.get("gemini"):
+                from .config import ENGINE_CASCADE  # noqa: PLC0415
+
+                def resolve(target, force_gemini=False):
+                    if force_gemini or not self.cfg.get("cascade_preview"):
+                        return (ENGINE_GEMINI, keys.get("gemini"),
+                                resolve_model(self.cfg, ENGINE_GEMINI))
+                    return (ENGINE_CASCADE, keys.get("gemini"),
+                            resolve_model(self.cfg, ENGINE_GEMINI))
+                return resolve
             # Dev beta path: a DashScope key in config.json ("qwen_key") selects
             # the Qwen engine locally — sandbox-style, no server round-trip.
             if beta_qwen and self.cfg.get("qwen_key"):
@@ -1578,6 +1613,7 @@ class Bridge:
                 # Fresh session: drop the previous stop's auto-saved file so a
                 # post-stop Save on the NEW session can't re-surface a stale one.
                 self._last_saved_file = None
+                self._session_error = False
                 # Decide this session's self-contained output folder up front (from
                 # the wall-clock start) so the recorder's WAVs and the transcript
                 # JSON saved on stop share one folder + stamp. The folder itself is
@@ -1609,6 +1645,41 @@ class Bridge:
             return t("err_device_config")
         return t("err_start_failed")
 
+    # A session earns the rating ask only if Voxis actually did the job: it
+    # produced translation, ran long enough to be more than a poke, and nothing
+    # failed. Asking right after a crash is how an app collects one-star ratings.
+    REVIEW_MIN_SECONDS = 120.0
+    REVIEW_AFTER_SESSIONS = 3
+
+    def _note_good_session(self):
+        """Count a clean session and, on the third, raise the rating prompt once.
+
+        Called from _stop while the session's own state is still intact. Never
+        raises — a bookkeeping failure must not break the teardown path."""
+        try:
+            if self._session_error or not self._session_start:
+                return
+            if time.time() - self._session_start < self.REVIEW_MIN_SECONDS:
+                return
+            if self.cfg.get("review_prompted") or not store_review.available():
+                return
+            n = int(self.cfg.get("good_sessions", 0) or 0) + 1
+            self.cfg["good_sessions"] = n
+            if n >= self.REVIEW_AFTER_SESSIONS:
+                # Marked before the prompt is shown, not after it is answered: a
+                # card dismissed by closing the window must not come back.
+                self.cfg["review_prompted"] = True
+                self._put_event(("review", None))
+            save_config(self.cfg)
+        except Exception:  # noqa: BLE001 - never let this break stop()
+            logging.getLogger("voxis").debug("review prompt bookkeeping failed",
+                                             exc_info=True)
+
+    def rate_voxis(self):
+        """Open the Store's own rating sheet. Nothing is offered in return — see
+        store_review for why that matters."""
+        return store_review.open_review_page()
+
     def stop(self):
         threading.Thread(target=self._stop_thread, daemon=True).start()
         return True
@@ -1635,6 +1706,8 @@ class Bridge:
             # Saved silently here (avoids a status race with the teardown below);
             # the path + open/reveal actions are surfaced once, after teardown.
             saved = self.save_txt(silent=True)
+            # Read the session's own state before the teardown below clears it.
+            self._note_good_session()
             self.controller.stop()
             self._overlay_text = ""
             self._badge = (t("badge_idle"), "#8593a6", "")
