@@ -41,6 +41,14 @@ class _FakeStager:
         self.stopped = True
 
 
+class _FakePlayer:
+    def __init__(self):
+        self.cleared = 0
+
+    def clear_tts(self):
+        self.cleared += 1
+
+
 @pytest.fixture
 def pipe(monkeypatch):
     built = []
@@ -62,9 +70,25 @@ def pipe(monkeypatch):
     p._tts_sink = lambda d: None
     p._on_text = lambda *a: None
     p._on_status = lambda *a: None
+    p.player = _FakePlayer()
     p.built = built
     p._resolve = lambda target, force_gemini=False: (ENGINE_CASCADE, "key", "model")
     return p
+
+
+def test_the_dead_engine_stops_talking(pipe):
+    """The bug the owner heard: the swap happened, and the user went on listening
+    to the OLD voice reading OLD sentences.
+
+    Qwen's speech runs longer than the source, so it buffers seconds ahead, and
+    the player's ring holds up to 45 s. Swapping the translator without emptying
+    that ring leaves the dead engine's backlog playing over captions that have
+    moved on, with the new engine queued politely behind it. It sounds exactly
+    like a broken product, and no test caught it because the swap itself was
+    perfect.
+    """
+    P._swap_to_cascade(pipe, "target_language_incoming", "in")
+    assert pipe.player.cleared == 1
 
 
 def test_downgrade_swaps_engine_and_keeps_the_session_alive(pipe):

@@ -43,6 +43,14 @@ class _FakeStager:
         self.stopped = True
 
 
+class _FakePlayer:
+    def __init__(self):
+        self.cleared = 0
+
+    def clear_tts(self):
+        self.cleared += 1
+
+
 @pytest.fixture
 def pipe(monkeypatch):
     """An IncomingPipeline carrying only the state the failover touches."""
@@ -63,6 +71,7 @@ def pipe(monkeypatch):
     p._failover_done = False
     p.translator = _FakeTr(ENGINE_QWEN)
     p._stager = _FakeStager()
+    p.player = _FakePlayer()
     p._tts_sink = lambda d: None
     p._on_text = lambda *a: None
     p.statuses = []
@@ -181,3 +190,13 @@ def test_unhandled_fatal_still_surfaces(on_fatal):
     d = _Dummy(statuses.append, on_fatal=on_fatal)
     d._give_up(Exception("Arrearage"))
     assert len(statuses) == 1
+
+
+def test_the_dead_engine_stops_talking(pipe):
+    """Qwen buffers seconds ahead of the source (that is what the stager is for),
+    and the player's ring holds up to 45 s. Failing over without emptying it
+    leaves the DEAD engine's voice reading stale sentences over live captions,
+    with Gemini queued behind the backlog — the failure reads as a broken product
+    rather than a recovered one."""
+    P._swap_to_gemini(pipe, "target_language_incoming", "in", Exception("arrearage"))
+    assert pipe.player.cleared == 1

@@ -748,6 +748,17 @@ def _swap_to_cascade(pipe, target_key, name) -> bool:
         except Exception:
             pass
 
+    # Drop what the dead engine had already queued. Qwen's speech runs longer
+    # than the source, so it buffers seconds ahead (that is what the stager is
+    # for) — and the player's ring holds up to 45 s. Swap the translator without
+    # emptying it and the user keeps hearing the OLD engine's voice reading OLD
+    # sentences while the captions have moved on, with the new engine's audio
+    # queued patiently behind it. It reads exactly like a broken product.
+    try:
+        pipe.player.clear_tts()
+    except Exception:
+        pass
+
     _log.info("taste spent — downgrading %s → cascade mid-session", pipe._engine)
     pipe._downgraded = True
     pipe._engine = ENGINE_CASCADE
@@ -813,6 +824,15 @@ def _swap_to_gemini(pipe, target_key, name, exc):
             stager.stop()
         except Exception:
             pass
+
+    # And drop whatever the dead engine had already buffered — see _swap_to_cascade.
+    # Qwen queues seconds ahead of the source, so without this the user goes on
+    # hearing the engine that just died, reading sentences the captions have long
+    # passed, while the replacement waits its turn behind the backlog.
+    try:
+        pipe.player.clear_tts()
+    except Exception:
+        pass
 
     from_engine = pipe._engine
     pipe._engine = ENGINE_GEMINI
