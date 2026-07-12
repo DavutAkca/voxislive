@@ -486,10 +486,16 @@ def _device_headers() -> dict:
 # single-use, model-locked Gemini auth token instead of the raw master key;
 # whether one is actually issued is the server-side gemini_ephemeral setting
 # (staged rollout), so sending the cap is always safe.
-SESSION_KEY_CAPS = "engine-routing,ephemeral"
+#
+# "cascade" cap (1.0.39+) tells the server this client can RUN the free-tier
+# cascade (cloud text + a local voice). The server must never answer an older
+# client with engine="cascade": it would not recognise the name, fall back to
+# Gemini, and a spent free account would silently get the PAID engine. Sending
+# the cap is what makes the free tier safe to enable server-side.
+SESSION_KEY_CAPS = "engine-routing,ephemeral,cascade"
 
 
-def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str], Optional[str], Optional[str]]:
+def get_session_key(target=None, caps=None, engine=None, mode=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str], Optional[str], Optional[str]]:
     """SaaS execution path: retrieves a server-issued translation key. With
     caps='engine-routing' the server picks the engine by TARGET language and also
     returns {engine, model, quality, quota} — plus {workspace} on Qwen (DashScope
@@ -521,6 +527,11 @@ def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str],
         # Explicit engine request (beta opt-in). The server honors it only for
         # beta-flagged accounts; anyone else gets normal routing / a refusal.
         params["engine"] = engine
+    if mode:
+        # The server refuses to cascade a MEETING: the other party would hear a
+        # synthetic voice speaking as the user. It cannot infer the mode from the
+        # key request, so the client has to say which one it is starting.
+        params["mode"] = mode
     try:
         resp = _http.get(
             f"{_BASE_URL}/auth/session-key",
@@ -534,6 +545,10 @@ def get_session_key(target=None, caps=None, engine=None) -> tuple[Optional[str],
     if resp.status_code == 200:
         d = resp.json()
         quota = d.get("quota") if isinstance(d.get("quota"), dict) else None
+        if quota is not None and d.get("cascade_daily_minutes") is not None:
+            # Carried on the quota snapshot so the free-tier chip can name the
+            # real allowance instead of hard-coding a number the server owns.
+            quota["cascade_daily_minutes"] = d.get("cascade_daily_minutes")
         return (d.get("key"), d.get("engine", "gemini"), d.get("model"),
                 d.get("quality"), quota, d.get("workspace"),
                 d.get("key_type") or "raw", None)

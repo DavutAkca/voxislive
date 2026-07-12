@@ -476,18 +476,37 @@ class Bridge:
 
     def _on_quota_exceeded(self):
         """Server reported the license is exhausted (402 on /usage/report). The
-        server isn't in the audio path, so the cutoff is enforced here: surface a
-        status line, push a quota refresh, and stop the session. Runs on a
-        usage-report worker thread; self.stop() dispatches teardown to its own
-        thread under the session lock, so calling it here is safe."""
-        self._last_error_code = "st_quota_exceeded"
-        self._session_error = True
-        self._emit_status(t("st_quota_exceeded"), "warn")
+        server isn't in the audio path, so the cutoff is enforced here.
+
+        First we try to DOWNGRADE rather than cut off: a free user whose taste has
+        just run out keeps watching, and only the voice changes (see
+        pipeline._swap_to_cascade). Killing a session mid-film is how a paywall
+        earns resentment instead of a sale — and the voice change IS the pitch.
+        The hard stop stays as the fallback: a paid account out of minutes, a
+        disabled cascade, a spent daily cap, or Meeting mode all land here.
+
+        Runs on a usage-report worker thread; self.stop() dispatches teardown to
+        its own thread under the session lock, so calling it here is safe."""
         # A key prefetched before the quota ran out must not let the next Start
         # sail past the paywall — drop it so the start re-asks the server.
         with self._key_cache_lock:
             self._key_cache.clear()
         self._put_event(("quota_refresh", None))
+
+        try:
+            if self.controller.downgrade_to_cascade():
+                # Not an error: the session is alive and translating. Leaving
+                # _session_error unset also keeps the rating prompt honest.
+                self._last_error_code = None
+                self._emit_status(t("st_downgraded_free"), "warn")
+                self._put_event(("downgraded", None))
+                return
+        except Exception:  # noqa: BLE001 - a failed downgrade must still stop the session
+            logging.getLogger("voxis").exception("downgrade to cascade failed")
+
+        self._last_error_code = "st_quota_exceeded"
+        self._session_error = True
+        self._emit_status(t("st_quota_exceeded"), "warn")
         # Raise the in-app paywall card at the mid-session cutoff (the highest-
         # intent moment) instead of a silent stop. JS reads the live QUOTA global
         # for the number; this only fires once per session (guarded upstream).
@@ -1555,7 +1574,8 @@ class Bridge:
                 else:
                     _log.info("Qwen beta has no voice for target %r; using standard routing", target)
                 key, engine, model, quality, quota, workspace, _kt, err2 = voxis_client.get_session_key(
-                    target=target, caps=voxis_client.SESSION_KEY_CAPS)
+                    target=target, caps=voxis_client.SESSION_KEY_CAPS,
+                    mode=getattr(self, "_starting_mode", None))
                 if key:
                     if isinstance(quota, dict):
                         self._last_quota = quota
@@ -1585,7 +1605,8 @@ class Bridge:
                 self._apply_qwen_workspace(engine, workspace)
                 return engine, key, (model or resolve_model(self.cfg, engine))
             key, engine, model, quality, quota, workspace, _kt, err = voxis_client.get_session_key(
-                target=target, caps=voxis_client.SESSION_KEY_CAPS)
+                target=target, caps=voxis_client.SESSION_KEY_CAPS,
+                mode=getattr(self, "_starting_mode", None))
             if key:
                 if isinstance(quota, dict):
                     self._last_quota = quota  # keeps the paid-badge gate fresh
@@ -1612,6 +1633,10 @@ class Bridge:
                 return
             if not self._cable_ok(mode):
                 return
+            # The key resolvers run per pipeline and only know the TARGET; the
+            # server needs the mode too, because it refuses to cascade a meeting
+            # (the other party would hear a synthetic voice speaking as the user).
+            self._starting_mode = mode
             # A running sound-check probe must not coexist with the session's
             # own capture — release it before the pipeline opens its stream.
             self.soundcheck_stop()

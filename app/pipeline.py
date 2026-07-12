@@ -349,6 +349,8 @@ class IncomingPipeline:
         self._on_status = on_status
         self._on_text = on_text
         self._failover_done = False
+        # At most one taste→free downgrade per session (see _swap_to_cascade).
+        self._downgraded = False
 
         # Qwen's translated speech runs longer than the source and carries no
         # silence padding, so its stream is paced through a SyncStager (WSOLA
@@ -692,6 +694,70 @@ class IncomingPipeline:
         d = getattr(self, "_sducker", None)
         if d is not None:
             d.close()
+
+
+def _swap_to_cascade(pipe, target_key, name) -> bool:
+    """Hand the session over to the free voice instead of killing it.
+
+    The taste has just run out (402 on the usage heartbeat). Stopping here is what
+    the app used to do, and it is the worst possible moment: the user is in the
+    middle of a film, everything goes silent, and the loss reads as a fault. So we
+    do the same thing the engine-failover path does — swap the translator under a
+    live session — except the destination is the free tier's cascade. The film
+    keeps playing; only the VOICE changes. That change is the product's strongest
+    argument, and the user hears it in their own content.
+
+    Capture, VAD and the player are untouched (the send path indirects through
+    pipe.translator). Returns False when the server does not offer a cascade —
+    then the caller falls back to the hard stop, which is still correct."""
+    if getattr(pipe, "_downgraded", False):
+        return False
+
+    target = pipe.cfg[target_key]
+    try:
+        # The SERVER decides: a free tier past its taste is answered with
+        # engine=cascade; anyone else (or a disabled cascade) is not, and this
+        # simply returns their normal engine — which we refuse below.
+        engine, key, model = pipe._resolve(target)
+    except Exception:
+        _log.info("downgrade: server would not issue a cascade key", exc_info=True)
+        return False
+    if engine != ENGINE_CASCADE or not key:
+        return False
+
+    old = pipe.translator
+    try:
+        new = make_translator(
+            pipe.cfg, target, engine=ENGINE_CASCADE, key=key, model=model,
+            on_audio=pipe._tts_sink, on_text=pipe._on_text,
+            on_status=pipe._on_status, name=name,
+            # No on_fatal: the free tier is the floor. A failure here must reach
+            # the user rather than loop looking for something cheaper.
+        )
+    except Exception:
+        _log.exception("downgrade: could not build the cascade translator")
+        return False
+
+    # Qwen's stream needs WSOLA pacing; the cascade paces itself. Retire the
+    # stager BEFORE the swap so no cascade audio is routed through it.
+    stager = getattr(pipe, "_stager", None)
+    if stager is not None:
+        pipe._stager = None
+        try:
+            stager.stop()
+        except Exception:
+            pass
+
+    _log.info("taste spent — downgrading %s → cascade mid-session", pipe._engine)
+    pipe._downgraded = True
+    pipe._engine = ENGINE_CASCADE
+    pipe.translator = new   # do NOT re-bind the send path; it reads this attribute
+    new.start()
+    try:
+        old.stop()
+    except Exception:
+        pass
+    return True
 
 
 def _swap_to_gemini(pipe, target_key, name, exc):
@@ -1321,6 +1387,27 @@ class ModeController:
             if isinstance(p, IncomingPipeline):
                 return p
         return None
+
+    def downgrade_to_cascade(self) -> bool:
+        """The taste just ran out. Try to keep the session alive on the free voice
+        rather than cutting the user off mid-film. False = the server did not offer
+        a cascade (paid tier, cascade disabled, daily cap already spent), and the
+        caller must fall back to stopping.
+
+        Meeting mode is never downgraded: the other party would hear a synthetic
+        voice speaking for the user, which is exactly what the free tier must not
+        do. There the hard stop remains correct."""
+        if self.mode == "meeting":
+            return False
+        inc = self.incoming()
+        if inc is None:
+            return False
+        ok = _swap_to_cascade(inc, "target_language_incoming", t("name_in"))
+        if ok:
+            # Re-arm the one-shot: the free tier has a daily cap of its own, and a
+            # 402 against THAT must still be able to stop the session.
+            self._quota_exhausted.clear()
+        return ok
 
     def _start_volume_mirror(self):
         """vbcable only: the session has just made the CABLE the default endpoint,
