@@ -136,6 +136,10 @@ class BaseTranslator(threading.Thread):
     # When _ready fires: True = on connect (Gemini/Qwen), False = the receiver
     # sets it on a server 'session live' event (OpenAI).
     READY_ON_CONNECT = True
+    # False for text-only engines (cascade cloud leg): no cloud audio ever
+    # arrives, so "text flowing but no audio" is their normal state, not a
+    # broken audio leg.
+    VOICE_WATCHDOG = True
 
     # Lazily-bound usage sink (translator._add_usage). Kept off the module import
     # so base_translator stays free of google.genai on the websocket cold path.
@@ -564,7 +568,8 @@ class BaseTranslator(threading.Thread):
             # AUDIO is absent — subtitles with no voice. Gated on recent text so a
             # normal end-of-speech (audio + text stop together) never trips it, and
             # on a minimum session age so the first utterance's lag doesn't.
-            if (self._last_text_ts > 0.0 and not self._no_audio_warned
+            if (self.VOICE_WATCHDOG
+                    and self._last_text_ts > 0.0 and not self._no_audio_warned
                     and now - self._last_text_ts <= self.INPUT_RECENT_SECONDS
                     and now - started >= self.NO_AUDIO_WARN_SECONDS):
                 if (self._last_audio_ts == 0.0

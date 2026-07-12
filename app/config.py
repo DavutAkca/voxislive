@@ -55,6 +55,10 @@ QWEN_WORKSPACE = "ws-o9euzpyp254xo4es"
 ENGINE_GEMINI = "gemini"
 ENGINE_OPENAI = "openai"
 ENGINE_QWEN = "qwen"
+# Free-tier half-cascade (cloud TEXT + local Piper voice). Deliberately NOT in
+# VALID_ENGINES: it is tier-driven (server) or dev-preview-driven (cfg flag),
+# never a user-selectable cfg["engine"] value.
+ENGINE_CASCADE = "cascade"
 VALID_ENGINES = (ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN)
 DEFAULT_ENGINE = ENGINE_GEMINI
 
@@ -157,6 +161,11 @@ DEFAULTS = {
     # update that adds/removes voiced languages doesn't need a client release.
     "qwen_audio_langs": list(QWEN_AUDIO_LANGS),
     "ui_theme": "dark",
+    # Store-rating prompt. The Store shows stars per market and only once a market
+    # has a few ratings, so the ask is worth making — but exactly once, and only
+    # after the app has actually worked (see webui._note_good_session).
+    "good_sessions": 0,
+    "review_prompted": False,
     # Bumped when a load-time migration is added; see _migrate / load_config.
     "config_version": 2,
 }

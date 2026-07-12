@@ -1157,6 +1157,14 @@ body.resizing,body.resizing *{user-select:none!important}
           <div class="fieldlabel"><span data-i18n="gemini_key">Gemini API anahtarı</span> <span id="byok-badge" data-i18n="byok_active" style="display:none;font-size:10px;font-weight:600;color:var(--green);background:var(--green-soft);padding:2px 7px;border-radius:99px;margin-left:6px">BYOK aktif</span></div>
           <input type="password" id="gemkey" placeholder="AIza…" data-i18n-ph="ph_gemkey">
           <div class="fieldhint"><span data-i18n="byok_hint">Bu derlemede çalıştırmak için kendi Gemini API anahtarınız gereklidir. </span><a href="#" id="showgem" data-i18n="show">Göster</a> · <a href="#" id="clearbtn" data-i18n="clear" style="color:var(--red)">Temizle</a></div>
+          <!-- DEV-ONLY free-tier preview toggle: lives inside #byok-section so the
+               official build hides it with the rest; raw text on purpose (never
+               shipped to end users, exempt from the i18n dicts). -->
+          <div class="fieldlabel" style="margin-top:12px">Ücretsiz katman önizleme</div>
+          <label class="fieldhint" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="cascadeprev" style="width:auto;margin:0">
+            <span>Kaskad motoru kullan: bulut metin + yerel robot ses (sonraki oturum başlatışında etkin)</span>
+          </label>
         </div>
         <div class="dsection">
           <h3 data-i18n="general">Genel</h3>
@@ -1290,6 +1298,23 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-ghost" id="limit-dismiss" style="width:auto" data-i18n="limit_dismiss">Şimdilik kapat</button>
     <span class="spacer"></span>
     <button class="btn btn-primary" id="limit-cta" style="width:auto" data-i18n="limit_cta">Dakika al &rarr;</button>
+  </div>
+</div>
+
+<!-- Store rating ask. Raised once, after the third clean session — never with an
+     offer attached (incentivised ratings breach Store policy). -->
+<div class="modal limitmodal" id="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-title" aria-describedby="review-body">
+  <div class="mhead">
+    <span class="micon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9z"/></svg></span>
+    <h2 id="review-title" data-i18n="review_title">Voxis işine yarıyor mu?</h2>
+  </div>
+  <div class="mbody" id="review-body">
+    <p data-i18n="review_body">Store'da henüz hiç puanımız yok — ve insanlar bizi neredeyse tamamen puanlardan buluyor. Puan vermek 10 saniye sürer.</p>
+  </div>
+  <div class="mfoot">
+    <button class="btn btn-ghost" id="review-dismiss" style="width:auto" data-i18n="review_dismiss">Şimdi değil</button>
+    <span class="spacer"></span>
+    <button class="btn btn-primary" id="review-cta" style="width:auto" data-i18n="review_cta">Puan ver</button>
   </div>
 </div>
 
@@ -1492,7 +1517,7 @@ let STATE = {}, QUOTA = null;
 
 /* ---------- i18n ---------- */
 const I18N = {
-  tr: {
+  tr: {"review_title":"Voxis işine yarıyor mu?","review_body":"Store'da henüz hiç puanımız yok — ve insanlar bizi neredeyse tamamen puanlardan buluyor. Puan vermek 10 saniye sürer.","review_cta":"Puan ver","review_dismiss":"Şimdi değil",
     auth_google:"Google ile devam et",
     auth_or:"veya",
     auth_browser_wait:"Girişi tarayıcında tamamla…",
@@ -1606,7 +1631,7 @@ const I18N = {
     show_tour:"Tanıtım turunu tekrar göster",
     update_now:"Şimdi güncelle", update_later:"Sonra", store_view:"Microsoft Store'da görüntüle",
   },
-  en: {
+  en: {"review_title":"Is Voxis working for you?","review_body":"We have no Store ratings yet — and that's most of how people find us. A rating takes ten seconds.","review_cta":"Rate Voxis","review_dismiss":"Not now",
     auth_google:"Continue with Google",
     auth_or:"or",
     auth_browser_wait:"Complete sign-in in your browser…",
@@ -1721,7 +1746,7 @@ const I18N = {
     cable_manual:"This version can't install drivers for you. Download VB-CABLE free from vb-audio.com, install it, then restart Voxis.",
     update_now:"Update now", update_later:"Later", store_view:"View in Microsoft Store",
   },
-  cs:{
+  cs:{"review_title":"Funguje vám Voxis?","review_body":"V obchodě zatím nemáme žádná hodnocení — a právě podle nich nás lidé nacházejí. Hodnocení zabere deset sekund.","review_cta":"Ohodnotit Voxis","review_dismiss":"Teď ne",
     about_powered:"Překlad pomocí pokročilé umělé inteligence.",
     start_cue:"Spustit",
     to_other_hint:"Používá se pouze v režimu schůzky",
@@ -1967,7 +1992,7 @@ const I18N = {
     vol_label:"Hlasitost překladu",
     waiting_signal:"Čeká se na vstupní zvuk"
   },
-  de: {
+  de: {"review_title":"Läuft Voxis gut für Sie?","review_body":"Wir haben noch keine Store-Bewertungen — und genau so finden uns die meisten Leute. Eine Bewertung dauert zehn Sekunden.","review_cta":"Voxis bewerten","review_dismiss":"Jetzt nicht",
     auth_google:"Mit Google fortfahren",
     auth_or:"oder",
     auth_browser_wait:"Schließe die Anmeldung im Browser ab…",
@@ -2082,7 +2107,7 @@ const I18N = {
     show_tour:"Tour erneut anzeigen",
     update_now:"Jetzt aktualisieren", update_later:"Später",
   },
-  fr: {
+  fr: {"review_title":"Voxis vous est utile ?","review_body":"Nous n'avons encore aucune note sur le Store — et c'est ainsi que la plupart des gens nous trouvent. Cela prend dix secondes.","review_cta":"Noter Voxis","review_dismiss":"Pas maintenant",
     auth_google:"Continuer avec Google",
     auth_or:"ou",
     auth_browser_wait:"Terminez la connexion dans votre navigateur…",
@@ -2197,7 +2222,7 @@ const I18N = {
     show_tour:"Revoir la visite guidée",
     update_now:"Mettre à jour maintenant", update_later:"Plus tard",
   },
-  es: {
+  es: {"review_title":"¿Voxis te está sirviendo?","review_body":"Todavía no tenemos ninguna valoración en la Store — y así es como casi todos nos encuentran. Son diez segundos.","review_cta":"Valorar Voxis","review_dismiss":"Ahora no",
     auth_google:"Continuar con Google",
     auth_or:"o",
     auth_browser_wait:"Completa el inicio de sesión en tu navegador…",
@@ -2312,7 +2337,7 @@ const I18N = {
     show_tour:"Ver el tour de nuevo",
     update_now:"Actualizar ahora", update_later:"Más tarde",
   },
-  pt: {
+  pt: {"review_title":"O Voxis está te ajudando?","review_body":"Ainda não temos nenhuma avaliação na Store — e é assim que quase todos nos encontram. Leva dez segundos.","review_cta":"Avaliar o Voxis","review_dismiss":"Agora não",
     auth_google:"Continuar com o Google",
     auth_or:"ou",
     auth_browser_wait:"Conclua o login no seu navegador…",
@@ -2427,7 +2452,7 @@ const I18N = {
     show_tour:"Ver o tour novamente",
     update_now:"Atualizar agora", update_later:"Depois",
   },
-  ja: {
+  ja: {"review_title":"Voxis はお役に立っていますか？","review_body":"Voxis にはまだストアの評価がありません。評価は、私たちを見つけてもらうためのほぼ唯一の手がかりです。10 秒で終わります。","review_cta":"Voxis を評価する","review_dismiss":"今はしない",
     auth_google:"Google で続行",
     auth_or:"または",
     auth_browser_wait:"ブラウザでサインインを完了してください…",
@@ -2542,7 +2567,7 @@ const I18N = {
     show_tour:"ツアーをもう一度表示",
     update_now:"今すぐ更新", update_later:"後で",
   },
-  ko: {
+  ko: {"review_title":"Voxis가 도움이 되고 있나요?","review_body":"아직 스토어 평가가 하나도 없습니다. 사람들이 저희를 찾는 거의 유일한 길이 평가입니다. 10초면 됩니다.","review_cta":"Voxis 평가하기","review_dismiss":"나중에",
     auth_google:"Google로 계속하기",
     auth_or:"또는",
     auth_browser_wait:"브라우저에서 로그인을 완료하세요…",
@@ -2657,7 +2682,7 @@ const I18N = {
     show_tour:"둘러보기 다시 보기",
     update_now:"지금 업데이트", update_later:"나중에",
   },
-  ru: {
+  ru: {"review_title":"Voxis вам помогает?","review_body":"У нас пока нет ни одной оценки в Store — а именно так нас и находят. Это займёт десять секунд.","review_cta":"Оценить Voxis","review_dismiss":"Не сейчас",
     auth_google:"Продолжить с Google",
     auth_or:"или",
     auth_browser_wait:"Завершите вход в браузере…",
@@ -2772,7 +2797,7 @@ const I18N = {
     show_tour:"Показать тур снова",
     update_now:"Обновить сейчас", update_later:"Позже",
   },
-  zh: {
+  zh: {"review_title":"Voxis 用着还顺手吗？","review_body":"我们在商店里还没有任何评分——而人们几乎全靠评分找到我们。只需十秒。","review_cta":"去评分","review_dismiss":"以后再说",
     auth_google:"使用 Google 继续",
     auth_or:"或",
     auth_browser_wait:"请在浏览器中完成登录…",
@@ -2887,7 +2912,7 @@ const I18N = {
     show_tour:"再次查看引导",
     update_now:"立即更新", update_later:"稍后",
   },
-  pl: {
+  pl: {"review_title":"Czy Voxis się sprawdza?","review_body":"Nie mamy jeszcze żadnych ocen w Store — a to właśnie dzięki nim ludzie nas znajdują. Zajmie dziesięć sekund.","review_cta":"Oceń Voxis","review_dismiss":"Nie teraz",
     auth_google:"Kontynuuj z Google",
     auth_or:"lub",
     auth_browser_wait:"Dokończ logowanie w przeglądarce…",
@@ -3002,7 +3027,7 @@ const I18N = {
     show_tour:"Pokaż przewodnik ponownie",
     update_now:"Aktualizuj teraz", update_later:"Później",
   },
-  it: {
+  it: {"review_title":"Voxis ti sta tornando utile?","review_body":"Non abbiamo ancora nessuna valutazione sullo Store — ed è così che la gente ci trova. Bastano dieci secondi.","review_cta":"Valuta Voxis","review_dismiss":"Non ora",
     auth_google:"Continua con Google",
     auth_or:"oppure",
     auth_browser_wait:"Completa l'accesso nel browser…",
@@ -3117,7 +3142,7 @@ const I18N = {
     show_tour:"Rivedi il tour",
     update_now:"Aggiorna ora", update_later:"Più tardi",
   },
-  id: {
+  id: {"review_title":"Voxis membantu kamu?","review_body":"Kami belum punya rating apa pun di Store — dan dari situlah orang menemukan kami. Cuma sepuluh detik.","review_cta":"Beri rating","review_dismiss":"Nanti saja",
     auth_google:"Lanjutkan dengan Google",
     auth_or:"atau",
     auth_browser_wait:"Selesaikan proses masuk di browser Anda…",
@@ -3232,7 +3257,7 @@ const I18N = {
     show_tour:"Lihat tur lagi",
     update_now:"Perbarui sekarang", update_later:"Nanti",
   },
-  nl: {
+  nl: {"review_title":"Werkt Voxis goed voor je?","review_body":"We hebben nog geen enkele Store-beoordeling — en zo vinden mensen ons. Het kost tien seconden.","review_cta":"Voxis beoordelen","review_dismiss":"Niet nu",
     auth_google:"Doorgaan met Google",
     auth_or:"of",
     auth_browser_wait:"Voltooi het aanmelden in je browser…",
@@ -3347,7 +3372,7 @@ const I18N = {
     show_tour:"Rondleiding opnieuw bekijken",
     update_now:"Nu bijwerken", update_later:"Later",
   },
-  vi: {
+  vi: {"review_title":"Voxis có hữu ích với bạn không?","review_body":"Chúng tôi chưa có đánh giá nào trên Store — và đó là cách hầu hết mọi người tìm thấy chúng tôi. Chỉ mất mười giây.","review_cta":"Đánh giá Voxis","review_dismiss":"Để sau",
     auth_google:"Tiếp tục với Google",
     auth_or:"hoặc",
     auth_browser_wait:"Hoàn tất đăng nhập trong trình duyệt của bạn…",
@@ -3462,7 +3487,7 @@ const I18N = {
     show_tour:"Xem lại hướng dẫn",
     update_now:"Cập nhật ngay", update_later:"Để sau",
   },
-  th: {
+  th: {"review_title":"Voxis ช่วยคุณได้ไหม","review_body":"เรายังไม่มีคะแนนใน Store เลย — และนั่นคือทางที่คนส่วนใหญ่เจอเรา ใช้เวลาสิบวินาที","review_cta":"ให้คะแนน Voxis","review_dismiss":"ไว้ทีหลัง",
     auth_google:"ดำเนินการต่อด้วย Google",
     auth_or:"หรือ",
     auth_browser_wait:"ทำการเข้าสู่ระบบให้เสร็จในเบราว์เซอร์ของคุณ…",
@@ -3577,7 +3602,7 @@ const I18N = {
     show_tour:"ดูทัวร์อีกครั้ง",
     update_now:"อัปเดตตอนนี้", update_later:"ภายหลัง",
   },
-  "ro":{
+  "ro":{"review_title":"Voxis îți este de folos?","review_body":"Încă nu avem nicio evaluare în Store — și așa ne găsesc oamenii. Durează zece secunde.","review_cta":"Evaluează Voxis","review_dismiss":"Nu acum",
     "about_powered":"Propulsat de traducere AI avansată.",
     "al_contact":"Contact",
     "al_pricing":"Prețuri",
@@ -3823,7 +3848,7 @@ const I18N = {
     "vol_label":"Volumul traducerii",
     "waiting_signal":"Se așteaptă semnal de intrare",
   },
-  "hi":{
+  "hi":{"review_title":"क्या Voxis आपके काम आ रहा है?","review_body":"Store पर हमारी अभी एक भी रेटिंग नहीं है — और लोग हमें ज़्यादातर इसी से ढूँढते हैं। दस सेकंड लगेंगे।","review_cta":"रेटिंग दें","review_dismiss":"अभी नहीं",
     "about_powered":"उन्नत AI अनुवाद द्वारा संचालित।",
     "al_contact":"संपर्क",
     "al_pricing":"मूल्य निर्धारण",
@@ -4069,7 +4094,7 @@ const I18N = {
     "vol_label":"अनुवाद वॉल्यूम",
     "waiting_signal":"इनपुट सिग्नल की प्रतीक्षा",
   },
-  "hu":{
+  "hu":{"review_title":"Beválik neked a Voxis?","review_body":"Még egyetlen Store-értékelésünk sincs — pedig jórészt így találnak ránk. Tíz másodperc az egész.","review_cta":"Értékelem","review_dismiss":"Most nem",
     "about_powered":"Fejlett AI-fordítással működik.",
     "al_contact":"Kapcsolat",
     "al_pricing":"Árak",
@@ -4315,7 +4340,7 @@ const I18N = {
     "vol_label":"Fordítás hangereje",
     "waiting_signal":"Várakozás bemeneti jelre",
   },
-  "sv":{
+  "sv":{"review_title":"Fungerar Voxis bra för dig?","review_body":"Vi har inga betyg i Store än — och det är så folk hittar oss. Det tar tio sekunder.","review_cta":"Betygsätt Voxis","review_dismiss":"Inte nu",
     "about_powered":"Drivs av avancerad AI-översättning.",
     "al_contact":"Kontakt",
     "al_pricing":"Priser",
@@ -4561,7 +4586,7 @@ const I18N = {
     "vol_label":"Översättningsvolym",
     "waiting_signal":"Väntar på insignal",
   },
-  "sr":{
+  "sr":{"review_title":"Da li ti Voxis koristi?","review_body":"Još uvek nemamo nijednu ocenu u Store-u — a ljudi nas uglavnom tako i pronalaze. Traje deset sekundi.","review_cta":"Oceni Voxis","review_dismiss":"Ne sada",
     "about_powered":"Pokreće ga napredni AI prevod.",
     "al_contact":"Kontakt",
     "al_pricing":"Cene",
@@ -4807,7 +4832,7 @@ const I18N = {
     "vol_label":"Jačina prevoda",
     "waiting_signal":"Čekanje ulaznog signala",
   },
-  "zh-Hant":{
+  "zh-Hant":{"review_title":"Voxis 用起來還順手嗎？","review_body":"我們在商店裡還沒有任何評分——而人們幾乎全靠評分找到我們。只需十秒。","review_cta":"去評分","review_dismiss":"以後再說",
     "about_powered":"由先進的 AI 翻譯技術驅動。",
     "al_contact":"聯絡我們",
     "al_pricing":"價格",
@@ -5835,6 +5860,8 @@ async function init(){
   $('#uilang').value    = cfg.ui_language || LANG;
   document.querySelectorAll('.k').forEach(k=>k.textContent=cfg.hotkeys[k.dataset.hk]||'—');
   updateTileTitles();
+  { const cp = $('#cascadeprev'); if(cp){ cp.checked = !!STATE.cascade_preview;
+      cp.onchange = ()=>{ try{ api().set_cascade_preview(cp.checked); }catch(_){} }; } }
   // Official-release builds always run on the SaaS key — hide the BYOK input
   // entirely so the end-user UI never exposes a key field. Open-source builds
   // continue to expose it for developers.
@@ -6105,6 +6132,19 @@ function showPaywallCard(){
   const el=$('#limit-min'); if(el) el.textContent=String(cap);
   openLimitModal();
 }
+function closeReviewModal(){ $('#review-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
+function showReviewCard(){
+  // Python decides WHEN (third clean session, Store build, asked once ever) and
+  // has already persisted that it asked — so this only has to render.
+  $('#scrim').classList.add('open'); $('#review-modal').classList.add('open');
+  openModal($('#review-modal'), closeReviewModal, null);
+}
+$('#review-dismiss').onclick = e => { e.preventDefault(); closeReviewModal(); };
+$('#review-cta').onclick = async e => {
+  e.preventDefault();
+  closeReviewModal();
+  try{ await api().rate_voxis(); }catch(_){}
+};
 $('#consent-cancel').onclick = closeConsent;
 $('#consent-accept').onclick = async()=>{
   if($('#consent-dontshow').checked){
@@ -6704,6 +6744,7 @@ async function poll(){
       else if(ev[0]==='saved'){ addTranscriptActions(ev[1]); }
       else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
       else if(ev[0]==='quota_wall'){ showPaywallCard(); }
+      else if(ev[0]==='review'){ showReviewCard(); }
     });
     if(scOpen) driveSoundcheck(p.sc);
     $('#badge').textContent = p.badge.text;

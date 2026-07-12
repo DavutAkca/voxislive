@@ -26,7 +26,8 @@ try:
 except ImportError:
     _premium = None
 from .audio_io import Capture, Player, find_device, resolve_name, _make_resampler
-from .config import ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN, gate_params, stream_gated
+from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN,
+                     gate_params, stream_gated)
 from .engines import make_translator
 from .i18n import t
 # LiveTranslator (google.genai) and SpeechGate (onnxruntime) are imported lazily
@@ -402,6 +403,12 @@ class IncomingPipeline:
     def _failover_to_gemini(self, exc) -> bool:
         return _swap_to_gemini(self, "target_language_incoming", t("name_in"), exc)
 
+    def _stream_is_gated(self, cfg) -> bool:
+        """Cascade (free tier) ALWAYS streams gated — cloud input tokens are its
+        whole bill, and omitting silence roughly halves them on film content.
+        Paid engines keep the preset's choice (Saver gated, the rest smart)."""
+        return stream_gated(cfg) or self._engine == ENGINE_CASCADE
+
     def _acquire_capture(self, cfg, vad_cfg, send_fn, out_name, on_status):
         from .vad import SpeechGate  # noqa: PLC0415
         # OpenAI ingests 24 kHz; Gemini 16 kHz. Capture + the gate's send path run
@@ -475,7 +482,7 @@ class IncomingPipeline:
                 suppress = lambda: self.player.tts_active
             self._source = _GatedSource(
                 self.capture.rate, SpeechGate(**vad_cfg), send_fn,
-                suppress_when=suppress, smart=not stream_gated(cfg),
+                suppress_when=suppress, smart=not self._stream_is_gated(cfg),
                 send_rate=send_rate,
                 speech_tap=self._spk_tracker.feed if self._spk_tracker else None,
             )
@@ -524,7 +531,7 @@ class IncomingPipeline:
             self.player.configure_passthrough(self.capture.rate)
             self._source = _GatedSource(
                 self.capture.rate, SpeechGate(**vad_cfg), send_fn,
-                smart=not stream_gated(cfg), send_rate=send_rate,
+                smart=not self._stream_is_gated(cfg), send_rate=send_rate,
                 speech_tap=self._spk_tracker.feed if self._spk_tracker else None,
             )
 
@@ -1136,6 +1143,13 @@ class ModeController:
                 self.cfg["capture_backend"] = _premium.resolve_capture_backend(self.cfg)
             except Exception:
                 pass
+        # Dev cascade preview mirrors the FREE-TIER experience, which is the
+        # driverless session-duck path — not the premium vbcable spatial dub a
+        # cable on the dev machine would auto-route to. Re-resolved every start,
+        # so unticking the preview restores the premium routing next session.
+        from .config import IS_OFFICIAL_RELEASE  # noqa: PLC0415
+        if not IS_OFFICIAL_RELEASE and self.cfg.get("cascade_preview"):
+            self.cfg["capture_backend"] = "driverless"
         # Correlation id shared by this session's funnel milestones. Generated
         # before the retry loop so session_start/live/error all carry the same id.
         sid = uuid.uuid4().hex[:16]
