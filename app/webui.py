@@ -478,12 +478,20 @@ class Bridge:
         """Server reported the license is exhausted (402 on /usage/report). The
         server isn't in the audio path, so the cutoff is enforced here.
 
-        First we try to DOWNGRADE rather than cut off: a free user whose taste has
-        just run out keeps watching, and only the voice changes (see
-        pipeline._swap_to_cascade). Killing a session mid-film is how a paywall
-        earns resentment instead of a sale — and the voice change IS the pitch.
-        The hard stop stays as the fallback: a paid account out of minutes, a
-        disabled cascade, a spent daily cap, or Meeting mode all land here.
+        For a free tier whose taste just ran out the cutoff is a HANDOVER, not a
+        wall — but an explicit one. The first design swapped engines under the
+        live session, and in the field the owner heard the chip say "Pro voice"
+        while Piper was speaking: with two engines inside one session, the UI and
+        the audio can disagree. This design makes that state impossible: one
+        session, one engine. The Pro voice finishes its sentence, the session
+        stops, and a card asks whether to continue on the free voice — with the
+        same last sentence replayable in BOTH voices, so the user hears exactly
+        what they are choosing between (owner's design, 2026-07-13). "Continue"
+        starts a NEW session, which the server routes to the cascade from the
+        first frame — a path that runs in production already.
+
+        The hard stop remains for everyone else: paid accounts out of minutes,
+        Meeting mode, a disabled cascade, a spent daily allowance.
 
         Runs on a usage-report worker thread; self.stop() dispatches teardown to
         its own thread under the session lock, so calling it here is safe."""
@@ -494,15 +502,21 @@ class Bridge:
         self._put_event(("quota_refresh", None))
 
         try:
-            if self.controller.downgrade_to_cascade():
-                # Not an error: the session is alive and translating. Leaving
-                # _session_error unset also keeps the rating prompt honest.
-                self._last_error_code = None
-                self._emit_status(t("st_downgraded_free"), "warn")
-                self._put_event(("downgraded", None))
-                return
-        except Exception:  # noqa: BLE001 - a failed downgrade must still stop the session
-            logging.getLogger("voxis").exception("downgrade to cascade failed")
+            q = self._last_quota
+            wall_free = (isinstance(q, dict) and q.get("cascade_ready") is True
+                         and self.controller.mode != "meeting")
+        except Exception:  # noqa: BLE001
+            wall_free = False
+        if wall_free:
+            mode = self.controller.mode
+            # Not an error: the taste simply ended. Leaving _session_error unset
+            # also keeps the rating prompt honest about clean sessions.
+            self._last_error_code = None
+            self._emit_status(t("st_taste_wall"), "warn")
+            self._drain_tts()          # let the Pro voice finish its sentence
+            self.stop()
+            self._put_event(("taste_wall", {"mode": mode}))
+            return
 
         self._last_error_code = "st_quota_exceeded"
         self._session_error = True
@@ -512,6 +526,26 @@ class Bridge:
         # for the number; this only fires once per session (guarded upstream).
         self._put_event(("quota_wall", None))
         self.stop()
+
+    def _drain_tts(self, timeout: float = 8.0):
+        """Let the paid voice finish what it has already produced before the
+        session closes. Stopping the translator first means no NEW audio arrives;
+        the player's ring then plays out its last sentence and goes quiet. Cutting
+        instead of draining would clip the goodbye mid-word — and that clipped
+        word is the last impression of the paid tier the user gets."""
+        inc = self.controller.incoming()
+        if inc is None:
+            return
+        try:
+            inc.translator.stop()
+        except Exception:  # noqa: BLE001
+            pass
+        deadline = time.time() + timeout
+        try:
+            while time.time() < deadline and inc.player.tts_active:
+                time.sleep(0.2)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _on_session_failed(self):
         """A translator thread died mid-session (terminal error / retries

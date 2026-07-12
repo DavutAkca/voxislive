@@ -1,151 +1,114 @@
-"""Taste spent → the session DOWNGRADES; it does not die.
+"""The taste wall: when the free tier's Pro minutes run out, the session stops
+GRACEFULLY and a card offers the free voice — it does not die mid-word, and it
+does not swap engines under a live session.
 
-Cutting a session off mid-film is how a paywall earns resentment instead of a
-sale. When the one-time Pro taste runs out the server answers with the cascade,
-and the translator is swapped under a live session: capture, VAD and the player
-keep running, and only the VOICE changes — which is the pitch.
-
-Pinned here: the send path must keep indirecting through pipe.translator (a
-refactor that re-binds it to the instance would keep feeding the dead engine),
-the swap happens at most once, and anything the server does not answer with a
-cascade for must fall back to the hard stop.
+The hot swap this replaces failed in the field in a way no assertion caught: the
+UI said "Pro voice" while Piper was speaking, because two engines inside one
+session require the interface and the audio to update in lockstep. The owner's
+design (2026-07-13) makes that state unrepresentable — one session, one engine —
+so what these tests pin is the ROUTING: who gets the wall card, who gets the
+hard stop, and that the Pro voice is allowed to finish its sentence first.
 """
-import pytest
+import sys
+import threading
+import time
+import types
+from pathlib import Path
 
-from app import pipeline as P
-from app.config import ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_QWEN
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-
-class _FakeTr:
-    def __init__(self, engine):
-        self.engine = engine
-        self.sent = []
-        self.started = False
-        self.stopped = False
-
-    def send_pcm16(self, pcm):
-        self.sent.append(pcm)
-
-    def start(self):
-        self.started = True
-
-    def stop(self):
-        self.stopped = True
+from app.webui import Bridge  # noqa: E402
 
 
-class _FakeStager:
-    def __init__(self):
-        self.stopped = False
-
-    def stop(self):
-        self.stopped = True
-
-
-class _FakePlayer:
-    def __init__(self):
-        self.cleared = 0
-
-    def clear_tts(self):
-        self.cleared += 1
-
-
-@pytest.fixture
-def pipe(monkeypatch):
-    built = []
-
-    def fake_make_translator(cfg, target, *, engine, key, model, on_audio, on_text,
-                             on_status, name, noise_reduction=None, on_fatal=None,
-                             key_provider=None):
-        built.append({"engine": engine, "key": key, "on_fatal": on_fatal})
-        return _FakeTr(engine)
-
-    monkeypatch.setattr(P, "make_translator", fake_make_translator)
-
-    p = P.IncomingPipeline.__new__(P.IncomingPipeline)
-    p.cfg = {"target_language_incoming": "tr"}
-    p._engine = ENGINE_QWEN
-    p._downgraded = False
-    p.translator = _FakeTr(ENGINE_QWEN)
-    p._stager = _FakeStager()
-    p._tts_sink = lambda d: None
-    p._on_text = lambda *a: None
-    p._on_status = lambda *a: None
-    p.player = _FakePlayer()
-    p.built = built
-    p._resolve = lambda target, force_gemini=False: (ENGINE_CASCADE, "key", "model")
-    return p
+def _bridge(quota, mode="video"):
+    """A Bridge carrying only what _on_quota_exceeded touches."""
+    b = Bridge.__new__(Bridge)
+    b._last_quota = quota
+    b._key_cache_lock = threading.Lock()
+    b._key_cache = {}
+    b._last_error_code = None
+    b._session_error = False
+    b.events = []
+    b._put_event = b.events.append
+    b.statuses = []
+    b._emit_status = lambda msg, level="info": b.statuses.append((msg, level))
+    b.stopped = []
+    b.stop = lambda: b.stopped.append(True)
+    b.drained = []
+    b._drain_tts = lambda timeout=8.0: b.drained.append(True)
+    b.controller = types.SimpleNamespace(mode=mode, incoming=lambda: None)
+    return b
 
 
-def test_the_dead_engine_stops_talking(pipe):
-    """The bug the owner heard: the swap happened, and the user went on listening
-    to the OLD voice reading OLD sentences.
-
-    Qwen's speech runs longer than the source, so it buffers seconds ahead, and
-    the player's ring holds up to 45 s. Swapping the translator without emptying
-    that ring leaves the dead engine's backlog playing over captions that have
-    moved on, with the new engine queued politely behind it. It sounds exactly
-    like a broken product, and no test caught it because the swap itself was
-    perfect.
-    """
-    P._swap_to_cascade(pipe, "target_language_incoming", "in")
-    assert pipe.player.cleared == 1
+def _fired(b):
+    return [e[0] for e in b.events]
 
 
-def test_downgrade_swaps_engine_and_keeps_the_session_alive(pipe):
-    dead = pipe.translator
-    stager = pipe._stager
-    # Exactly the indirection the capture binds (IncomingPipeline send path).
-    send = lambda pcm: pipe.translator.send_pcm16(pcm)
-
-    assert P._swap_to_cascade(pipe, "target_language_incoming", "in") is True
-
-    assert pipe._engine == ENGINE_CASCADE
-    assert pipe.translator is not dead
-    assert pipe.translator.started and dead.stopped
-    # Qwen's WSOLA pacing must be retired before the swap: the cascade self-times.
-    assert stager.stopped and pipe._stager is None
-
-    send(b"\x01\x02")
-    assert pipe.translator.sent == [b"\x01\x02"]   # audio reaches the NEW engine
-    assert dead.sent == []                          # and none reaches the dead one
+def test_free_tier_gets_the_wall_card_not_an_error():
+    b = _bridge({"cascade_ready": True, "tier": "free"})
+    Bridge._on_quota_exceeded(b)
+    assert ("taste_wall", {"mode": "video"}) in b.events
+    assert "quota_wall" not in _fired(b)     # the hard paywall stays down
+    assert b.stopped and b.drained           # sentence finished, then stopped
+    assert b._session_error is False         # the taste ending is not a failure
+    assert b._last_error_code is None
 
 
-def test_cascade_gets_no_on_fatal(pipe):
-    # The free tier is the floor. A failure there must surface, not loop looking
-    # for something cheaper.
-    P._swap_to_cascade(pipe, "target_language_incoming", "in")
-    assert pipe.built[0]["on_fatal"] is None
+def test_the_sentence_finishes_before_the_card_appears():
+    # Drain, then stop, then the card. Any other order either clips the paid
+    # voice mid-word or shows a decision card over a session that is still talking.
+    b = _bridge({"cascade_ready": True})
+    order = []
+    b._drain_tts = lambda timeout=8.0: order.append("drain")
+    b.stop = lambda: order.append("stop")
+    b._put_event = lambda ev: order.append(ev[0])
+    Bridge._on_quota_exceeded(b)
+    assert order[-3:] == ["drain", "stop", "taste_wall"]
 
 
-def test_downgrade_happens_at_most_once(pipe):
-    assert P._swap_to_cascade(pipe, "target_language_incoming", "in") is True
-    assert P._swap_to_cascade(pipe, "target_language_incoming", "in") is False
-    assert len(pipe.built) == 1
+def test_paid_account_out_of_minutes_hits_the_paywall():
+    # The server never marks a customer cascade_ready; out of minutes means
+    # "buy more", not a quiet demotion to the robot voice.
+    b = _bridge({"cascade_ready": False, "tier": "paid"})
+    Bridge._on_quota_exceeded(b)
+    assert "quota_wall" in _fired(b)
+    assert "taste_wall" not in _fired(b)
+    assert b._session_error is True
 
 
-def test_no_cascade_offered_falls_back_to_the_hard_stop(pipe):
-    # A paid account out of minutes, a disabled cascade, or a spent daily cap:
-    # the server answers with something else, and the caller must stop instead.
-    pipe._resolve = lambda target, force_gemini=False: (ENGINE_GEMINI, "k", "m")
-    assert P._swap_to_cascade(pipe, "target_language_incoming", "in") is False
-    assert pipe._engine == ENGINE_QWEN     # untouched
-    assert pipe.built == []
+def test_meeting_never_gets_the_free_voice_offer():
+    # In Meeting the other party hears a voice speaking AS the user; the free
+    # tier must not put a synthetic voice in a stranger's ear.
+    b = _bridge({"cascade_ready": True}, mode="meeting")
+    Bridge._on_quota_exceeded(b)
+    assert "quota_wall" in _fired(b)
+    assert "taste_wall" not in _fired(b)
 
 
-def test_a_server_error_falls_back_to_the_hard_stop(pipe):
-    def boom(target, force_gemini=False):
-        raise RuntimeError("402")
-
-    pipe._resolve = boom
-    assert P._swap_to_cascade(pipe, "target_language_incoming", "in") is False
+def test_no_quota_snapshot_falls_back_to_the_paywall():
+    b = _bridge(None)
+    Bridge._on_quota_exceeded(b)
+    assert "quota_wall" in _fired(b)
 
 
-def test_meeting_is_never_downgraded(monkeypatch):
-    # The other party would hear a synthetic voice speaking AS the user. That is
-    # exactly what the free tier must never do, so Meeting keeps the hard stop.
-    ctl = P.ModeController.__new__(P.ModeController)
-    ctl.mode = "meeting"
-    called = []
-    monkeypatch.setattr(P, "_swap_to_cascade", lambda *a: called.append(a) or True)
-    assert P.ModeController.downgrade_to_cascade(ctl) is False
-    assert called == []
+def test_drain_lets_the_ring_empty_then_returns():
+    """_drain_tts stops the translator (no NEW audio) and waits for the player's
+    ring to finish the sentence it already holds."""
+    translator = types.SimpleNamespace(stopped=[])
+    translator.stop = lambda: translator.stopped.append(True)
+    player = types.SimpleNamespace(tts_active=True)
+    inc = types.SimpleNamespace(translator=translator, player=player)
+
+    b = Bridge.__new__(Bridge)
+    b.controller = types.SimpleNamespace(incoming=lambda: inc)
+
+    def go_quiet():
+        time.sleep(0.3)
+        player.tts_active = False
+
+    threading.Thread(target=go_quiet, daemon=True).start()
+    t0 = time.time()
+    Bridge._drain_tts(b, timeout=5.0)
+    took = time.time() - t0
+    assert translator.stopped            # no new audio while draining
+    assert 0.2 <= took < 2.0             # waited for the ring, not the timeout
