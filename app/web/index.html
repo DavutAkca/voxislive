@@ -6299,7 +6299,14 @@ function isTasteTier(q){
   // Fails CLOSED on an unknown/absent tier — telling a paying customer their
   // voice is about to be taken away is a far worse error than staying quiet.
   if(!STATE.official_release || !q || q.unlimited) return false;
-  return String(q.tier || q.plan || '').toLowerCase() === 'free';
+  if(String(q.tier || q.plan || '').toLowerCase() !== 'free') return false;
+  // And ONLY once the server says the free tier actually exists (cascade_ready).
+  // Everything downstream of this — the countdown, the ladder, the inverse demo,
+  // the Meeting lock — promises a free voice after the taste. Ship that promise
+  // before the server can keep it and the user hits the OLD wall instead, having
+  // been told twice that something else was coming. So the whole journey lights
+  // up server-side, the day the switch is thrown, with no new build.
+  return q.cascade_ready === true;
 }
 // Has the one-time Pro taste been spent? That is the whole difference between a
 // first-month user and a second-month one, and today the app said NOTHING about
