@@ -225,6 +225,7 @@ class Bridge:
         self._overlay_text = ""
         self._overlay_until = 0.0
         self._maximized = False
+        self._minimized = False
         # Latest non-maximized window geometry, persisted to cfg["window"] on close
         # and restored at next launch.
         self._win_geom = {}
@@ -1181,7 +1182,7 @@ class Bridge:
             return None
 
     def _on_win_resized(self, *a):
-        if len(a) >= 2 and not self._maximized:
+        if len(a) >= 2 and not self._maximized and not self._minimized:
             w, h = int(a[0]), int(a[1])
             # Skip a resize matching the work area: an OS maximize whose `resized`
             # arrives before `maximized` must not pollute the restore geometry.
@@ -1191,14 +1192,21 @@ class Bridge:
             self._win_geom["w"], self._win_geom["h"] = w, h
 
     def _on_win_moved(self, *a):
-        if len(a) >= 2 and not self._maximized:
+        if len(a) >= 2 and not self._maximized and not self._minimized:
             self._win_geom["x"], self._win_geom["y"] = int(a[0]), int(a[1])
 
     def _on_win_maximized(self, *a):
         self._maximized = True
 
+    def _on_win_minimized(self, *a):
+        # Windows reports a minimized window's position/size via a sentinel
+        # (e.g. -32000,-32000) — without this guard that lands in _win_geom and
+        # gets persisted on close as if it were real restore geometry.
+        self._minimized = True
+
     def _on_win_restored(self, *a):
         self._maximized = False
+        self._minimized = False
 
     def _on_win_closing(self, *a):
         try:
@@ -2853,6 +2861,7 @@ def run(cfg):
         window.events.resized += bridge._on_win_resized
         window.events.moved += bridge._on_win_moved
         window.events.maximized += bridge._on_win_maximized
+        window.events.minimized += bridge._on_win_minimized
         window.events.restored += bridge._on_win_restored
         window.events.closing += bridge._on_win_closing
     except Exception:
