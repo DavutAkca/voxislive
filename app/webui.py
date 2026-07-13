@@ -48,6 +48,20 @@ LANGS = [
     "sr", "sd", "si", "sk", "sl", "su", "sw", "sv", "ta", "te", "ur",
     "uz", "zu",
 ]
+def _free_voiced_langs():
+    """Targets the free tier can SPEAK (the rest fall back to captions-only).
+
+    Reads the voice registry, not sherpa — importing local_tts costs nothing
+    here and keeps one source of truth, so adding a voice to VOICES lights it
+    up in the picker with no second list to update."""
+    try:
+        from . import local_tts  # noqa: PLC0415 - cheap: registry dict only
+        return [l for l in LANGS if local_tts.voice_available(l)]
+    except Exception:  # a broken registry must not take the whole UI down
+        _log.exception("voiced-language list unavailable")
+        return []
+
+
 LINE_GAP = 2.5
 # When a speaker change has been detected, the translated stream is split at
 # the next micro-pause this long — far below LINE_GAP, so back-to-back
@@ -649,6 +663,12 @@ class Bridge:
             "outputs": outs,
             "mics": [t("default_mic")] + mics,
             "langs": LANGS,
+            # Targets the FREE tier can actually speak. It translates all 79 but
+            # only voices those with a registered Piper voice, so the picker can
+            # say so up front instead of letting a free user discover the
+            # silence mid-session. Paid engines voice every target; the JS only
+            # consults this when the licence is on the free tier.
+            "voiced_langs": _free_voiced_langs(),
             "profiles": [[k, t(f"profile_{k}")] for k in ("custom", "meeting", "film", "conference")],
             "qualities": self._quality_options(),
             "gemini_voices": GEMINI_VOICES,
