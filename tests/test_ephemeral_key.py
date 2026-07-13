@@ -249,6 +249,7 @@ def _bare_bridge():
     b.cfg = {"target_language_incoming": "el"}
     b._key_cache = {}
     b._key_cache_lock = threading.Lock()
+    b._key_epoch = 0
     b._last_quota = None
     return b
 

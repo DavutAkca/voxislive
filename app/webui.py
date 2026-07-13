@@ -16,6 +16,7 @@ import webview
 from . import APP_VERSION, i18n
 from .audio_io import detect_virtual_cable, find_device, list_device_names
 from .config import (
+    ENGINE_CASCADE,
     GEMINI_VOICES,
     IS_OFFICIAL_RELEASE,
     QUALITY_PRESETS,
@@ -261,6 +262,14 @@ class Bridge:
         # synchronous fetch, so failures cost nothing.
         self._key_cache: dict[str, tuple] = {}
         self._key_cache_lock = threading.Lock()
+        # Bumped whenever a cached grant becomes invalid (the quota ran out). A
+        # prefetch that was ALREADY IN FLIGHT when that happened carries a grant
+        # issued under the old quota — clearing the dict cannot stop it, because it
+        # lands afterwards and writes itself back in. It then hands a spent free
+        # account a VOICED (paid) engine on the next Start, which we pay for and
+        # the user gets billed past 100%. The epoch is the fix: a prefetch may only
+        # publish if the world has not moved under it.
+        self._key_epoch = 0
         # Idle-only sound-check probe ("do I hear this device?"): a loopback
         # capture whose only output is a peak level for the UI meter. Never runs
         # alongside a session (see soundcheck_start / _start).
@@ -493,18 +502,55 @@ class Bridge:
         The hard stop remains for everyone else: paid accounts out of minutes,
         Meeting mode, a disabled cascade, a spent daily allowance.
 
+        Three walls, not two. A 402 arriving while the CASCADE is the live engine
+        can only be the daily allowance: the server's cascade heartbeat path never
+        compares against the license quota at all (handlers/usage.go), it only
+        books against the 10-min/day counter. Reading the engine — rather than the
+        quota flags — is what tells the two apart, so someone already on the free
+        voice is told "today's free minutes are up, they come back tomorrow"
+        instead of being offered the free voice they are currently listening to
+        (owner report, 2026-07-13).
+
         Runs on a usage-report worker thread; self.stop() dispatches teardown to
         its own thread under the session lock, so calling it here is safe."""
         # A key prefetched before the quota ran out must not let the next Start
-        # sail past the paywall — drop it so the start re-asks the server.
+        # sail past the paywall — drop it so the start re-asks the server. Bumping
+        # the epoch under the same lock also disowns any prefetch still IN FLIGHT:
+        # clearing alone left a race where that fetch (carrying a voiced grant from
+        # when the user still had minutes) landed afterwards and put the PAID engine
+        # back in the cache, which the next Start then spent. That is how a free
+        # account kept running the paid engine past its taste — billed to the user
+        # (>100% quota) and paid for by us (field data, 2026-07-13).
         with self._key_cache_lock:
             self._key_cache.clear()
+            self._key_epoch += 1
         self._put_event(("quota_refresh", None))
 
+        q = self._last_quota
         try:
-            q = self._last_quota
-            wall_free = (isinstance(q, dict) and q.get("cascade_ready") is True
-                         and self.controller.mode != "meeting")
+            on_cascade = self.controller.current_engine() == "cascade"
+        except Exception:  # noqa: BLE001
+            # Never let an engine read cost us the quota snapshot: without it the
+            # free tier would fall through to the PAID paywall.
+            on_cascade = False
+
+        if on_cascade:
+            # The daily wall. Not an error, and not the taste wall: the free voice
+            # is not taken away, it just comes back tomorrow.
+            self._last_error_code = None
+            self._emit_status(t("st_daily_free_done"), "warn")
+            self._drain_tts()
+            self.stop()
+            self._put_event(("daily_wall", None))
+            return
+
+        try:
+            free_open = q.get("cascade_available") if isinstance(q, dict) else None
+            if free_open is None and isinstance(q, dict):
+                # Server predates cascade_available (deploy order: server first,
+                # but never assume it). Fall back to the old flag.
+                free_open = q.get("cascade_ready") is True
+            wall_free = (free_open is True and self.controller.mode != "meeting")
         except Exception:  # noqa: BLE001
             wall_free = False
         if wall_free:
@@ -1162,6 +1208,35 @@ class Bridge:
             self._save_cfg()
         except Exception:
             pass
+        # pywebview only leaves its message loop once EVERY window is gone
+        # (winforms on_close: Application.Exit() fires at instances == 0), so an
+        # open overlay outlives the main window: webview.start() never returns,
+        # the post-loop cleanup that stops the session never runs, and the app
+        # keeps translating (and billing) into a headless overlay while holding
+        # the single-instance mutex — "closed it, it won't reopen" (field report,
+        # 2026-07-13). Tear the overlay down here, on the closing edge, so the
+        # loop can actually end. Not via toggle_overlay(False): that persists
+        # overlay_enabled=False and would silently lose the user's preference.
+        self._destroy_overlay()
+        # Belt and braces: the user asked to close, so the process MUST die. If
+        # anything still pins the message loop (a window we failed to destroy, a
+        # wedged WebView2 teardown), webview.start() never returns and _shutdown
+        # is never reached — the exact zombie this bug produced. Nothing may
+        # cancel the close past this point, so an unconditional bounded exit is
+        # safe; the normal path beats the timer and this never fires.
+        self._close_watchdog = threading.Timer(20.0, _shutdown, args=(self,))
+        self._close_watchdog.daemon = True
+        self._close_watchdog.name = "voxis-close-watchdog"
+        self._close_watchdog.start()
+
+    def _destroy_overlay(self):
+        win, self._overlay_win = self._overlay_win, None
+        if win is None:
+            return
+        try:
+            win.destroy()
+        except Exception:
+            _log.debug("overlay destroy failed", exc_info=True)
 
     def open_url(self, url: str) -> bool:
         # Allowlist http/https/mailto only so a crafted bridge call can never
@@ -1456,6 +1531,9 @@ class Bridge:
         if not target:
             return
 
+        with self._key_cache_lock:
+            epoch = self._key_epoch
+
         def work():
             try:
                 from . import voxis_client  # noqa: PLC0415
@@ -1468,8 +1546,13 @@ class Bridge:
                 # cache, so the synchronous start fetch stays cheap.
                 if key and key_type != "ephemeral":
                     with self._key_cache_lock:
-                        self._key_cache[target] = (time.time(), engine, key,
-                                                   model, quality, workspace)
+                        # Only publish if the quota has not been exhausted while we
+                        # were in flight. Otherwise this grant — issued when the
+                        # user still had Pro minutes — would resurrect the paid
+                        # engine for a spent free account.
+                        if self._key_epoch == epoch:
+                            self._key_cache[target] = (time.time(), engine, key,
+                                                       model, quality, workspace)
                 if isinstance(quota, dict):
                     self._last_quota = quota
             except Exception:
@@ -1481,12 +1564,44 @@ class Bridge:
     def _pop_prefetched_key(self, target):
         """Single-use cache take — ephemeral tokens are not reused across
         sessions. Returns (engine, key, model, quality, workspace) or None
-        (stale/miss)."""
+        (stale/miss).
+
+        A grant is only as good as the quota it was issued under. The epoch guard
+        in the prefetch stops the common race, but a grant can also simply go stale
+        in the cache (TTL is 4 min) while the last minutes burn away. So the free/
+        paid boundary is re-checked HERE, at the moment of use: a spent taste never
+        starts a voiced session, whatever the cache holds. Belt to the epoch's
+        braces — this is the invariant the server cannot enforce for us, because it
+        never sees a start that reuses a grant it issued minutes ago."""
         with self._key_cache_lock:
             hit = self._key_cache.pop(target, None)
-        if hit and time.time() - hit[0] < KEY_PREFETCH_TTL:
-            return hit[1:]
-        return None
+        if not hit or time.time() - hit[0] >= KEY_PREFETCH_TTL:
+            return None
+        engine = hit[1]
+        if engine != ENGINE_CASCADE and self._taste_spent():
+            # Out of Pro minutes, holding a Pro grant: drop it and let the start do
+            # its synchronous fetch, which the server answers with the cascade.
+            return None
+        return hit[1:]
+
+    def _taste_spent(self) -> bool:
+        """True when the license has no billable minutes left. Fails OPEN (False)
+        on an unknown quota: refusing a paid grant we are unsure about would break
+        a paying customer, while wrongly allowing one costs at most one session
+        that the server's own 402 stops within a heartbeat."""
+        q = self._last_quota
+        if not isinstance(q, dict) or q.get("unlimited"):
+            return False
+        rem = q.get("remaining")
+        if rem is None:
+            allowed, used = q.get("allowed_minutes"), q.get("used_minutes")
+            if allowed is None or used is None:
+                return False
+            rem = allowed - used
+        try:
+            return float(rem) <= 0
+        except (TypeError, ValueError):
+            return False
 
     def _apply_qwen_workspace(self, engine, workspace):
         """Adopt the server-issued DashScope workspace id (workspace-scoped
@@ -2265,12 +2380,8 @@ class Bridge:
                 )
             except Exception:
                 self._overlay_win = None
-        elif not on and self._overlay_win is not None:
-            try:
-                self._overlay_win.destroy()
-            except Exception:
-                pass
-            self._overlay_win = None
+        elif not on:
+            self._destroy_overlay()
         return True
 
     # ---------- virtual cable (meeting mode) ----------
@@ -2651,6 +2762,42 @@ def _set_taskbar_icon(icon_path: str, title: str):
     threading.Thread(target=apply, daemon=True).start()
 
 
+_shutting_down = threading.Lock()
+
+
+def _shutdown(bridge, grace: float = 8.0):
+    """Stop any live session, then GUARANTEE process death.
+
+    Called from the normal exit (webview.start() returned) and from the closing
+    watchdog. The stop path crosses COM (endpoint restore), PortAudio teardown
+    and the network; any of those wedging after the window is gone would leave a
+    headless zombie still holding the Voxis.SingleInstance mutex, so the app
+    "won't reopen until killed in Task Manager" (field report, 2026-07-10). Run
+    the stop on a daemon thread with a bounded grace, then hard-exit: normal
+    interpreter shutdown would itself wait on any straggler non-daemon thread.
+    Whoever gets here first owns the teardown; the loser just returns.
+    """
+    if not _shutting_down.acquire(blocking=False):
+        return
+
+    def _stop_session():
+        try:
+            if bridge.controller.mode:
+                bridge.controller.stop()
+        except Exception:
+            _log.debug("final session stop failed", exc_info=True)
+
+    t = threading.Thread(target=_stop_session, daemon=True,
+                         name="voxis-final-cleanup")
+    t.start()
+    t.join(grace)  # final heartbeat + endpoint restore normally take <2 s
+    try:
+        logging.shutdown()  # flush voxis.log before the hard exit
+    except Exception:
+        pass
+    os._exit(0)
+
+
 def run(cfg):
     bridge = Bridge(cfg)
     # Auto-select the virtual cable in the background so device enumeration
@@ -2732,28 +2879,4 @@ def run(cfg):
     except TypeError:
         # Older pywebview without the icon parameter.
         webview.start()
-    # When the main window is destroyed (X or Alt+F4) ensure any active session
-    # is stopped so the final usage report reaches the server — then GUARANTEE
-    # process death. The stop path crosses COM (endpoint restore), PortAudio
-    # teardown and the network; any of those wedging after the window is gone
-    # would leave a headless zombie that still holds the Voxis.SingleInstance
-    # mutex, so the app "won't reopen until killed in Task Manager" (field
-    # report, 2026-07-10). Run the cleanup on a watchdog thread with a bounded
-    # grace, then hard-exit: normal interpreter shutdown would also wait on any
-    # straggler non-daemon thread, and a blocked main thread never reaches it.
-    def _final_cleanup():
-        try:
-            if bridge.controller.mode:
-                bridge.controller.stop()
-        except Exception:
-            pass
-
-    cleanup = threading.Thread(target=_final_cleanup, daemon=True,
-                               name="voxis-final-cleanup")
-    cleanup.start()
-    cleanup.join(8.0)  # final heartbeat + endpoint restore normally take <2 s
-    try:
-        logging.shutdown()  # flush voxis.log before the hard exit
-    except Exception:
-        pass
-    os._exit(0)
+    _shutdown(bridge)

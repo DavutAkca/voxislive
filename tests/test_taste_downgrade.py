@@ -20,12 +20,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.webui import Bridge  # noqa: E402
 
 
-def _bridge(quota, mode="video"):
-    """A Bridge carrying only what _on_quota_exceeded touches."""
+def _bridge(quota, mode="video", engine="gemini"):
+    """A Bridge carrying only what _on_quota_exceeded touches.
+
+    `engine` is the engine of the LIVE session — the discriminator that tells the
+    taste wall (Pro voice ran out) apart from the daily wall (the free voice ran
+    out of today's minutes). Defaults to the paid engine, i.e. the taste case.
+    """
     b = Bridge.__new__(Bridge)
     b._last_quota = quota
     b._key_cache_lock = threading.Lock()
     b._key_cache = {}
+    b._key_epoch = 0
     b._last_error_code = None
     b._session_error = False
     b.events = []
@@ -36,7 +42,8 @@ def _bridge(quota, mode="video"):
     b.stop = lambda: b.stopped.append(True)
     b.drained = []
     b._drain_tts = lambda timeout=8.0: b.drained.append(True)
-    b.controller = types.SimpleNamespace(mode=mode, incoming=lambda: None)
+    b.controller = types.SimpleNamespace(mode=mode, incoming=lambda: None,
+                                         current_engine=lambda: engine)
     return b
 
 
@@ -88,6 +95,55 @@ def test_meeting_never_gets_the_free_voice_offer():
 def test_no_quota_snapshot_falls_back_to_the_paywall():
     b = _bridge(None)
     Bridge._on_quota_exceeded(b)
+    assert "quota_wall" in _fired(b)
+
+
+# ── the DAILY wall ─────────────────────────────────────────────────────────────
+# A 402 arriving while the CASCADE is the live engine can only be the daily
+# allowance: the server's cascade heartbeat path never compares against the
+# license quota, it only books against the 10-min/day counter. Before this, such
+# a 402 re-raised the TASTE wall — offering the free voice to someone who had
+# been listening to it for ten minutes (owner report, 2026-07-13).
+
+def test_cascade_402_raises_the_daily_wall_not_the_taste_wall():
+    b = _bridge({"cascade_ready": True, "cascade_available": False, "tier": "free"},
+                engine="cascade")
+    Bridge._on_quota_exceeded(b)
+    assert "daily_wall" in _fired(b)
+    assert "taste_wall" not in _fired(b)     # you cannot hand them what they have
+    assert "quota_wall" not in _fired(b)     # and it is not the paid paywall
+    assert b.stopped and b.drained
+    assert b._session_error is False         # the day ending is not a failure
+    assert b._last_error_code is None
+
+
+def test_the_daily_wall_does_not_depend_on_the_new_server_field():
+    """The engine is the discriminator, not the quota flags — so the daily wall is
+    correct even against a server that never sends cascade_available."""
+    b = _bridge({"cascade_ready": True, "tier": "free"}, engine="cascade")
+    Bridge._on_quota_exceeded(b)
+    assert "daily_wall" in _fired(b)
+    assert "taste_wall" not in _fired(b)
+
+
+def test_taste_wall_still_fires_when_the_free_day_is_open():
+    """The Pro engine ran out with free minutes left today: the handover offer is
+    real, so make it."""
+    b = _bridge({"cascade_ready": True, "cascade_available": True, "tier": "free"},
+                engine="gemini")
+    Bridge._on_quota_exceeded(b)
+    assert ("taste_wall", {"mode": "video"}) in b.events
+    assert "daily_wall" not in _fired(b)
+
+
+def test_taste_and_daily_exhausted_together_is_not_an_offer_to_nowhere():
+    """Taste spent AND today's free minutes already gone: continuing on the free
+    voice would start a session the server refuses, so the wall must not offer it.
+    cascade_available is False, so this falls through to the paywall."""
+    b = _bridge({"cascade_ready": True, "cascade_available": False, "tier": "free"},
+                engine="gemini")
+    Bridge._on_quota_exceeded(b)
+    assert "taste_wall" not in _fired(b)
     assert "quota_wall" in _fired(b)
 
 

@@ -14,6 +14,8 @@ def _bare_bridge():
     b = object.__new__(Bridge)
     b._key_cache = {}
     b._key_cache_lock = threading.Lock()
+    b._key_epoch = 0
+    b._last_quota = None      # unknown quota → the grant guard fails open
     return b
 
 
