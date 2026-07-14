@@ -2457,12 +2457,23 @@ class Bridge:
         return True
 
     def win_toggle_max(self):
+        # maximize()/restore() block until the native WindowState change lands,
+        # which synchronously fires WinForms' Resize event — and that spawns a
+        # thread that runs _on_win_maximized/_on_win_restored and mutates
+        # self._maximized concurrently with this method. Re-reading
+        # self._maximized AFTER the native call (the old `not self._maximized`)
+        # raced that thread: if it won, this negated the value IT had just set,
+        # flipping _maximized back to the wrong state (window visually restored,
+        # flag stuck True forever — which also permanently no-ops win_resize).
+        # Capturing the pre-call state up front and negating that instead makes
+        # the outcome independent of the event thread's timing.
         try:
-            if self._maximized:
+            was_max = self._maximized
+            if was_max:
                 self._main_window.restore()
             else:
                 self._main_window.maximize()
-            self._maximized = not self._maximized
+            self._maximized = not was_max
         except Exception:
             pass
         return True
