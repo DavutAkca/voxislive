@@ -12,6 +12,9 @@
 
 **📖 Guide:** [Developer / BYOK setup](docs/INSTALL_BYOK.md) — the end-user app ships via the **Microsoft Store**; setup docs live at [voxislive.com](https://voxislive.com).
 
+> [!WARNING]
+> **Only trust downloads from [voxislive.com](https://voxislive.com), the Microsoft Store listing, or this repository at `github.com/DavutAkca/voxislive`.** Copies of this repository have been found on other GitHub accounts, some redirecting to installers hosted elsewhere — those are **not official** and may be malicious. This project never distributes an installer from a third-party site or a different GitHub account. If you find a suspicious clone, please report it: [support@voxislive.com](mailto:support@voxislive.com).
+
 ---
 
 ## Overview

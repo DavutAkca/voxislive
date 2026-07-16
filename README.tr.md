@@ -12,6 +12,9 @@
 
 **📖 Kılavuz:** [Geliştirici / BYOK kurulumu](docs/INSTALL_BYOK.md) — son kullanıcı uygulaması **Microsoft Store** üzerinden dağıtılır; kurulum dökümanı [voxislive.com](https://voxislive.com)'da.
 
+> [!WARNING]
+> **Sadece [voxislive.com](https://voxislive.com), Microsoft Store listesi veya bu repo (`github.com/DavutAkca/voxislive`) üzerinden indirin.** Bu reponun başka GitHub hesaplarında kopyaları tespit edildi; bazıları başka sitelerdeki yükleyicilere yönlendiriyor — bunlar **resmi değildir** ve zararlı olabilir. Bu proje hiçbir zaman üçüncü taraf bir siteden veya farklı bir GitHub hesabından yükleyici dağıtmaz. Şüpheli bir kopya görürseniz bildirin: [support@voxislive.com](mailto:support@voxislive.com).
+
 ---
 
 ## Genel Bakış
