@@ -98,6 +98,31 @@ def _print_report(res: dict, label: str) -> None:
     print()
 
 
+def _check_regression(res: dict, baseline: dict, max_chrf_drop: float,
+                      max_p95_rise: float) -> list[str]:
+    """Compare a fresh result against a stored baseline. Returns a list of breach
+    messages (empty = pass): chrF must not fall more than max_chrf_drop points,
+    and p95 latency must not rise more than max_p95_rise seconds. Metrics missing
+    on either side are skipped, not failed."""
+    breaches: list[str] = []
+    base_chrf, cur_chrf = baseline.get("chrf"), res.get("chrf")
+    if base_chrf is not None and cur_chrf is not None:
+        drop = base_chrf - cur_chrf
+        if drop > max_chrf_drop:
+            breaches.append(
+                f"chrF regressed {drop:.2f} pts (baseline {base_chrf} -> {cur_chrf}, "
+                f"allowed drop {max_chrf_drop})")
+    base_p95 = (baseline.get("latency") or {}).get("p95_s")
+    cur_p95 = (res.get("latency") or {}).get("p95_s")
+    if base_p95 is not None and cur_p95 is not None:
+        rise = cur_p95 - base_p95
+        if rise > max_p95_rise:
+            breaches.append(
+                f"p95 latency rose {rise:.3f}s (baseline {base_p95}s -> {cur_p95}s, "
+                f"allowed rise {max_p95_rise}s)")
+    return breaches
+
+
 _SELFTEST = [
     {"id": "t1", "target_lang": "en",
      "reference": "the cat is sleeping on the couch",
@@ -119,6 +144,14 @@ def main() -> int:
     ap.add_argument("results", nargs="?", help="JSONL of run records (omit with --selftest)")
     ap.add_argument("--selftest", action="store_true", help="run a built-in example and exit")
     ap.add_argument("--json", action="store_true", help="emit the raw metrics as JSON too")
+    ap.add_argument("--check", metavar="BASELINE",
+                    help="compare metrics against a baseline JSON and exit non-zero on regression")
+    ap.add_argument("--max-chrf-drop", type=float, default=2.0,
+                    help="max allowed chrF drop vs baseline before failing (default 2.0)")
+    ap.add_argument("--max-p95-rise", type=float, default=1.0,
+                    help="max allowed p95 latency rise (s) vs baseline before failing (default 1.0)")
+    ap.add_argument("--write-baseline", metavar="PATH",
+                    help="write the computed metrics to PATH as a baseline JSON and exit")
     args = ap.parse_args()
 
     if args.selftest:
@@ -136,6 +169,24 @@ def main() -> int:
     _print_report(res, label)
     if args.json:
         print(json.dumps(res, ensure_ascii=False, indent=2))
+
+    if args.write_baseline:
+        with open(args.write_baseline, "w", encoding="utf-8") as f:
+            json.dump(res, f, ensure_ascii=False, indent=2)
+        print(f"baseline written: {args.write_baseline}")
+        return 0
+
+    if args.check:
+        with open(args.check, encoding="utf-8") as f:
+            baseline = json.load(f)
+        breaches = _check_regression(res, baseline, args.max_chrf_drop, args.max_p95_rise)
+        if breaches:
+            print("REGRESSION - bench gate FAILED:")
+            for b in breaches:
+                print(f"  - {b}")
+            return 1
+        print(f"bench gate PASSED (chrF drop <= {args.max_chrf_drop} pts, "
+              f"p95 rise <= {args.max_p95_rise}s vs {args.check})")
     return 0
 
 

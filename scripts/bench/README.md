@@ -54,5 +54,20 @@ Start small: 20–50 clips per language pair is enough to track regressions. Kee
   (`on_text('out')`) — i.e. the text it speaks — so BLEU/chrF score the translation directly,
   no re-transcription error. To also measure the TTS→intelligibility loop, re-transcribe the
   output audio with Whisper and score that separately.
-- CI use: store a baseline `results.json`, fail the build if chrF drops more than N points or
-  p95 latency rises more than X s — that is the regression guard the competitive analysis flagged.
+- Regression gate (implemented): a committed baseline lives at `scripts/bench/baseline.json`
+  (production-representative, from `results_prod.jsonl`). After a fresh run, gate it:
+
+  ```
+  python scripts/bench/score.py results.jsonl --check scripts/bench/baseline.json \
+      --max-chrf-drop 2.0 --max-p95-rise 1.0
+  ```
+
+  It exits non-zero if chrF fell more than `--max-chrf-drop` points or p95 latency rose more
+  than `--max-p95-rise` s vs the baseline — the regression guard the competitive analysis flagged.
+  This CANNOT auto-run in CI unbudgeted: `run_session.py` needs a BYOK key + network + billed
+  minutes, so wire it as a manual/scheduled dispatch that captures a results file first, then runs
+  this gate on it. Regenerate the baseline when the shipped routing/config changes:
+
+  ```
+  python scripts/bench/score.py results.jsonl --write-baseline scripts/bench/baseline.json
+  ```

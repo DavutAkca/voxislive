@@ -1,0 +1,14 @@
+{
+  "_comment": "Production-representative baseline for the bench regression gate (score.py --check). Source: results_prod.jsonl (8-clip FLEURS tr->en on the shipped production path). Regenerate when the shipped routing/config changes: python scripts/bench/score.py <fresh-prod-results>.jsonl --write-baseline scripts/bench/baseline.json",
+  "n_translation": 8,
+  "bleu": 20.23,
+  "chrf": 57.74,
+  "n_asr": 8,
+  "wer": 8.59,
+  "latency": {
+    "n": 8,
+    "mean_s": 4.033,
+    "p50_s": 3.906,
+    "p95_s": 5.075
+  }
+}
