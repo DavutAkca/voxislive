@@ -5,10 +5,14 @@
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3.11--3.13-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)
+[![GitHub stars](https://img.shields.io/github/stars/DavutAkca/voxislive?style=social)](https://github.com/DavutAkca/voxislive/stargazers)
 
 > Real-time voice translation for Windows — translate any video, game, or meeting and hear it in your own language, live.
 >
 > Brand: **Voxis** · Site: **[voxislive.com](https://voxislive.com)**
+
+<!-- TODO(owner): drop a short GIF or screenshot here before the next push (Show HN / Product Hunt) —
+     a wall of text with no visual loses the 3-second GitHub scroll test. -->
 
 **📖 Guide:** [Developer / BYOK setup](docs/INSTALL_BYOK.md) — the end-user app ships via the **Microsoft Store**; setup docs live at [voxislive.com](https://voxislive.com).
 
@@ -18,6 +22,8 @@
 ---
 
 ## Overview
+
+Browser-tab dubbers can only translate audio playing inside one Chrome tab. Voxis reads **Windows system audio directly**, so it works on anything your PC plays — native games, desktop Zoom/Teams/Discord calls, any local video player — not just what's open in a browser tab.
 
 Voxis captures your Windows system audio (a video, a game, the other side of a call), streams it to Google's **Gemini Live** translation model, and plays back a spoken translation in your target language — while it is still being spoken.
 

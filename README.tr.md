@@ -5,10 +5,14 @@
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3.11--3.13-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)
+[![GitHub stars](https://img.shields.io/github/stars/DavutAkca/voxislive?style=social)](https://github.com/DavutAkca/voxislive/stargazers)
 
 > Windows için gerçek zamanlı sesli çeviri — herhangi bir videoyu, oyunu veya toplantıyı çevirin ve kendi dilinizde, anlık olarak duyun.
 >
 > Marka: **Voxis** · Site: **[voxislive.com](https://voxislive.com)**
+
+<!-- TODO(owner): bir sonraki push'tan önce (Show HN / Product Hunt) buraya kısa bir GIF veya ekran görüntüsü ekle —
+     görselsiz metin duvarı GitHub'ın 3 saniyelik kaydırma testini kaybeder. -->
 
 **📖 Kılavuz:** [Geliştirici / BYOK kurulumu](docs/INSTALL_BYOK.md) — son kullanıcı uygulaması **Microsoft Store** üzerinden dağıtılır; kurulum dökümanı [voxislive.com](https://voxislive.com)'da.
 
@@ -18,6 +22,8 @@
 ---
 
 ## Genel Bakış
+
+Tarayıcı-sekmesi dublajcıları yalnızca tek bir Chrome sekmesinde çalan sesi çevirebilir. Voxis **Windows sistem sesini doğrudan** okur — native oyunlar, masaüstü Zoom/Teams/Discord görüşmeleri, herhangi bir yerel video oynatıcı — yani yalnızca bir sekmede açık olanı değil, PC'nizin çaldığı her şeyi çevirir.
 
 Voxis, Windows sistem sesinizi (bir video, bir oyun, görüşmenin karşı tarafı) yakalar, bunu Google'ın **Gemini Live** çeviri modeline aktarır ve hedef dilinizdeki sesli çeviriyi — daha konuşma devam ederken — geri oynatır.
 
