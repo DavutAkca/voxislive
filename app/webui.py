@@ -1818,6 +1818,7 @@ class Bridge:
             # own capture — release it before the pipeline opens its stream.
             self.soundcheck_stop()
             self._badge = (t("badge_connecting"), "#fbbf24", "warn")
+            from . import voxis_client
             try:
                 # Per-target engine+key+model resolver (SaaS=server-routed,
                 # dev=local). Built once; each pipeline calls it for its target.
@@ -1836,6 +1837,22 @@ class Bridge:
                                                  self._session_dirname)
                 self.controller.start(mode, session_dir=self._session_dir)
                 self._badge = (t("badge_active", mode=self._mode_name(mode)), "#34d399", "on")
+            except voxis_client.DeviceBlockedError as e:
+                # This machine's free tier belongs to a different account (Tier
+                # A3b block) — not a spent quota. Not an error/exception in the
+                # product sense, so no error badge and no _session_error (that
+                # flag suppresses the rating prompt, which a device mismatch has
+                # nothing to do with). The status line always shows; the richer
+                # "switch account" card only when the server actually resolved
+                # the other account (older servers, or a lookup miss, send the
+                # flag alone — fall back to the plain status line for those).
+                self._badge = (t("badge_idle"), "#8593a6", "")
+                self._emit_status(str(e), "warn")
+                if e.first_account:
+                    self._put_event(("device_blocked", {
+                        "first_account": e.first_account,
+                        "remaining_minutes": e.remaining_minutes,
+                    }))
             except Exception as e:
                 # Log the raw exception; surface a localized message to the UI
                 # rather than forwarding str(e) (which may be an English/library
@@ -2567,9 +2584,12 @@ class Bridge:
             from .process_loopback import ProcessExcludeLoopback  # noqa: PLC0415
 
             def on_chunk(pcm):
+                # ProcessExcludeLoopback hands us float32 samples already
+                # normalized to -1..1 (see process_loopback.py), not raw PCM16
+                # bytes — casting that buffer to shorts always raised and left
+                # the meter frozen at 0.
                 try:
-                    samples = memoryview(pcm).cast("h")
-                    peak = max(abs(s) for s in samples) / 32768.0 if len(samples) else 0.0
+                    peak = float(max(pcm.max(), -pcm.min(), 0.0)) if pcm.size else 0.0
                 except Exception:
                     return
                 # Fast attack, slow decay so short transients stay visible a beat.

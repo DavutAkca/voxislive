@@ -498,6 +498,24 @@ def _device_headers() -> dict:
 SESSION_KEY_CAPS = "engine-routing,ephemeral,cascade-wall"
 
 
+class DeviceBlockedError(RuntimeError):
+    """/auth/session-key 402'd with free_reused=true: this machine's one free
+    tier already belongs to a different account (Tier A3b). Distinct from a
+    plain quota-exhausted RuntimeError so the UI can point the user at their
+    real account instead of a generic "buy more minutes" wall.
+
+    first_account/remaining_minutes are the server's best-effort masked hint
+    ("su***@gmail.com", 30.0) — either may be None (older server, or the
+    device's first-account lookup missed) in which case the caller should
+    fall back to the generic quota message."""
+
+    def __init__(self, message: str, first_account: Optional[str] = None,
+                 remaining_minutes: Optional[float] = None):
+        super().__init__(message)
+        self.first_account = first_account
+        self.remaining_minutes = remaining_minutes
+
+
 def get_session_key(target=None, caps=None, engine=None, mode=None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[dict], Optional[str], Optional[str], Optional[str]]:
     """SaaS execution path: retrieves a server-issued translation key. With
     caps='engine-routing' the server picks the engine by TARGET language and also
@@ -514,8 +532,13 @@ def get_session_key(target=None, caps=None, engine=None, mode=None) -> tuple[Opt
     Returns (key, engine, model, quality, quota, workspace, key_type, error);
     `quota` is the license snapshot dict when the server provided one
     (routing-aware responses only). 401/402 are mapped to localized messages by
-    STATUS CODE (never by sniffing the server's English error string). Never
-    embedded in the client build."""
+    STATUS CODE (never by sniffing the server's English error string) — except
+    a device-blocked 402 (free_reused=true), which RAISES DeviceBlockedError
+    instead of returning a tuple, since that case carries structured data (a
+    masked pointer to the account holding this machine's free tier) the 8-tuple
+    has no slot for. Every existing caller already treats a falsy key as fatal
+    and raises/propagates, so an uncaught DeviceBlockedError reaches the same
+    place a RuntimeError would. Never embedded in the client build."""
     if not IS_OFFICIAL_RELEASE:
         return None, None, None, None, None, None, None, "SaaS keys are disabled in developer builds."
     token = _valid_jwt()
@@ -559,6 +582,16 @@ def get_session_key(target=None, caps=None, engine=None, mode=None) -> tuple[Opt
         clear_jwt()
         return None, None, None, None, None, None, None, t("st_not_signed_in")
     if resp.status_code == 402:
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {}
+        if body.get("free_reused"):
+            raise DeviceBlockedError(
+                t("err_device_reused"),
+                first_account=body.get("first_account"),
+                remaining_minutes=body.get("first_account_remaining_min"),
+            )
         return None, None, None, None, None, None, None, t("err_quota_exhausted")
     if resp.status_code == 503:
         # Distinguishable "engine unavailable" → caller falls back to Gemini.

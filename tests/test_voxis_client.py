@@ -156,3 +156,60 @@ def test_session_key_sends_device_headers(monkeypatch):
     # Auth header intact, device fingerprint riding alongside it.
     assert seen["headers"]["Authorization"].startswith("Bearer ")
     assert seen["headers"]["X-Voxis-Device-Primary"] == "g"
+
+
+def _fake_get(monkeypatch, resp):
+    monkeypatch.setattr(vc, "IS_OFFICIAL_RELEASE", True)
+    monkeypatch.setattr(vc, "_valid_jwt", lambda: _make_jwt(exp=time.time() + 3600))
+
+    class _FakeHttp:
+        def get(self, url, headers=None, params=None, timeout=None):
+            return resp
+
+    monkeypatch.setattr(vc, "_http", _FakeHttp())
+
+
+def test_session_key_plain_quota_exhausted_still_returns_tuple(monkeypatch):
+    # A 402 with no free_reused flag is the ordinary out-of-quota case — must
+    # keep returning the (None, ..., error) tuple every caller already expects,
+    # not raise. Confirms the new branch doesn't widen the exception surface.
+    _fake_get(monkeypatch, _FakeResp(402, {"error": "quota exceeded"}))
+    key, *_rest, err = vc.get_session_key()
+    assert key is None
+    assert err  # localized message, non-empty
+
+    # Also true for a 402 with an unparsable/empty body (old server, or a
+    # transport that returns no JSON at all).
+    class _BadJSON(_FakeResp):
+        def json(self):
+            raise ValueError("no body")
+
+    _fake_get(monkeypatch, _BadJSON(402))
+    key, *_rest, err = vc.get_session_key()
+    assert key is None and err
+
+
+def test_session_key_device_blocked_raises_with_hint(monkeypatch):
+    _fake_get(monkeypatch, _FakeResp(402, {
+        "error": "quota exceeded",
+        "free_reused": True,
+        "first_account": "su***@gmail.com",
+        "first_account_remaining_min": 30.0,
+    }))
+    with pytest.raises(vc.DeviceBlockedError) as exc_info:
+        vc.get_session_key()
+    err = exc_info.value
+    assert err.first_account == "su***@gmail.com"
+    assert err.remaining_minutes == 30.0
+    assert str(err)  # localized message, non-empty
+
+
+def test_session_key_device_blocked_without_hint_still_raises(monkeypatch):
+    # Server resolved free_reused but couldn't resolve the other account
+    # (older license, lookup miss) — still the specific exception, with both
+    # hint fields None so the UI falls back to the generic status line.
+    _fake_get(monkeypatch, _FakeResp(402, {"free_reused": True}))
+    with pytest.raises(vc.DeviceBlockedError) as exc_info:
+        vc.get_session_key()
+    assert exc_info.value.first_account is None
+    assert exc_info.value.remaining_minutes is None
