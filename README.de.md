@@ -11,8 +11,10 @@
 >
 > Marke: **Voxis** · Website: **[voxislive.com](https://voxislive.com)**
 
-<!-- TODO(owner): vor dem nächsten Push (Show HN / Product Hunt) hier ein kurzes GIF oder einen Screenshot einfügen —
-     eine Textwand ohne Bild verliert den 3-Sekunden-Scroll-Test auf GitHub. -->
+<p align="center">
+  <img src="docs/images/screenshot-video-mode.png" width="49%" alt="Voxis übersetzt ein Video live — Original- und übersetzte Untertitel nebeneinander, 2,8 s zurück">
+  <img src="docs/images/screenshot-meeting-mode.png" width="49%" alt="Voxis im zweiseitigen Meeting-Modus übersetzt live ein Englisch-Japanisch-Gespräch">
+</p>
 
 **📖 Anleitung:** [Entwickler / BYOK-Setup](docs/INSTALL_BYOK.md) — die Endnutzer-App wird über den **Microsoft Store** ausgeliefert; Setup-Doku unter [voxislive.com](https://voxislive.com).
 

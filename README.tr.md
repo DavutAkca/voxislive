@@ -11,8 +11,10 @@
 >
 > Marka: **Voxis** · Site: **[voxislive.com](https://voxislive.com)**
 
-<!-- TODO(owner): bir sonraki push'tan önce (Show HN / Product Hunt) buraya kısa bir GIF veya ekran görüntüsü ekle —
-     görselsiz metin duvarı GitHub'ın 3 saniyelik kaydırma testini kaybeder. -->
+<p align="center">
+  <img src="docs/images/screenshot-video-mode.png" width="49%" alt="Voxis bir videoyu anlık çeviriyor — kaynak ve çeviri altyazıları yan yana, 2.8 sn geriden">
+  <img src="docs/images/screenshot-meeting-mode.png" width="49%" alt="Voxis çift yönlü Toplantı modunda İngilizce-Japonca bir görüşmeyi anlık çeviriyor">
+</p>
 
 **📖 Kılavuz:** [Geliştirici / BYOK kurulumu](docs/INSTALL_BYOK.md) — son kullanıcı uygulaması **Microsoft Store** üzerinden dağıtılır; kurulum dökümanı [voxislive.com](https://voxislive.com)'da.
 

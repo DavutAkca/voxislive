@@ -11,8 +11,10 @@
 >
 > Brand: **Voxis** · Site: **[voxislive.com](https://voxislive.com)**
 
-<!-- TODO(owner): drop a short GIF or screenshot here before the next push (Show HN / Product Hunt) —
-     a wall of text with no visual loses the 3-second GitHub scroll test. -->
+<p align="center">
+  <img src="docs/images/screenshot-video-mode.png" width="49%" alt="Voxis translating a video live — source and translated captions side by side, 2.8s behind">
+  <img src="docs/images/screenshot-meeting-mode.png" width="49%" alt="Voxis two-way Meeting mode translating an English-Japanese call live">
+</p>
 
 **📖 Guide:** [Developer / BYOK setup](docs/INSTALL_BYOK.md) — the end-user app ships via the **Microsoft Store**; setup docs live at [voxislive.com](https://voxislive.com).
 
