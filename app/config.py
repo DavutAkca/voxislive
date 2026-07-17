@@ -313,10 +313,13 @@ def qwen_can_voice(cfg: dict, target: str) -> bool:
 
 
 def route_engine(cfg: dict, target: str) -> str:
-    """Pick the engine for a TARGET language: OpenAI for its (config-listed) outputs
-    (faster + cheaper), Gemini for everything else (the 79-language catch-all).
-    VOXIS_ENGINE env forces one engine (ops/dev override). OpenAI is an
-    OFFICIAL-build feature: the open-source / BYOK build is Gemini-only."""
+    """Local engine guess for a TARGET language. NOTE: live SaaS routing is decided
+    SERVER-side (/auth/session-key) — the shipped policy is Qwen primary for its
+    voiced targets, Gemini the 79-language catch-all — and the server response
+    overrides this for actual engine selection. This local helper is the BYOK/OSS
+    router (always Gemini) and a telemetry/diagnostics hint on official builds,
+    where it still reflects the retired OpenAI-vs-Gemini split. VOXIS_ENGINE forces
+    one engine (ops/dev override)."""
     forced = os.environ.get("VOXIS_ENGINE", "").strip().lower()
     if forced in VALID_ENGINES:
         return forced

@@ -1,29 +1,17 @@
-"""Translation-engine factory + per-target routing.
+"""Translation-engine factory.
 
-Engine is chosen PER TARGET LANGUAGE (config.route_engine): OpenAI for the
-languages it supports (faster + cheaper), Gemini for the rest (79-lang catch-all).
-The caller passes a `keys` dict {"gemini": ..., "openai": ...}; if the routed
-engine has no key available, we fall back to whichever engine does. See
-PLAN/OPENAI_ENGINE_INTEGRATION.md.
+`make_translator` builds the translator thread for an ALREADY-RESOLVED engine.
+Live routing is NOT decided here: on the SaaS build the server picks the engine
+per target (/auth/session-key), and BYOK/OSS is Gemini-only. The shipped policy
+is Qwen primary for its voiced targets with Gemini the 79-language catch-all;
+this module just constructs whatever engine it was handed and tags it `.engine`.
 
 Heavy vendor runtimes (google.genai / websockets) are imported lazily inside the
 factory so cold app startup is not slowed by an engine that won't be used.
 """
 from __future__ import annotations
 
-from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN,
-                     resolve_model, route_engine)
-
-
-def resolve_engine_for_target(cfg, keys, target_lang):
-    """Engine for this target: route by language, then fall back to whichever
-    engine actually has a key if the preferred one is unavailable."""
-    engine = route_engine(cfg, target_lang)
-    if not (keys or {}).get(engine):
-        other = ENGINE_GEMINI if engine == ENGINE_OPENAI else ENGINE_OPENAI
-        if (keys or {}).get(other):
-            engine = other
-    return engine
+from .config import ENGINE_CASCADE, ENGINE_OPENAI, ENGINE_QWEN, resolve_model
 
 
 def make_translator(cfg, target_lang, *, engine, key, model=None,
