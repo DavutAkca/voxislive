@@ -211,6 +211,40 @@ RESEARCHED: dict[str, tuple[str, str]] = {
     "vits-piper-is_IS-salka-medium":
         ("CC BY 4.0 (Talrómur 1)",
          "https://repository.clarin.is/repository/xmlui/handle/20.500.12537/104"),
+    # jirka's card gives only the generic OHF-Voice/voice-datasets repo, which
+    # has no cs_CZ folder (verified 2026-07-17, user report). Point at the
+    # voice's own canonical home, where the CC0 grant actually lives.
+    "vits-piper-cs_CZ-jirka-medium":
+        ("CC0",
+         "https://huggingface.co/rhasspy/piper-voices/tree/main/cs/cs_CZ/jirka/medium"),
+    # Same generic-card problem as jirka (all 2026-07-17). For these the
+    # OHF-Voice repo *does* carry the exact per-speaker dataset folder, so
+    # deep-link the real source rather than the repo root (which reads as "not
+    # there"). Folders + speaker names verified against the live repo tree.
+    "vits-piper-es_ES-davefx-medium":
+        ("CC0",
+         "https://github.com/OHF-Voice/voice-datasets/tree/master/es_ES/dave"),
+    "vits-piper-hu_HU-anna-medium":
+        ("CC0",
+         "https://github.com/OHF-Voice/voice-datasets/tree/master/hu_HU/anna"),
+    "vits-piper-pt_BR-faber-medium":  # covers both pt and pt-br rows
+        ("CC0",
+         "https://github.com/OHF-Voice/voice-datasets/tree/master/pt_BR/faber"),
+    "vits-piper-pt_PT-tugao-medium":
+        ("CC0",
+         "https://github.com/OHF-Voice/voice-datasets/tree/master/pt_PT/tug%C3%A3o"),
+    "vits-piper-ro_RO-mihai-medium":
+        ("CC0",
+         "https://github.com/OHF-Voice/voice-datasets/tree/master/ro_RO/mihai"),
+    "vits-piper-sk_SK-lili-medium":
+        ("CC0",
+         "https://github.com/OHF-Voice/voice-datasets/tree/master/sk_SK/lili"),
+    # fahrettin has no tr_TR folder in the OHF repo either; unlike jirka it is
+    # not in rhasspy/piper-voices (404). Point at the sherpa-onnx mirror we
+    # actually fetch it from, which carries the CC0 grant.
+    "vits-piper-tr_TR-fahrettin-medium":
+        ("CC0",
+         "https://huggingface.co/csukuangfj/vits-piper-tr_TR-fahrettin-medium"),
 }
 
 
