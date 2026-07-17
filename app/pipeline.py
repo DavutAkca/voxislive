@@ -399,6 +399,9 @@ class IncomingPipeline:
             # a single-use ephemeral key can be refreshed on every rotation
             # (dev/BYOK resolvers carry none — raw keys need no refetch).
             key_provider=getattr(resolve, "gemini_key_provider", None),
+            # Qwen voice-cloning only when this is a real beta session (webui
+            # sets it on the beta resolver); off on the standard Qwen route.
+            beta_active=getattr(resolve, "beta_active", False),
         )
         # Bound through self, not to the translator instance, so a mid-session
         # engine swap redirects the capture without rebuilding the gate/capture.
@@ -805,6 +808,7 @@ class OutgoingPipeline:
             name=t("name_out"), noise_reduction="near_field",
             on_fatal=self._failover_to_gemini,
             key_provider=getattr(resolve, "gemini_key_provider", None),
+            beta_active=getattr(resolve, "beta_active", False),
         )
         self.input_level = 0.0
         self.capture = None

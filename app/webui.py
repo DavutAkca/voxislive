@@ -1688,6 +1688,8 @@ class Bridge:
                         raise RuntimeError(t("st_no_key_offline"))
                     return (ENGINE_QWEN, self.cfg.get("qwen_key"),
                             resolve_model(self.cfg, ENGINE_QWEN))
+                # Genuine beta session → let Qwen honor cfg["beta"]["clone"].
+                resolve.beta_active = True
                 return resolve
             if not keys.get("gemini"):
                 raise RuntimeError(t("st_no_key_offline"))
@@ -1762,6 +1764,8 @@ class Bridge:
                     return engine, key, (model or resolve_model(self.cfg, engine))
                 raise RuntimeError(err or err2 or t("st_no_key"))
             resolve.gemini_key_provider = gemini_key_provider
+            # Genuine beta session → let Qwen honor cfg["beta"]["clone"].
+            resolve.beta_active = True
             return resolve
 
         # Single-round-trip start: /auth/session-key now verifies the token
