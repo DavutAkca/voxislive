@@ -479,7 +479,7 @@ class _Ring:
     """
 
     def __init__(self, max_seconds: float, rate: int, channels: int = 1,
-                 drop_newest: bool = False):
+                 drop_newest: bool = False, declick: bool = False):
         self.ch = channels
         # One extra slot keeps the full/empty states distinguishable.
         self._cap = max(1, int(max_seconds * rate)) + 1
@@ -489,6 +489,15 @@ class _Ring:
         self._lock = threading.Lock()
         self.drop_newest = drop_newest
         self.overflows = 0  # total samples dropped on overflow (telemetry)
+        # Declick: when the ring runs dry mid-utterance, pull() otherwise cuts the
+        # signal hard to zero (and jumps hard back to a non-zero sample when audio
+        # resumes) — both are audible clicks/pops. With declick on, an underrun
+        # tail ramps the last real sample down to silence and a resuming block
+        # ramps up from silence, over ~2 ms. No-op while the ring stays fed.
+        self.declick = declick
+        self._ramp = max(1, int(rate * 0.002))
+        self._starved = False  # last pull ended in underrun -> next block fades in
+        self.underruns = 0     # declicked underruns (telemetry)
 
     def _conform(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=np.float32)
@@ -554,7 +563,33 @@ class _Ring:
                 out[:first] = self._buf[r:]
                 out[first:avail] = self._buf[:end - cap]
             self._r = end % cap
+            if self.declick:
+                self._declick_unlocked(out, avail, n)
         return out
+
+    def _declick_unlocked(self, out: np.ndarray, avail: int, n: int) -> None:
+        """Smooth the two discontinuities an underrun creates: the hard drop to
+        zero when the buffer empties mid-block, and the hard jump back up when
+        audio resumes. Touches only ~2 ms at each boundary; a fully-fed pull
+        (avail == n, not previously starved) returns unchanged."""
+        ramp = self._ramp
+        # Fade IN: previous pull ran dry, so out[:avail] starts from a non-zero
+        # sample right after silence. Ramp the leading edge up from 0.
+        if self._starved and avail > 0:
+            m = min(ramp, avail)
+            out[:m] *= np.linspace(0.0, 1.0, m, dtype=np.float32)[:, None]
+        # Fade OUT: the block underran. Continue the last real sample smoothly
+        # down to zero across the silent gap instead of cutting it.
+        if avail < n:
+            if avail > 0:
+                last = out[avail - 1].copy()
+                m = min(ramp, n - avail)
+                down = np.linspace(1.0, 0.0, m + 1, dtype=np.float32)[1:]
+                out[avail:avail + m] = last[None, :] * down[:, None]
+            self._starved = True
+            self.underruns += 1
+        else:
+            self._starved = False
 
     @property
     def fill(self) -> int:
@@ -651,7 +686,8 @@ class Player:
         # overwriting the START of the utterance already queued, and tts.overflows
         # makes the condition observable. 45 s covers any realistic sentence
         # (~4 MB) while bounding pile-up far below the old 120 s.
-        self.tts = _Ring(45.0, self.rate, channels=1, drop_newest=True)
+        self.tts = _Ring(45.0, self.rate, channels=1, drop_newest=True,
+                         declick=True)
         self._tts_in_rate = tts_in_rate
         # Optional injected voice-enhancement callable (mono float @ tts_in_rate
         # -> mono float). Supplied by the caller on builds that have it; None
