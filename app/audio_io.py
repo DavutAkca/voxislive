@@ -5,6 +5,7 @@ volume API to duck other apps at their source. The VB-CABLE path intercepts
 the audio before it reaches the speakers so the engine can apply real DSP.
 """
 import collections
+import sys
 import threading
 
 import numpy as np
@@ -92,6 +93,53 @@ def _wasapi_indices() -> list[int] | None:
     return None
 
 
+def _linux_safe_indices() -> list[int] | None:
+    """Linux only: device indices that are actually reachable from a packaged
+    install (flatpak's manifest grants `--socket=pulseaudio` + the PipeWire
+    graph socket for routing, but no raw ALSA hardware access — no
+    `--device=all`, no `/dev/snd` filesystem — see
+    linux/flatpak/com.voxislive.Voxis.yaml). PortAudio's ALSA host API still
+    *enumerates* every hw-backed pseudo-device the system's alsa-lib config
+    defines (front/surroundNN/iec958/hw:X,Y/dmix — often a dozen-plus per
+    physical card) even though most of them need /dev/snd and cannot be
+    opened in the sandbox, or fail silently because PipeWire already owns the
+    hardware exclusively. Confirmed 2026-07-19 (real flatpak install: full
+    output list, none audible).
+
+    Kept, on any Linux box (sandboxed or not): every device from a native
+    PulseAudio/PipeWire host API (real sinks/sources), plus the ALSA
+    'pulse'/'default' software plugins (also socket-routed, not hw-backed).
+    Dropped: every other ALSA host API entry. Returns None (caller falls back
+    to the unfiltered list) if PortAudio reports no such device at all —
+    better an unfiltered picker than an empty one."""
+    if not sys.platform.startswith("linux"):
+        return None
+    try:
+        hostapis = sd.query_hostapis()
+        devs = sd.query_devices()
+    except Exception:
+        return None
+    keep: list[int] = []
+    for ha in hostapis:
+        name = ha["name"].upper()
+        if "PULSEAUDIO" in name or "PIPEWIRE" in name:
+            keep.extend(ha["devices"])
+    keep_set = set(keep)
+    for i, d in enumerate(devs):
+        if i in keep_set:
+            continue
+        if str(d.get("name", "")).strip().lower() in ("pulse", "default"):
+            keep.append(i)
+    return keep or None
+
+
+def _preferred_indices() -> list[int] | None:
+    """Platform-preferred device set: WASAPI on Windows, socket-routed
+    PulseAudio/PipeWire devices on Linux, None elsewhere (caller uses every
+    device PortAudio reports)."""
+    return _wasapi_indices() or _linux_safe_indices()
+
+
 def _default_index(kind: str) -> int | None:
     try:
         idx = sd.default.device[0 if kind == "input" else 1]
@@ -123,8 +171,8 @@ def find_device(name_substr: str, kind: str, endpoint_id: str | None = None,
         return None
     key = "max_input_channels" if kind == "input" else "max_output_channels"
     devs = sd.query_devices()
-    wasapi = _wasapi_indices() or []
-    order = wasapi + [i for i in range(len(devs)) if i not in set(wasapi)]
+    preferred = _preferred_indices() or []
+    order = preferred + [i for i in range(len(devs)) if i not in set(preferred)]
     default_idx = _default_index(kind)
 
     def _usable(i: int) -> bool:
@@ -179,10 +227,18 @@ def find_device(name_substr: str, kind: str, endpoint_id: str | None = None,
 
 
 def list_device_names(kind: str, exclude_virtual: bool = True) -> list[str]:
-    """Returns device names for UI selectors (WASAPI endpoints, virtual cables filtered)."""
+    """Returns device names for UI selectors.
+
+    Windows: WASAPI endpoints only (as before). Linux: only the devices a
+    packaged install can actually reach — see `_linux_safe_indices()` — so
+    the picker isn't a wall of unusable ALSA hw/front/surroundNN/iec958
+    pseudo-devices the user has no way to distinguish from the ones that
+    work."""
     key = "max_input_channels" if kind == "input" else "max_output_channels"
     devs = sd.query_devices()
-    idxs = _wasapi_indices() or range(len(devs))
+    idxs = _preferred_indices()
+    if idxs is None:
+        idxs = range(len(devs))
     names: list[str] = []
     for i in idxs:
         d = devs[i]
