@@ -186,7 +186,7 @@ DEFAULTS = {
     # "· 2.3s behind" readout was removed).
     "latency_note_seen": False,
     # Bumped when a load-time migration is added; see _migrate / load_config.
-    "config_version": 2,
+    "config_version": 3,
 }
 
 CONFIG_VERSION = DEFAULTS["config_version"]
@@ -392,6 +392,14 @@ def _sanitize_devices(cfg: dict) -> bool:
     config.json) self-heals to the system default instead of hard-failing session
     start. Returns True if anything changed.
 
+    Also blanks a name that resolves but is Linux-"unsafe" (see
+    `audio_io._linux_safe_indices` — a raw ALSA hw/front/surroundNN/iec958
+    pseudo-device a packaged install cannot reach or that PipeWire already
+    owns exclusively). Before `list_device_names` was filtered to only safe
+    devices (2026-07-19), a Linux user could pick one of those from the
+    Settings dropdown; this self-heals that stale pick on the next launch
+    instead of leaving a silently-dead output device configured forever.
+
     Fully guarded: any enumeration fault, or an empty device list, leaves the
     config untouched — a selection is never wiped on a transient PortAudio glitch.
     Only the driverless playback target and the mic are validated; the VB-CABLE
@@ -410,7 +418,8 @@ def _sanitize_devices(cfg: dict) -> bool:
         return False
     has_out = any(d.get("max_output_channels", 0) > 0 for d in devices)
     has_in = any(d.get("max_input_channels", 0) > 0 for d in devices)
-    from .audio_io import find_device  # noqa: PLC0415
+    from .audio_io import _linux_safe_indices, find_device  # noqa: PLC0415
+    safe = _linux_safe_indices()  # None off Linux, or when nothing "safe" was found
     changed = False
     for field, kind, has_kind in (("headphones_output", "output", has_out),
                                   ("microphone", "input", has_in)):
@@ -418,7 +427,12 @@ def _sanitize_devices(cfg: dict) -> bool:
         if not name or not has_kind:
             continue
         try:
-            find_device(name, kind)  # raises ValueError when absent
+            idx = find_device(name, kind)  # raises ValueError when absent
+            if idx is not None and safe is not None and idx not in safe:
+                devs[field] = ""
+                changed = True
+                _log.info("device sanitize: '%s' (%s) not reachable on this "
+                          "packaging -> system default", name, kind)
         except ValueError:
             devs[field] = ""
             changed = True
@@ -443,6 +457,15 @@ def _migrate(cfg: dict) -> dict:
     # user on different audio hardware hit a find_device ValueError that aborted
     # session start; blanking them falls back to the system default.
     if version < 2:
+        _sanitize_devices(cfg)
+    # v<3 -> v3: re-run the same device sanitize pass so a Linux user who had
+    # already picked one of the (now-filtered-out) unreachable ALSA pseudo-
+    # devices from the Settings dropdown — see `audio_io._linux_safe_indices`,
+    # 2026-07-19 — self-heals to the system default instead of staying silently
+    # dead forever. A no-op on Windows and for any config that was never on
+    # Linux or never had a bad pick (`_sanitize_devices` only blanks what
+    # `find_device` can't resolve or `_linux_safe_indices` excludes).
+    if version < 3:
         _sanitize_devices(cfg)
     cfg["config_version"] = CONFIG_VERSION
     return cfg
