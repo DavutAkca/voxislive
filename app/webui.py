@@ -8,12 +8,13 @@ cadence is part of the latency budget), relaxing to 250 ms when idle.
 import logging
 import os
 import queue
+import sys
 import threading
 import time
 
 import webview
 
-from . import APP_VERSION, i18n
+from . import APP_VERSION, i18n, sysaudio
 from .audio_io import detect_virtual_cable, find_device, list_device_names
 from .config import (
     ENGINE_CASCADE,
@@ -291,6 +292,7 @@ class Bridge:
         self._sc = None
         self._sc_level = 0.0
         self._sc_timer = None
+        self._sc_routing = None
         # One-time move of transcripts from the old (virtualized) AppData location
         # to the user-facing default. Best-effort; never blocks startup.
         self._migrate_transcripts()
@@ -1183,23 +1185,36 @@ class Bridge:
         OS-driven maximize (Win+Up / title-bar double-click) that fires `resized`
         before `maximized` — without ordering guarantees the full work-area size
         would otherwise be stored as the RESTORE geometry, sticking the window at
-        screen size after un-maximize. Returns None on any failure."""
+        screen size after un-maximize. Returns None on any failure.
+
+        Linux/other: pywebview's `screens` API exposes no taskbar/panel-exclusion
+        equivalent to Windows' work area, so the primary display's full size is
+        used instead — an approximation, acceptable given the ±4px tolerance this
+        feeds into (see `_on_win_resized`)."""
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                from ctypes import wintypes
+                rect = wintypes.RECT()
+                # SPI_GETWORKAREA = 0x0030
+                if ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0):
+                    return rect.right - rect.left, rect.bottom - rect.top
+            except Exception:
+                pass
+            try:
+                import ctypes
+                # SM_CXMAXIMIZED = 61, SM_CYMAXIMIZED = 62
+                return (ctypes.windll.user32.GetSystemMetrics(61),
+                        ctypes.windll.user32.GetSystemMetrics(62))
+            except Exception:
+                return None
         try:
-            import ctypes
-            from ctypes import wintypes
-            rect = wintypes.RECT()
-            # SPI_GETWORKAREA = 0x0030
-            if ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0):
-                return rect.right - rect.left, rect.bottom - rect.top
+            screens = webview.screens
+            if screens:
+                return screens[0].width, screens[0].height
         except Exception:
             pass
-        try:
-            import ctypes
-            # SM_CXMAXIMIZED = 61, SM_CYMAXIMIZED = 62
-            return (ctypes.windll.user32.GetSystemMetrics(61),
-                    ctypes.windll.user32.GetSystemMetrics(62))
-        except Exception:
-            return None
+        return None
 
     def _on_win_resized(self, *a):
         if len(a) >= 2 and not self._maximized and not self._minimized:
@@ -1512,11 +1527,18 @@ class Bridge:
         # so the COM apartment is released and the thread id never lingers in
         # win_audio's per-thread bookkeeping (a later reused tid would otherwise
         # skip init and fault on CO_E_NOTINITIALIZED). No-op if we never owned it.
+        # Windows-only module (imports comtypes at top) -- guarded the same way
+        # pipeline.py gates endpoint switching, so this thread doesn't crash on
+        # every start on a platform with no COM apartment to release at all
+        # (caught on a real Raspberry Pi 5, 2026-07-19: the crash here was
+        # masking whatever _start() itself raised, since an exception from the
+        # finally block replaces one already propagating from the try).
         try:
             self._start(mode, consented)
         finally:
-            from . import win_audio
-            win_audio.shutdown_com()
+            if sysaudio.supports_endpoints():
+                from . import win_audio
+                win_audio.shutdown_com()
 
     def _consent_ok(self, mode, consented=False) -> bool:
         """Defense-in-depth consent gate. The primary consent modal lives in the
@@ -2018,11 +2040,13 @@ class Bridge:
     def _stop_thread(self):
         # Endpoint restore runs on this stop thread and CoInitializes it via
         # win_audio._ensure_com; balance it with shutdown_com on the same thread.
+        # Guarded the same way as _start_thread above -- see that comment.
         try:
             self._stop()
         finally:
-            from . import win_audio
-            win_audio.shutdown_com()
+            if sysaudio.supports_endpoints():
+                from . import win_audio
+                win_audio.shutdown_com()
 
     def _stop(self):
         # Idempotent: serialized against _start so a stop racing a start cannot
@@ -2414,9 +2438,14 @@ class Bridge:
             try:
                 w, sw, sh = 780, 1920, 1080
                 try:
-                    import ctypes
-                    sw = ctypes.windll.user32.GetSystemMetrics(0)
-                    sh = ctypes.windll.user32.GetSystemMetrics(1)
+                    if sys.platform == "win32":
+                        import ctypes
+                        sw = ctypes.windll.user32.GetSystemMetrics(0)
+                        sh = ctypes.windll.user32.GetSystemMetrics(1)
+                    else:
+                        screens = webview.screens
+                        if screens:
+                            sw, sh = screens[0].width, screens[0].height
                 except Exception:
                     pass
                 self._ov_w = w
@@ -2543,7 +2572,12 @@ class Bridge:
         return True
 
     def _round_overlay(self):
-        """Clips the overlay to a rounded rectangle region (no transparency)."""
+        """Clips the overlay to a rounded rectangle region (no transparency).
+
+        Windows-only (GDI region clip). Elsewhere the overlay simply keeps its
+        rectangular shape — cosmetic, not functional."""
+        if sys.platform != "win32":
+            return
         import ctypes
         from ctypes import wintypes
         u, g = ctypes.windll.user32, ctypes.windll.gdi32
@@ -2581,17 +2615,23 @@ class Bridge:
         """Start the 'do I hear this device?' probe: the same process-exclude
         loopback the session uses, but its only output is a peak level for the
         modal's meter (poll's 'sc' field). Refused while a session runs; auto
-        stops after 60 s so an abandoned modal can't hold the capture forever."""
+        stops after 60 s so an abandoned modal can't hold the capture forever.
+
+        Goes through the sysaudio dispatch layer (not a direct
+        process_loopback import) so this works on Linux too -- the direct
+        import unconditionally pulled in comtypes at module load, crashing
+        this probe on every Linux click (caught on a real VM test,
+        2026-07-19). On Linux, make_process_loopback needs a routing handle
+        (make_capture_routing sets up + tears down the same VoxisCapture
+        routing a real session would use); Windows ignores it."""
         if self.controller.mode or self._sc is not None:
             return {"ok": self._sc is not None}
         try:
-            from .process_loopback import ProcessExcludeLoopback  # noqa: PLC0415
-
             def on_chunk(pcm):
-                # ProcessExcludeLoopback hands us float32 samples already
-                # normalized to -1..1 (see process_loopback.py), not raw PCM16
-                # bytes — casting that buffer to shorts always raised and left
-                # the meter frozen at 0.
+                # ProcessExcludeLoopback/PipeWireCapture hand us float32
+                # samples already normalized to -1..1, not raw PCM16 bytes —
+                # casting that buffer to shorts always raised and left the
+                # meter frozen at 0.
                 try:
                     peak = float(max(pcm.max(), -pcm.min(), 0.0)) if pcm.size else 0.0
                 except Exception:
@@ -2599,7 +2639,8 @@ class Bridge:
                 # Fast attack, slow decay so short transients stay visible a beat.
                 self._sc_level = max(peak, self._sc_level * 0.85)
 
-            self._sc = ProcessExcludeLoopback(on_chunk)
+            self._sc_routing = sysaudio.make_capture_routing()
+            self._sc = sysaudio.make_process_loopback(on_chunk, routing_handle=self._sc_routing)
             self._sc.start()
             self._sc_timer = threading.Timer(60.0, self.soundcheck_stop)
             self._sc_timer.daemon = True
@@ -2607,6 +2648,12 @@ class Bridge:
             return {"ok": True}
         except Exception:
             _log.exception("soundcheck: could not start loopback probe")
+            if self._sc_routing is not None:
+                try:
+                    sysaudio.teardown_capture_routing(self._sc_routing)
+                except Exception:
+                    pass
+                self._sc_routing = None
             self._sc = None
             return {"ok": False}
 
@@ -2621,6 +2668,12 @@ class Bridge:
         if sc is not None:
             try:
                 sc.stop()
+            except Exception:
+                pass
+        routing, self._sc_routing = self._sc_routing, None
+        if routing is not None:
+            try:
+                sysaudio.teardown_capture_routing(routing)
             except Exception:
                 pass
         self._sc_level = 0.0
@@ -2800,7 +2853,12 @@ window.addEventListener('pywebviewready',p);setTimeout(p,400);
 
 def _set_taskbar_icon(icon_path: str, title: str):
     """Sets an explicit AppUserModelID and updates the window icon so the
-    process is grouped under Voxis (not python.exe) in the taskbar."""
+    process is grouped under Voxis (not python.exe) in the taskbar.
+
+    Windows-only (Win32 taskbar API). On other platforms window-app grouping is
+    handled by the desktop entry (.desktop StartupWMClass), so this no-ops."""
+    if sys.platform != "win32":
+        return
     import ctypes
     try:
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Voxis.App.1")
@@ -2893,11 +2951,21 @@ def run(cfg):
         # center the window so it can't open off-screen and invisible.
         gx, gy = geo["x"], geo["y"]
         try:
-            import ctypes
-            u = ctypes.windll.user32
-            SM_XV, SM_YV, SM_CXV, SM_CYV = 76, 77, 78, 79  # virtual-screen metrics
-            vx, vy = u.GetSystemMetrics(SM_XV), u.GetSystemMetrics(SM_YV)
-            vw, vh = u.GetSystemMetrics(SM_CXV), u.GetSystemMetrics(SM_CYV)
+            if sys.platform == "win32":
+                import ctypes
+                u = ctypes.windll.user32
+                SM_XV, SM_YV, SM_CXV, SM_CYV = 76, 77, 78, 79  # virtual-screen metrics
+                vx, vy = u.GetSystemMetrics(SM_XV), u.GetSystemMetrics(SM_YV)
+                vw, vh = u.GetSystemMetrics(SM_CXV), u.GetSystemMetrics(SM_CYV)
+            else:
+                # Portable across pywebview's GTK/QT backends: union bounding
+                # box of every connected display (Windows' virtual-screen
+                # metrics equivalent).
+                screens = webview.screens
+                vx = min(s.x for s in screens)
+                vy = min(s.y for s in screens)
+                vw = max(s.x + s.width for s in screens) - vx
+                vh = max(s.y + s.height for s in screens) - vy
             on_screen = (vx - 8 <= gx <= vx + vw - 100) and (vy - 8 <= gy <= vy + vh - 80)
         except Exception:
             on_screen = True  # fail-open: trust the saved coords if probing fails

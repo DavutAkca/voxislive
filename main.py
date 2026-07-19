@@ -187,8 +187,8 @@ def main():
     pending = cfg.get("_pending_default_restore")
     if pending:
         try:
-            from app import win_audio
-            win_audio.restore(pending)
+            from app import sysaudio
+            sysaudio.restore_endpoints(pending)  # no-op off Windows
         except Exception:
             # Restore failed (COM hiccup, device briefly absent): KEEP the
             # snapshot so the next launch retries, instead of stranding the
@@ -198,14 +198,16 @@ def main():
             cfg["_pending_default_restore"] = None
             save_config(cfg)
 
-    # A crash mid-duck leaves OTHER apps' session volumes lowered — and Windows
-    # persists per-app levels, so without this they'd stay quiet forever. The
-    # snapshot restore runs on its own thread + COM apartment (the main thread's
-    # apartment belongs to pywebview); the file is deleted only after success,
-    # so an early exit just retries next launch.
+    # A crash mid-duck leaves OTHER apps' session volumes lowered on Windows (it
+    # persists per-app levels, so without this they'd stay quiet forever), or an
+    # orphaned VoxisCapture/loopback pair on Linux (routing.restore_pending_
+    # routing — see sysaudio.restore_pending_ducking). The snapshot restore runs
+    # on its own thread + COM apartment (the main thread's apartment belongs to
+    # pywebview); the file is deleted only after success, so an early exit just
+    # retries next launch.
     import threading
-    from app import session_duck
-    threading.Thread(target=session_duck.restore_pending, daemon=True,
+    from app import sysaudio
+    threading.Thread(target=sysaudio.restore_pending_ducking, daemon=True,
                      name="duck-restore").start()
 
     from app.webui import run

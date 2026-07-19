@@ -18,6 +18,7 @@ the server") - URL / proxy / TLS detail is logged locally only.
 import hashlib
 import logging
 import os
+import sys
 import threading
 import time
 from typing import Optional
@@ -27,7 +28,7 @@ import requests
 from . import APP_VERSION
 from .config import IS_OFFICIAL_RELEASE
 from .i18n import t
-from .paths import client_channel, user_path
+from .paths import client_channel, install_secret, user_path
 
 # Distribution channel ("store" | "desktop"), resolved once and sent with each
 # usage heartbeat so the backend can attribute minutes by source.
@@ -130,6 +131,14 @@ def _restrict_acl(path: str) -> None:
         pass
 
 
+def _linux_jwt_entropy() -> bytes:
+    """Per-install Fernet key material for the non-Windows JWT at rest. DPAPI's
+    account binding is unavailable off Windows, so mix the per-install random
+    secret with the version tag (a public constant alone would be trivially
+    derivable)."""
+    return hashlib.sha256(install_secret() + _JWT_ENTROPY).digest()
+
+
 def _read_env_jwt() -> Optional[str]:
     try:
         with open(_ENV_PATH, encoding="utf-8") as f:
@@ -153,18 +162,35 @@ def _store_jwt(token: str) -> None:
             except OSError:
                 pass
         return
+    if sys.platform == "win32":
+        try:
+            blob = _dpapi_call("CryptProtectData", token.encode())
+            with open(_JWT_PATH, "wb") as f:
+                f.write(blob)
+            _restrict_acl(_JWT_PATH)
+            # Drop any superseded cleartext token left by an older build.
+            if os.path.exists(_ENV_PATH):
+                _write_env("VOXIS_JWT_TOKEN", "")
+        except Exception as exc:
+            _log_detail("store_jwt dpapi", exc)
+            _write_env("VOXIS_JWT_TOKEN", token)
+            _restrict_acl(_ENV_PATH)
+        return
+    # Non-Windows: Fernet at rest keyed by the per-install secret, file 0600.
     try:
-        blob = _dpapi_call("CryptProtectData", token.encode())
+        from . import secret_crypto
+        blob = secret_crypto.fernet_encrypt(token.encode(), _linux_jwt_entropy())
         with open(_JWT_PATH, "wb") as f:
             f.write(blob)
-        _restrict_acl(_JWT_PATH)
-        # Drop any superseded cleartext token left by an older build.
+        try:
+            os.chmod(_JWT_PATH, 0o600)
+        except OSError:
+            pass
         if os.path.exists(_ENV_PATH):
             _write_env("VOXIS_JWT_TOKEN", "")
     except Exception as exc:
-        _log_detail("store_jwt dpapi", exc)
+        _log_detail("store_jwt fernet", exc)
         _write_env("VOXIS_JWT_TOKEN", token)
-        _restrict_acl(_ENV_PATH)
 
 
 def _load_stored_jwt():
@@ -175,10 +201,15 @@ def _load_stored_jwt():
         if os.path.exists(_JWT_PATH):
             with open(_JWT_PATH, "rb") as f:
                 blob = f.read()
-            _jwt = _dpapi_call("CryptUnprotectData", blob).decode()
+            if sys.platform == "win32":
+                _jwt = _dpapi_call("CryptUnprotectData", blob).decode()
+            else:
+                from . import secret_crypto
+                _jwt = secret_crypto.fernet_decrypt(
+                    blob, _linux_jwt_entropy()).decode()
             return
     except Exception as exc:
-        _log_detail("load_jwt dpapi", exc)
+        _log_detail("load_jwt", exc)
     legacy = _read_env_jwt()
     if legacy:
         _jwt = legacy

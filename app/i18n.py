@@ -95,6 +95,7 @@ STRINGS = {
         "st_restore_fail": "Cihazlar geri yüklenemedi: {e}",
         "st_autoswitch_fail": "Otomatik cihaz geçişi yapılamadı: {e}",
         "st_no_key": "API anahtarı ayarlanmamış — sağ üstteki Ayarlar'dan ekle.",
+        "st_no_audio_backend": "Ses yakalama bu işletim sisteminde henüz desteklenmiyor.",
         "st_not_signed_in": "Oturum açılmadı — Voxis'e tekrar giriş yap.",
         "st_no_key_offline": "Sunucuya ulaşılamıyor — Ayarlar'dan kendi Gemini anahtarını girerek çevrimdışı kullan.",
         "st_virtual_mic_missing": "Sanal mikrofon ({dev}) Windows'ta etkin değil — "
@@ -210,6 +211,7 @@ STRINGS = {
         "st_restore_fail": "Could not restore devices: {e}",
         "st_autoswitch_fail": "Automatic device switch failed: {e}",
         "st_no_key": "API key not set — add one via Settings (top right).",
+        "st_no_audio_backend": "Audio capture isn't supported on this operating system yet.",
         "st_not_signed_in": "Not signed in — please sign in to Voxis again.",
         "st_no_key_offline": "Server unreachable — enter your own Gemini key via Settings to run offline.",
         "st_virtual_mic_missing": "Virtual microphone ({dev}) is not enabled in Windows — "
@@ -324,6 +326,7 @@ STRINGS = {
         "st_restore_fail": "Zařízení se nepodařilo obnovit: {e}",
         "st_autoswitch_fail": "Automatické přepnutí zařízení selhalo: {e}",
         "st_no_key": "API klíč není nastaven — přidejte ho v Nastavení (vpravo nahoře).",
+        "st_no_audio_backend": "Zachytávání zvuku zatím není na tomto operačním systému podporováno.",
         "st_not_signed_in": "Nejste přihlášeni — přihlaste se do Voxis znovu.",
         "st_no_key_offline": "Server nedostupný — pro offline provoz zadejte v Nastavení vlastní klíč Gemini.",
         "st_virtual_mic_missing": "Virtuální mikrofon ({dev}) není ve Windows povolen — vyberte mikrofon ve vaší schůzkové aplikaci ručně. Povolení: Ovládací panely → Zvuk → Nahrávání → pravé tlačítko myši → „Zobrazit zakázaná zařízení“.",
@@ -422,6 +425,7 @@ STRINGS = {
         "st_restore_fail": "Geräte konnten nicht wiederhergestellt werden: {e}",
         "st_autoswitch_fail": "Automatischer Gerätewechsel fehlgeschlagen: {e}",
         "st_no_key": "API-Schlüssel nicht gesetzt — über Einstellungen (oben rechts) hinzufügen.",
+        "st_no_audio_backend": "Audioaufnahme wird auf diesem Betriebssystem noch nicht unterstützt.",
         "st_not_signed_in": "Nicht angemeldet — bitte erneut bei Voxis anmelden.",
         "st_no_key_offline": "Server nicht erreichbar — eigenen Gemini-Schlüssel über Einstellungen eingeben, um offline zu arbeiten.",
         "st_virtual_mic_missing": "Virtuelles Mikrofon ({dev}) ist in Windows nicht aktiviert — "
@@ -536,6 +540,7 @@ STRINGS = {
         "st_restore_fail": "Impossible de restaurer les périphériques : {e}",
         "st_autoswitch_fail": "Changement automatique de périphérique échoué : {e}",
         "st_no_key": "Clé API non définie — ajoutez-en une via Paramètres (en haut à droite).",
+        "st_no_audio_backend": "La capture audio n'est pas encore prise en charge sur ce système d'exploitation.",
         "st_not_signed_in": "Non connecté — veuillez vous reconnecter à Voxis.",
         "st_no_key_offline": "Serveur inaccessible — entrez votre propre clé Gemini via Paramètres pour travailler hors ligne.",
         "st_virtual_mic_missing": "Le microphone virtuel ({dev}) n'est pas activé dans Windows — "
@@ -648,6 +653,7 @@ STRINGS = {
         "st_restore_fail": "No se pudieron restaurar los dispositivos: {e}",
         "st_autoswitch_fail": "Error en el cambio automático de dispositivo: {e}",
         "st_no_key": "Clave API no configurada — añade una en Configuración (arriba a la derecha).",
+        "st_no_audio_backend": "La captura de audio aún no es compatible con este sistema operativo.",
         "st_not_signed_in": "No has iniciado sesión — vuelve a iniciar sesión en Voxis.",
         "st_no_key_offline": "Servidor no disponible — introduce tu propia clave Gemini en Configuración para usar sin conexión.",
         "st_virtual_mic_missing": "El micrófono virtual ({dev}) no está habilitado en Windows — "
@@ -760,6 +766,7 @@ STRINGS = {
         "st_restore_fail": "Não foi possível restaurar os dispositivos: {e}",
         "st_autoswitch_fail": "Falha na troca automática de dispositivo: {e}",
         "st_no_key": "Chave de API não configurada — adicione uma em Configurações (canto superior direito).",
+        "st_no_audio_backend": "A captura de áudio ainda não é suportada neste sistema operacional.",
         "st_not_signed_in": "Não conectado — faça login no Voxis novamente.",
         "st_no_key_offline": "Servidor inacessível — insira sua própria chave Gemini em Configurações para usar offline.",
         "st_virtual_mic_missing": "O microfone virtual ({dev}) não está habilitado no Windows — "
@@ -871,6 +878,7 @@ STRINGS = {
         "st_restore_fail": "デバイスを復元できませんでした: {e}",
         "st_autoswitch_fail": "デバイスの自動切り替えに失敗しました: {e}",
         "st_no_key": "APIキーが設定されていません — 右上の設定から追加してください。",
+        "st_no_audio_backend": "このオペレーティングシステムではまだ音声キャプチャに対応していません。",
         "st_not_signed_in": "サインインしていません — Voxis に再度サインインしてください。",
         "st_no_key_offline": "サーバーに接続できません — 設定から自分の Gemini キーを入力してオフラインで使用してください。",
         "st_virtual_mic_missing": "仮想マイク ({dev}) が Windows で有効になっていません — "
@@ -982,6 +990,7 @@ STRINGS = {
         "st_restore_fail": "장치를 복원할 수 없습니다: {e}",
         "st_autoswitch_fail": "자동 장치 전환 실패: {e}",
         "st_no_key": "API 키가 설정되지 않았습니다 — 오른쪽 상단 설정에서 추가하세요.",
+        "st_no_audio_backend": "이 운영 체제에서는 아직 오디오 캡처가 지원되지 않습니다.",
         "st_not_signed_in": "로그인되지 않았습니다 — Voxis에 다시 로그인하세요.",
         "st_no_key_offline": "서버에 연결할 수 없습니다 — 오프라인으로 사용하려면 설정에서 Gemini 키를 입력하세요.",
         "st_virtual_mic_missing": "가상 마이크 ({dev})가 Windows에서 활성화되지 않았습니다 — "
@@ -1093,6 +1102,7 @@ STRINGS = {
         "st_restore_fail": "Не удалось восстановить устройства: {e}",
         "st_autoswitch_fail": "Автоматическое переключение устройств не удалось: {e}",
         "st_no_key": "API-ключ не задан — добавьте его в Настройках (вверху справа).",
+        "st_no_audio_backend": "Захват звука пока не поддерживается в этой операционной системе.",
         "st_not_signed_in": "Вы не вошли — войдите в Voxis снова.",
         "st_no_key_offline": "Сервер недоступен — введите собственный ключ Gemini в Настройках для работы офлайн.",
         "st_virtual_mic_missing": "Виртуальный микрофон ({dev}) не включён в Windows — "
@@ -1205,6 +1215,7 @@ STRINGS = {
         "st_restore_fail": "无法恢复设备：{e}",
         "st_autoswitch_fail": "自动切换设备失败：{e}",
         "st_no_key": "未设置 API 密钥 — 请通过右上角的设置添加。",
+        "st_no_audio_backend": "此操作系统暂不支持音频捕获。",
         "st_not_signed_in": "未登录 — 请重新登录 Voxis。",
         "st_no_key_offline": "服务器不可达 — 请在设置中输入您自己的 Gemini 密钥以离线使用。",
         "st_virtual_mic_missing": "虚拟麦克风 ({dev}) 未在 Windows 中启用 — "
@@ -1316,6 +1327,7 @@ STRINGS = {
         "st_restore_fail": "Nie udało się przywrócić urządzeń: {e}",
         "st_autoswitch_fail": "Automatyczne przełączanie urządzenia nie powiodło się: {e}",
         "st_no_key": "Klucz API nie ustawiony — dodaj go w Ustawieniach (prawy górny róg).",
+        "st_no_audio_backend": "Przechwytywanie dźwięku nie jest jeszcze obsługiwane w tym systemie operacyjnym.",
         "st_not_signed_in": "Nie zalogowano — zaloguj się ponownie do Voxis.",
         "st_no_key_offline": "Serwer niedostępny — wpisz własny klucz Gemini w Ustawieniach, aby pracować offline.",
         "st_virtual_mic_missing": "Wirtualny mikrofon ({dev}) nie jest włączony w Windows — "
@@ -1428,6 +1440,7 @@ STRINGS = {
         "st_restore_fail": "Impossibile ripristinare i dispositivi: {e}",
         "st_autoswitch_fail": "Cambio automatico dispositivo non riuscito: {e}",
         "st_no_key": "Chiave API non impostata — aggiungine una nelle Impostazioni (in alto a destra).",
+        "st_no_audio_backend": "L'acquisizione audio non è ancora supportata su questo sistema operativo.",
         "st_not_signed_in": "Non connesso — accedi nuovamente a Voxis.",
         "st_no_key_offline": "Server non raggiungibile — inserisci la tua chiave Gemini nelle Impostazioni per usare offline.",
         "st_virtual_mic_missing": "Il microfono virtuale ({dev}) non è abilitato in Windows — "
@@ -1540,6 +1553,7 @@ STRINGS = {
         "st_restore_fail": "Tidak dapat memulihkan perangkat: {e}",
         "st_autoswitch_fail": "Pergantian perangkat otomatis gagal: {e}",
         "st_no_key": "Kunci API belum diatur — tambahkan melalui Pengaturan (kanan atas).",
+        "st_no_audio_backend": "Perekaman audio belum didukung di sistem operasi ini.",
         "st_not_signed_in": "Belum masuk — harap masuk ke Voxis lagi.",
         "st_no_key_offline": "Server tidak dapat dijangkau — masukkan kunci Gemini Anda sendiri melalui Pengaturan untuk digunakan offline.",
         "st_virtual_mic_missing": "Mikrofon virtual ({dev}) tidak diaktifkan di Windows — "
@@ -1651,6 +1665,7 @@ STRINGS = {
         "st_restore_fail": "Kon apparaten niet herstellen: {e}",
         "st_autoswitch_fail": "Automatisch apparaat wisselen mislukt: {e}",
         "st_no_key": "API-sleutel niet ingesteld — voeg er een toe via Instellingen (rechtsboven).",
+        "st_no_audio_backend": "Audio-opname wordt op dit besturingssysteem nog niet ondersteund.",
         "st_not_signed_in": "Niet aangemeld — meld u opnieuw aan bij Voxis.",
         "st_no_key_offline": "Server niet bereikbaar — voer uw eigen Gemini-sleutel in via Instellingen om offline te werken.",
         "st_virtual_mic_missing": "Virtuele microfoon ({dev}) is niet ingeschakeld in Windows — "
@@ -1762,6 +1777,7 @@ STRINGS = {
         "st_restore_fail": "Không thể khôi phục thiết bị: {e}",
         "st_autoswitch_fail": "Chuyển đổi thiết bị tự động thất bại: {e}",
         "st_no_key": "Chưa đặt khóa API — thêm khóa qua Cài đặt (góc trên bên phải).",
+        "st_no_audio_backend": "Chưa hỗ trợ thu âm thanh trên hệ điều hành này.",
         "st_not_signed_in": "Chưa đăng nhập — vui lòng đăng nhập lại vào Voxis.",
         "st_no_key_offline": "Không thể kết nối máy chủ — nhập khóa Gemini của bạn qua Cài đặt để dùng offline.",
         "st_virtual_mic_missing": "Micrô ảo ({dev}) chưa được bật trong Windows — "
@@ -1873,6 +1889,7 @@ STRINGS = {
         "st_restore_fail": "ไม่สามารถคืนค่าอุปกรณ์: {e}",
         "st_autoswitch_fail": "การสลับอุปกรณ์อัตโนมัติล้มเหลว: {e}",
         "st_no_key": "ยังไม่ได้ตั้งค่าคีย์ API — เพิ่มผ่านการตั้งค่า (มุมบนขวา)",
+        "st_no_audio_backend": "ยังไม่รองรับการจับเสียงบนระบบปฏิบัติการนี้",
         "st_not_signed_in": "ยังไม่ได้เข้าสู่ระบบ — กรุณาเข้าสู่ระบบ Voxis อีกครั้ง",
         "st_no_key_offline": "ไม่สามารถเข้าถึงเซิร์ฟเวอร์ — ใส่คีย์ Gemini ของคุณในการตั้งค่าเพื่อใช้งานออฟไลน์",
         "st_virtual_mic_missing": "ไมโครโฟนเสมือน ({dev}) ยังไม่ได้เปิดใช้งานใน Windows — "
@@ -1981,6 +1998,7 @@ STRINGS = {
         "st_meeting_listen_only": "Nu există cablu audio virtual — întâlnirea rulează DOAR ÎN ASCULTARE: îi auzi pe ceilalți în limba ta, iar vocea ta pleacă netradusă. (Modul bidirecțional necesită un driver de microfon virtual.)",
         "st_mode_started": "Mod pornit: {mode}",
         "st_no_key": "Cheia API nu este setată — adaugă una din Setări (dreapta sus).",
+        "st_no_audio_backend": "Capturarea audio nu este încă acceptată pe acest sistem de operare.",
         "st_no_key_offline": "Serverul e inaccesibil — introdu propria cheie Gemini din Setări pentru a rula offline.",
         "st_no_output_warning": "Nu s-a detectat nicio traducere — dacă e liniște, încearcă să schimbi limba țintă sau modelul.",
         "st_no_voice_warning": "Vocea tradusă nu a fost detectată (subtitrările funcționează) — dacă motorul beta e activ, dezactivează-l sau repornește sesiunea.",
@@ -2087,6 +2105,7 @@ STRINGS = {
         "st_meeting_listen_only": "कोई वर्चुअल ऑडियो केबल नहीं — मीटिंग केवल-सुनने मोड में चलेगी: आप उन्हें अपनी भाषा में सुनेंगे, आपकी आवाज़ बिना अनुवाद के जाएगी। (दोतरफ़ा के लिए वर्चुअल माइक ड्राइवर चाहिए।)",
         "st_mode_started": "मोड शुरू: {mode}",
         "st_no_key": "API कुंजी सेट नहीं है — ऊपर दाईं ओर सेटिंग्स से जोड़ें।",
+        "st_no_audio_backend": "इस ऑपरेटिंग सिस्टम पर ऑडियो कैप्चर अभी समर्थित नहीं है।",
         "st_no_key_offline": "सर्वर उपलब्ध नहीं — ऑफ़लाइन चलाने के लिए सेटिंग्स से अपनी Gemini कुंजी दर्ज करें।",
         "st_no_output_warning": "कोई अनुवाद आउटपुट नहीं मिला — यदि आवाज़ न आए, तो लक्ष्य भाषा या मॉडल बदलकर देखें।",
         "st_no_voice_warning": "अनुवादित आवाज़ नहीं मिल रही (सबटाइटल काम कर रहे हैं) — यदि बीटा इंजन चालू है, तो उसे बंद करें, या सत्र फिर से शुरू करें।",
@@ -2193,6 +2212,7 @@ STRINGS = {
         "st_meeting_listen_only": "Nincs virtuális hangkábel — a megbeszélés CSAK HALLGATÁS módban fut: te a saját nyelveden hallod a másik felet, a hangod fordítás nélkül megy ki. (A kétirányú működéshez virtuális mikrofon-illesztőprogram szükséges.)",
         "st_mode_started": "Mód elindítva: {mode}",
         "st_no_key": "Nincs beállítva API-kulcs — add meg a Beállításokban (jobb felül).",
+        "st_no_audio_backend": "A hangrögzítés ezen az operációs rendszeren még nem támogatott.",
         "st_no_key_offline": "A szerver nem érhető el — add meg a saját Gemini-kulcsod a Beállításokban az offline használathoz.",
         "st_no_output_warning": "Nem észlelhető fordítási kimenet — ha nincs hang, próbálj másik célnyelvet vagy modellt.",
         "st_no_voice_warning": "A lefordított hang nem észlelhető (a feliratok működnek) — ha a béta motor be van kapcsolva, kapcsold ki, vagy indítsd újra a munkamenetet.",
@@ -2299,6 +2319,7 @@ STRINGS = {
         "st_meeting_listen_only": "Ingen virtuell ljudkabel — mötet körs i läget ENDAST LYSSNING: du hör dem på ditt språk, din röst går ut oöversatt. (Tvåvägs kräver en virtuell mikrofondrivrutin.)",
         "st_mode_started": "Läge startat: {mode}",
         "st_no_key": "API-nyckel saknas — lägg till en via Inställningar (uppe till höger).",
+        "st_no_audio_backend": "Ljudinspelning stöds ännu inte på det här operativsystemet.",
         "st_no_key_offline": "Servern kan inte nås — ange din egen Gemini-nyckel via Inställningar för att köra utan server.",
         "st_no_output_warning": "Ingen översättning upptäcktes — om det är tyst, prova att byta målspråk eller modell.",
         "st_no_voice_warning": "Översatt röst upptäcktes inte (undertexterna fungerar) — stäng av betamotorn om den är på, eller starta om sessionen.",
@@ -2405,6 +2426,7 @@ STRINGS = {
         "st_meeting_listen_only": "Nema virtuelnog audio kabla — sastanak radi u režimu SAMO SLUŠANJE: sagovornika čuješ na svom jeziku, a tvoj glas ide neprevedeno. (Za dvosmerni rad potreban je drajver virtuelnog mikrofona.)",
         "st_mode_started": "Režim pokrenut: {mode}",
         "st_no_key": "API ključ nije podešen — dodaj ga u Podešavanjima (gore desno).",
+        "st_no_audio_backend": "Snimanje zvuka još nije podržano na ovom operativnom sistemu.",
         "st_no_key_offline": "Server nije dostupan — unesi svoj Gemini ključ u Podešavanjima za rad van mreže.",
         "st_no_output_warning": "Nije detektovan izlaz prevoda — ako je tišina, probaj da promeniš ciljni jezik ili model.",
         "st_no_voice_warning": "Prevedeni glas nije detektovan (titlovi rade) — ako je beta motor uključen, isključi ga ili ponovo pokreni sesiju.",
@@ -2511,6 +2533,7 @@ STRINGS = {
         "st_meeting_listen_only": "沒有虛擬音訊線——會議將以「僅聆聽」模式執行：你會以自己的語言聽到對方，而你的聲音會未經翻譯直接送出。（雙向功能需要虛擬麥克風驅動程式。）",
         "st_mode_started": "模式已啟動：{mode}",
         "st_no_key": "尚未設定 API 金鑰——請從右上角的「設定」新增。",
+        "st_no_audio_backend": "此作業系統尚不支援音訊擷取。",
         "st_no_key_offline": "無法連線到伺服器——請在「設定」輸入你自己的 Gemini 金鑰以離線執行。",
         "st_no_output_warning": "未偵測到翻譯輸出——若沒有聲音，請嘗試變更目標語言或模型。",
         "st_no_voice_warning": "未偵測到翻譯語音（字幕正常）——若已開啟測試版引擎，請將其關閉，或重新啟動工作階段。",

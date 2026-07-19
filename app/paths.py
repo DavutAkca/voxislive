@@ -65,9 +65,15 @@ def client_channel() -> str:
 
 
 def user_data_dir() -> str:
-    """User-writable root. Frozen: %APPDATA%\\Voxis; source: repo root."""
+    """User-writable root. Frozen: %APPDATA%\\Voxis (Windows) / $XDG_CONFIG_HOME
+    (Linux/other); source: repo root (dev workflow unchanged on every platform)."""
     if is_frozen():
-        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+        if sys.platform == "win32":
+            base = os.environ.get("APPDATA") or os.path.expanduser("~")
+        else:
+            # XDG Base Directory: config.json + per-install secrets live here.
+            base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(
+                os.path.expanduser("~"), ".config")
         path = os.path.join(base, APP_NAME)
     else:
         path = _repo_root()
@@ -80,6 +86,36 @@ def user_path(*parts: str) -> str:
     return os.path.join(user_data_dir(), *parts)
 
 
+def _xdg_documents_dir() -> str:
+    """The XDG Documents directory on Linux/other. Prefers `xdg-user-dir
+    DOCUMENTS` (reads ~/.config/user-dirs.dirs, localized-safe), then the
+    $XDG_DOCUMENTS_DIR env var, else ~/Documents.
+
+    Note: when DOCUMENTS is not configured (common on a fresh headless install),
+    `xdg-user-dir` returns $HOME itself — accepting that would dump transcripts in
+    the home root, so a result equal to $HOME is rejected in favour of ~/Documents
+    (verified on a stock Raspberry Pi OS install, 2026-07-18)."""
+    home = os.path.expanduser("~")
+    home_norm = os.path.normpath(home)
+
+    def _usable(p: str) -> bool:
+        return bool(p) and os.path.isdir(p) and os.path.normpath(p) != home_norm
+
+    try:
+        import subprocess
+        out = subprocess.run(["xdg-user-dir", "DOCUMENTS"],
+                             capture_output=True, text=True, timeout=5)
+        p = (out.stdout or "").strip()
+        if _usable(p):
+            return p
+    except Exception:
+        pass
+    env = (os.environ.get("XDG_DOCUMENTS_DIR") or "").strip()
+    if _usable(env):
+        return env
+    return os.path.join(home, "Documents")
+
+
 def documents_dir() -> str:
     """The user's real Documents folder via the Windows known-folder API.
 
@@ -87,7 +123,12 @@ def documents_dir() -> str:
     Windows profile — e.g. Turkish 'Belgeler') relocate Documents, so the env-var
     guess points at a folder that does not exist. SHGetKnownFolderPath(FOLDERID_
     Documents) always resolves the true location. Falls back to ~/Documents only
-    when the API call fails."""
+    when the API call fails.
+
+    On Linux/other, resolves the XDG Documents dir instead (xdg-user-dir /
+    $XDG_DOCUMENTS_DIR, else ~/Documents)."""
+    if sys.platform != "win32":
+        return _xdg_documents_dir()
     try:
         import ctypes
         from ctypes import wintypes
@@ -159,10 +200,18 @@ def model_path(name: str) -> str:
 
 
 def icon_path() -> str:
-    """The application icon. Bundled at <bundle>/assets; source at app/assets."""
-    if is_frozen():
-        return os.path.join(_bundle_root(), "assets", "voxis.ico")
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "voxis.ico")
+    """The application icon. Bundled at <bundle>/assets; source at app/assets.
+
+    Windows uses voxis.ico. On Linux the GTK/WebKit backend wants a PNG, so
+    prefer voxis.png when present (added with the Linux packaging in Faz 7);
+    falls back to the .ico so the call never returns a missing path."""
+    base = _bundle_root() if is_frozen() else os.path.dirname(os.path.abspath(__file__))
+    assets = os.path.join(base, "assets")
+    if sys.platform != "win32":
+        png = os.path.join(assets, "voxis.png")
+        if os.path.exists(png):
+            return png
+    return os.path.join(assets, "voxis.ico")
 
 
 def bundled_default_config() -> str:

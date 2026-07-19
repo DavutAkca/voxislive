@@ -35,6 +35,10 @@ docs/INSTALL_SAAS.md
 # Marketing / growth / backlink strategy — competitive intel, kept private
 docs/marketing/
 
+# Local-only background job tooling for free NVIDIA NIM preview endpoints —
+# personal automation, not part of the Voxis product; never publish.
+nim_jobs/
+
 # --- Per-user runtime data ---
 # DPAPI-wrapped BYOK key slots (CURRENT_USER + per-install entropy; useless cross-machine)
 profiles/
@@ -71,6 +75,15 @@ Thumbs.db
 # Third-party Agent Skills installed via `npx skills add` (universal copies + lockfile) — not part of the OSS engine
 .agents/
 skills-lock.json
+
+# --- Linux port planning + working tree (private, WIP — never publish until shipped) ---
+# Detailed port plan, PipeWire audio research, packaging notes and progress tracker.
+# Kept local-only like PLAN/ so an in-progress platform port never leaks to the OSS repo.
+# Anchored to the repo root (leading slash) -- an unanchored "linux/" also matched
+# app/sysaudio/linux/, the actual shipped Linux platform code, silently excluding it
+# from every commit (caught 2026-07-19 via `git check-ignore` before the first commit
+# that would have shipped a Linux port with no Linux implementation files at all).
+/linux/
 
 # --- Internal strategy/roadmap (private planning — never publish) ---
 ROADMAP.md

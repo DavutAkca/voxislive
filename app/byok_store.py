@@ -16,13 +16,19 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 
 from .paths import install_secret, user_path
 
 _STORE_DIR = user_path("profiles", "byok")
 
-# Marks a DPAPI-wrapped slot; legacy Fernet slots have no prefix.
+# Marks a DPAPI-wrapped slot (Windows); legacy Fernet slots have no prefix.
 _DPAPI_MAGIC = b"VXDP1\n"
+# Marks a Fernet-wrapped slot (non-Windows at-rest, keyed by the per-install
+# entropy — see app/secret_crypto). Distinct magic so a slot self-describes which
+# unwrap path to use and a cross-platform copy is rejected cleanly, not
+# mis-decrypted.
+_FERNET_MAGIC = b"VXFN1\n"
 
 
 # --- Windows DPAPI via ctypes (no pywin32 dependency) ----------------------
@@ -148,7 +154,12 @@ def _slot_path(user_id: str) -> str:
 
 def _write_slot(user_id: str, data: dict) -> None:
     payload = json.dumps(data).encode()
-    blob = _DPAPI_MAGIC + _dpapi_protect(payload, _entropy(user_id))
+    if sys.platform == "win32":
+        blob = _DPAPI_MAGIC + _dpapi_protect(payload, _entropy(user_id))
+    else:
+        # Non-Windows: Fernet at rest, keyed by the same per-install entropy.
+        from . import secret_crypto
+        blob = _FERNET_MAGIC + secret_crypto.fernet_encrypt(payload, _entropy(user_id))
     path = _slot_path(user_id)
     # Atomic write: a crash mid-write must not leave a truncated/zero slot, which
     # would fail to decrypt on next read and silently lose the stored key. Restrict
@@ -158,7 +169,14 @@ def _write_slot(user_id: str, data: dict) -> None:
         f.write(blob)
         f.flush()
         os.fsync(f.fileno())
-    _restrict_acl(tmp)
+    _restrict_acl(tmp)  # Windows-only; no-op elsewhere
+    if os.name != "nt":
+        # POSIX: tighten to owner-only so another local user cannot read the blob
+        # (DPAPI already binds the Windows path to the account).
+        try:
+            os.chmod(tmp, 0o600)
+        except OSError:
+            pass
     os.replace(tmp, path)
 
 
@@ -198,6 +216,15 @@ def load_byok(user_id: str) -> dict:
             payload = _dpapi_unprotect(blob[len(_DPAPI_MAGIC):], _entropy(user_id))
             return _normalize(json.loads(payload))
         except (OSError, ValueError, Exception):
+            return dict(_EMPTY)
+
+    if blob.startswith(_FERNET_MAGIC):
+        try:
+            from . import secret_crypto
+            payload = secret_crypto.fernet_decrypt(
+                blob[len(_FERNET_MAGIC):], _entropy(user_id))
+            return _normalize(json.loads(payload))
+        except Exception:
             return dict(_EMPTY)
 
     data = _legacy_decrypt(user_id, blob)

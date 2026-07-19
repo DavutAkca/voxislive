@@ -15,6 +15,7 @@ import uuid
 import numpy as np
 
 from . import audio_io
+from . import sysaudio
 from . import voxis_client
 
 _log = logging.getLogger("voxis")
@@ -292,6 +293,7 @@ class IncomingPipeline:
         # probes premium hardware.
         self._use_premium = False
         self._sducker = None
+        self._routing_handle = None
         self.capture = None
         self._source = None
         self._recorder = None
@@ -437,16 +439,24 @@ class IncomingPipeline:
         # at this rate so OpenAI gets full-band audio; the VAD stays 16 kHz inside.
         send_rate = 24000 if self._engine == ENGINE_OPENAI else 16000
         if self.driverless:
-            # Driverless mode: WASAPI loopback captures system audio; ducking is
-            # applied at source via the Windows session-volume API so the user
-            # hears a real dubbing effect without any virtual-cable install.
-            from .session_duck import SessionDucker
-            self._sducker = SessionDucker()
+            # Driverless mode: system audio loopback; ducking is applied so the
+            # user hears a real dubbing effect without any virtual-cable
+            # install. Windows: WASAPI loopback + per-app session-volume API.
+            # Linux: Option-A routing (VoxisCapture + ducked loopback) --
+            # make_capture_routing is a no-op returning None on Windows, so
+            # this line changes nothing there.
+            self._routing_handle = sysaudio.make_capture_routing()
+            self._sducker = sysaudio.make_ducker(routing_handle=self._routing_handle)
 
             def on_loop(chunk: np.ndarray):
                 lvl = self._sducker.current
-                if lvl < 0.95:
-                    # Compensate the lowered source so VAD/Gemini do not pump.
+                # Windows' ducker attenuates the SAME mix its loopback then
+                # captures, so the level must be compensated back up for
+                # VAD/Gemini. Linux's capture point sits upstream of the duck
+                # (see ducking.LinuxSessionDucker.duck_affects_capture) so it
+                # is never tainted in the first place -- compensating it too
+                # would wrongly amplify already-full-level audio.
+                if getattr(self._sducker, "duck_affects_capture", True) and lvl < 0.95:
                     chunk = np.clip(chunk / max(lvl, 0.15), -1.0, 1.0)
                 if self._recorder is not None:
                     self._recorder.feed_source(chunk)
@@ -480,12 +490,12 @@ class IncomingPipeline:
             # a transient hiccup doesn't break the whole session. A genuinely
             # unsupported OS fails fast (immediate HRESULT, no 5 s wait), so the
             # retries cost little there.
-            from .process_loopback import ProcessExcludeLoopback
             self.capture = None
             pe_err = None
             for attempt in range(3):
                 try:
-                    self.capture = ProcessExcludeLoopback(on_loop, rate=send_rate)
+                    self.capture = sysaudio.make_process_loopback(
+                        on_loop, rate=send_rate, routing_handle=self._routing_handle)
                     pe_err = None
                     break
                 except Exception as e:
@@ -498,9 +508,8 @@ class IncomingPipeline:
                 # clear, actionable warning (impact + remedy) instead of a silent
                 # half-working session. The error rides along for field diagnosis.
                 on_status(t("st_classic_capture_warning", e=pe_err))
-                from .audio_io import LoopbackCapture
-                self.capture = LoopbackCapture(on_loop, prefer_name=out_name,
-                                               on_status=on_status)
+                self.capture = sysaudio.make_loopback_capture(
+                    on_loop, prefer_name=out_name, on_status=on_status)
                 suppress = lambda: self.player.tts_active
             self._source = _GatedSource(
                 self.capture.rate, SpeechGate(**vad_cfg), send_fn,
@@ -627,6 +636,13 @@ class IncomingPipeline:
             except Exception:
                 pass
             self._sducker = None
+        handle = self._routing_handle
+        if handle is not None:
+            try:
+                sysaudio.teardown_capture_routing(handle)
+            except Exception:
+                pass
+            self._routing_handle = None
         for attr in ("_stager", "player", "translator", "_recorder", "_spk_tracker"):
             comp = getattr(self, attr, None)
             if comp is not None:
@@ -698,6 +714,13 @@ class IncomingPipeline:
         d = getattr(self, "_sducker", None)
         if d is not None:
             d.close()
+        handle = getattr(self, "_routing_handle", None)
+        if handle is not None:
+            try:
+                sysaudio.teardown_capture_routing(handle)
+            except Exception:
+                pass
+            self._routing_handle = None
 
 
 def _swap_to_gemini(pipe, target_key, name, exc):
@@ -788,12 +811,40 @@ class OutgoingPipeline:
         from .vad import SpeechGate  # noqa: PLC0415
         vad_cfg = gate_params(cfg)
         mic_dev = find_device(cfg["devices"]["microphone"], "input")
-        cable_out = find_device(cfg["devices"]["meeting_mic_playback"], "output")
 
-        self.player = Player(
-            cable_out, channels=1,
-            tts_enhance=(_premium.enhance_tts if _premium is not None else None),
-        )
+        # Windows: Player targets VB-CABLE's real Input device directly (a
+        # separately-addressable PortAudio device). Linux has no such
+        # pre-existing virtual cable -- make_virtual_mic() creates the
+        # "VoxisMic" null-sink there and returns None on Windows, where this
+        # whole branch is skipped and the existing cable_out path runs
+        # unchanged below. See sysaudio/linux/virtual_mic.py for why the
+        # stream is pinned via an explicit one-time move rather than any
+        # default-source switch (confirmed empirically: changing the default
+        # source drags an already-open capture stream exactly like Faz 3's
+        # sink-side finding, so it must never be touched).
+        self._mic_handle = sysaudio.make_virtual_mic()
+        before_streams = sysaudio.snapshot_own_audio_streams()
+        if self._mic_handle is not None:
+            self.player = Player(
+                None, channels=1,
+                tts_enhance=(_premium.enhance_tts if _premium is not None else None),
+            )
+            moved = sysaudio.pin_newest_own_stream_to_mic(before_streams, self._mic_handle)
+            if moved is None:
+                # Without the pin, the outgoing TTS would keep playing on real
+                # hardware instead of the virtual mic -- silently wrong, not a
+                # message worth showing and continuing past. Raise so the
+                # existing _build("meeting") try/except degrades to the
+                # already-localized listen-only status, matching the
+                # documented "sanal mic yoksa listen-only" behavior exactly.
+                raise RuntimeError(
+                    "could not pin the outgoing TTS stream onto the virtual mic")
+        else:
+            cable_out = find_device(cfg["devices"]["meeting_mic_playback"], "output")
+            self.player = Player(
+                cable_out, channels=1,
+                tts_enhance=(_premium.enhance_tts if _premium is not None else None),
+            )
         self._engine, _key, _model = resolve(cfg["target_language_outgoing"])
         self.cfg = cfg
         self._resolve = resolve
@@ -842,6 +893,13 @@ class OutgoingPipeline:
                     comp.stop()
                 except Exception:
                     pass
+        handle = getattr(self, "_mic_handle", None)
+        if handle is not None:
+            try:
+                sysaudio.teardown_virtual_mic(handle)
+            except Exception:
+                pass
+            self._mic_handle = None
 
     def _on_mic(self, c: np.ndarray):
         mono = c.mean(axis=1) if getattr(c, "ndim", 1) > 1 else c
@@ -865,6 +923,13 @@ class OutgoingPipeline:
 
     def stop(self):
         _stop_all(self)
+        handle = getattr(self, "_mic_handle", None)
+        if handle is not None:
+            try:
+                sysaudio.teardown_virtual_mic(handle)
+            except Exception:
+                pass
+            self._mic_handle = None
 
 
 def _stop_all(pipeline):
@@ -968,7 +1033,13 @@ class ModeController:
         hearing audio on their normal device; loopback reads it). Meeting mode
         still flips the default microphone to the virtual cable since the
         outbound direction needs a driver."""
-        from . import win_audio
+        # Windows-only default-endpoint switching (vbcable/meeting mode); no-op
+        # elsewhere. Deliberately NOT gated on is_supported() -- Linux's Faz 3
+        # driverless-equivalent path is supported without this (see
+        # sysaudio.supports_endpoints), and never touches the default sink.
+        if not sysaudio.supports_endpoints():
+            return
+        win_audio = sysaudio.endpoints()
         from .config import save_config
 
         driverless = self.cfg.get("capture_backend", "driverless") != "vbcable"
@@ -1006,7 +1077,13 @@ class ModeController:
             save_config(self.cfg)
 
     def _restore_defaults(self):
-        from . import win_audio
+        # Windows-only endpoint restore; no-op elsewhere so stop()/start()
+        # (which always calls stop() first) never crash on Linux. See
+        # _switch_defaults for why this checks supports_endpoints(), not
+        # is_supported().
+        if not sysaudio.supports_endpoints():
+            return
+        win_audio = sysaudio.endpoints()
         from .config import save_config
 
         saved = self.cfg.get("_pending_default_restore")
@@ -1206,6 +1283,14 @@ class ModeController:
         self.stop()
         if self.resolve is None:
             raise RuntimeError(t("st_no_key"))
+        # No native OS audio backend on this platform (e.g. a Linux box without
+        # PipeWire/Pulse tooling on PATH, or any other unsupported OS). Decline
+        # the session with a friendly status instead of crashing deep in the
+        # capture build. Windows and PipeWire-equipped Linux are supported, so
+        # this is a no-op there.
+        if not sysaudio.is_supported():
+            self.on_status(t("st_no_audio_backend"))
+            return
         # Per-session output folder decided by the caller (webui) so the recorder's
         # WAVs land beside the transcript JSON in one self-contained folder.
         self._session_dir_out = session_dir

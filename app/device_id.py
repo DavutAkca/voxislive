@@ -11,6 +11,8 @@ free tier on the same machine" pattern. Real abuse gating MUST live server-side
 collection degrades to an empty component on any error, never an exception.
 """
 
+import sys
+
 # Placeholder / OEM-default values that are not unique to a machine.
 _BAD = {
     "", "0", "none", "default string", "to be filled by o.e.m.",
@@ -103,15 +105,57 @@ def _registry_hw() -> dict:
     return out
 
 
+def _read_text(path: str) -> str:
+    """Read a small /proc or /sys file; empty on any error (unreadable DMI etc.)."""
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def _linux_ids() -> dict:
+    """Linux identifiers: primary = /etc/machine-id (stable per install);
+    secondary = DMI board serial + product UUID. ARM SBCs (Raspberry Pi etc.)
+    have no SMBIOS/DMI, so fall back to the device-tree serial (or /proc/cpuinfo
+    Serial) for a stable board id. All best-effort — unreadable -> empty."""
+    primary = (_read_text("/etc/machine-id")
+               or _read_text("/var/lib/dbus/machine-id")).strip()
+    board = _read_text("/sys/class/dmi/id/board_serial").strip()
+    uuid = _read_text("/sys/class/dmi/id/product_uuid").strip()
+    if not (board or uuid):
+        dt = _read_text("/proc/device-tree/serial-number").replace("\x00", "").strip()
+        if dt:
+            board = dt
+        else:
+            for line in _read_text("/proc/cpuinfo").splitlines():
+                if line.lower().startswith("serial"):
+                    board = line.split(":", 1)[1].strip()
+                    break
+    return {"primary": primary, "board": board, "uuid": uuid}
+
+
 def fingerprint() -> dict:
     """Return {'primary', 'secondary'} raw identifiers (either may be empty).
 
-    primary   = Windows MachineGuid (survives reboots; changes on OS reinstall).
+    Windows: primary = MachineGuid (survives reboots; changes on OS reinstall);
     secondary = baseboard serial + system UUID (survive OS reinstall; very stable).
-    Two independent components let the server tolerate a partial hardware change.
+    Linux: primary = /etc/machine-id; secondary = DMI serial/UUID or SBC
+    device-tree serial. Two independent components let the server tolerate a
+    partial hardware change.
     """
     global _cache
     if _cache is not None:
+        return dict(_cache)
+
+    if sys.platform.startswith("linux"):
+        ids = _linux_ids()
+        board = _clean(ids["board"])
+        uuid = _clean(ids["uuid"])
+        _cache = {
+            "primary": _clean(ids["primary"]),
+            "secondary": "|".join(p for p in (board, uuid) if p),
+        }
         return dict(_cache)
 
     primary = _clean(_machine_guid())
