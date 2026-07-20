@@ -63,7 +63,7 @@ def _free_voiced_langs():
     up in the picker with no second list to update."""
     try:
         from . import local_tts  # noqa: PLC0415 - cheap: registry dict only
-        return [l for l in LANGS if local_tts.voice_available(l)]
+        return [lang for lang in LANGS if local_tts.voice_available(lang)]
     except Exception:  # a broken registry must not take the whole UI down
         _log.exception("voiced-language list unavailable")
         return []
@@ -266,6 +266,7 @@ class Bridge:
         # threads, so the read-modify-write must not interleave. RLock because
         # _on_text re-enters through _obs_write on the same thread.
         self._text_lock = threading.RLock()
+        self._save_lock = threading.Lock()
         self._restart_token = 0
         self._last_obs_write = None
         self._hotkey_cancel = False
@@ -612,9 +613,14 @@ class Bridge:
             inc.translator.stop()
         except Exception:  # noqa: BLE001
             pass
-        deadline = time.time() + timeout
+        deadline = time.monotonic() + timeout
         try:
-            while time.time() < deadline and inc.player.tts_active:
+            while time.monotonic() < deadline:
+                player_active = bool(inc.player.tts_active)
+                stager = getattr(inc, "_stager", None)
+                staged = float(stager.backlog_s) if stager is not None else 0.0
+                if not player_active and staged <= 0.02:
+                    break
                 time.sleep(0.2)
         except Exception:  # noqa: BLE001
             pass
@@ -995,6 +1001,8 @@ class Bridge:
                 lines.append(src + "  ->  " + txt)
             elif txt:
                 lines.append(txt)
+            elif src:
+                lines.append(src)
         return ("\n".join(lines))[:200000]
 
     def _collect_log_tail(self, max_bytes: int = 32768) -> str:
@@ -1950,7 +1958,10 @@ class Bridge:
                 self._session_dirname = transcript_store.session_dir_name(time.time())
                 self._session_dir = os.path.join(self._transcript_dir(),
                                                  self._session_dirname)
-                self.controller.start(mode, session_dir=self._session_dir)
+                started = self.controller.start(mode, session_dir=self._session_dir)
+                if started is False:
+                    self._badge = (t("badge_idle"), "#8593a6", "")
+                    return
                 self._badge = (t("badge_active", mode=self._mode_name(mode)), "#34d399", "on")
             except voxis_client.DeviceBlockedError as e:
                 # This machine's free tier belongs to a different account (Tier
@@ -2079,7 +2090,6 @@ class Bridge:
 
     def _pro_replay_thread(self):
         try:
-            from . import free_preview  # noqa: PLC0415
             pcm = self.controller.recent_pro_pcm()
             if not pcm:
                 logging.getLogger("voxis").info("pro-voice replay: nothing buffered")
@@ -2235,12 +2245,20 @@ class Bridge:
         )
 
     def save_txt(self, silent=False):
+        with self._save_lock:
+            return self._save_txt_locked(silent=silent)
+
+    def _save_txt_locked(self, silent=False):
         """Persist the session as a JSON record (the canonical, timestamped
         store). Backs the 'Save transcript' button; also called on stop.
         Returns {ok, path, file} on success (the JS renders open/reveal actions
         from it) or False on nothing-to-save / write failure."""
         self._flush_turns()
-        if not self._turns:
+        with self._text_lock:
+            has_turns = bool(self._turns)
+            record = self._build_record() if has_turns else None
+            subdir = self._session_dirname
+        if not has_turns:
             # Nothing new in the buffer. But if this session was already
             # auto-saved on stop, re-surface that file (path + open/reveal) so a
             # post-stop "Save transcript" click confirms the save instead of
@@ -2253,12 +2271,10 @@ class Bridge:
             if not silent:
                 self._emit_status(t("no_transcript"))
             return False
-        record = self._build_record()
         primary = self._transcript_dir()
         # Save into this session's own folder (same one the recorder wrote its WAVs
         # into), so the whole session stays self-contained. subdir may be None for a
         # save with no active session — save_record then derives it from the record.
-        subdir = self._session_dirname
         path = None
         try:
             path = transcript_store.save_record(primary, record, subdir=subdir)
@@ -3015,7 +3031,7 @@ def _set_taskbar_icon(icon_path: str, title: str):
 
     def apply():
         WM_SETICON, ICON_SMALL, ICON_BIG = 0x80, 0, 1
-        IMAGE_ICON, LR_LOADFROMFILE, LR_DEFAULTSIZE = 1, 0x10, 0x40
+        IMAGE_ICON, LR_LOADFROMFILE = 1, 0x10
         u = ctypes.windll.user32
         for _ in range(40):
             hwnd = u.FindWindowW(None, title)

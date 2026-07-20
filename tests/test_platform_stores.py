@@ -7,6 +7,7 @@ covered by asserting the existing shape is unchanged.
 """
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -56,6 +57,29 @@ def test_byok_fernet_slot_on_disk_is_wrapped(tmp_path, monkeypatch):
     raw = open(byok_store._slot_path("user-2"), "rb").read()
     assert raw.startswith(byok_store._FERNET_MAGIC)
     assert b"SECRET" not in raw
+
+
+def test_install_secret_first_use_is_identical_for_concurrent_callers(
+        tmp_path, monkeypatch):
+    secret_path = tmp_path / "install.secret"
+    monkeypatch.setattr(
+        paths, "user_path", lambda *parts: str(tmp_path.joinpath(*parts)))
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        values = list(pool.map(lambda _: paths.install_secret(), range(32)))
+    assert len(set(values)) == 1
+    assert values[0] == secret_path.read_bytes()
+
+
+def test_concurrent_byok_saves_do_not_share_a_temp_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(byok_store, "_STORE_DIR", str(tmp_path / "byok"))
+    monkeypatch.setattr(byok_store, "install_secret", lambda *a, **k: b"\x07" * 32)
+    monkeypatch.setattr(byok_store, "_restrict_acl", lambda path: None)
+    keys = [f"KEY-{i}" for i in range(24)]
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        list(pool.map(lambda key: byok_store.save_byok("same-user", gemini=key), keys))
+    assert byok_store.load_byok("same-user")["gemini"] in keys
+    assert not list((tmp_path / "byok").glob("*.tmp"))
 
 
 # --- voxis_client Linux JWT at rest -----------------------------------------

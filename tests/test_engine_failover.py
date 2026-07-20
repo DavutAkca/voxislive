@@ -14,7 +14,7 @@ import pytest
 
 from app import pipeline as P
 from app.base_translator import BaseTranslator, is_terminal_error
-from app.config import ENGINE_GEMINI, ENGINE_QWEN
+from app.config import ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN
 from app.qwen_translator import _TERMINAL_PHRASES
 
 
@@ -36,7 +36,7 @@ class _FakeTr:
 
 
 class _FakeStager:
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self.stopped = False
         self.cleared = 0
 
@@ -53,6 +53,14 @@ class _FakePlayer:
 
     def clear_tts(self):
         self.cleared += 1
+
+
+class _FakeSource:
+    def __init__(self, rate=24000):
+        self.rate = rate
+
+    def set_send_rate(self, rate):
+        self.rate = rate
 
 
 @pytest.fixture
@@ -109,7 +117,8 @@ def test_failover_swaps_engine_and_redirects_audio(pipe):
     dead = pipe.translator
     stager = pipe._stager
     # The capture binds exactly this indirection (see IncomingPipeline.send_fn).
-    send = lambda pcm: pipe.translator.send_pcm16(pcm)
+    def send(pcm):
+        pipe.translator.send_pcm16(pcm)
     send(b"before")
 
     assert pipe._failover_to_gemini(Exception("Arrearage")) is True
@@ -141,7 +150,8 @@ def test_failover_forwards_key_provider(pipe):
     """The SaaS resolver hangs the Gemini key fountain off the resolve fn; the
     failover replacement must inherit it so an ephemeral-token session can still
     refresh its key across rotations after the swap."""
-    provider = lambda: "auth_tokens/next"
+    def provider():
+        return "auth_tokens/next"
     pipe._resolve.gemini_key_provider = provider
     assert pipe._failover_to_gemini(Exception("Arrearage")) is True
     assert pipe.built[-1]["key_provider"] is provider
@@ -206,3 +216,14 @@ def test_the_dead_engine_stops_talking(pipe):
     rather than a recovered one."""
     P._swap_to_gemini(pipe, "target_language_incoming", "in", Exception("arrearage"))
     assert pipe.player.cleared == 1
+
+
+def test_openai_failover_retargets_capture_to_gemini_16khz(pipe, monkeypatch):
+    monkeypatch.setattr(P, "AdaptivePlaybackStager", _FakeStager)
+    pipe._engine = ENGINE_OPENAI
+    pipe._stager = None
+    pipe._source = _FakeSource(24000)
+    assert pipe._failover_to_gemini(Exception("quota")) is True
+    assert pipe._source.rate == 16000
+    # Incoming OpenAI starts without a pacing worker; Gemini needs one.
+    assert pipe._stager is not None

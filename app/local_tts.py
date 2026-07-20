@@ -169,7 +169,9 @@ def _download_voice(asset: str, sha256: str, on_status=None) -> str:
     root = _tts_root()
     os.makedirs(root, exist_ok=True)
     if on_status:
-        on_status(f"TTS voice download: {asset} (~60 MB)")
+        # Engineering detail only: Bridge filters the translator prefix from the
+        # user-facing localized status feed while retaining it in diagnostics.
+        on_status(f"translator: downloading local TTS voice {asset} (~60 MB)")
     req = urllib.request.Request(_ASSET_URL.format(name=asset),
                                  headers={"User-Agent": "voxis"})
     with urllib.request.urlopen(req, timeout=_DOWNLOAD_TIMEOUT) as resp, \

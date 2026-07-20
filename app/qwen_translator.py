@@ -34,15 +34,13 @@ Hard-won rules baked in here — do not "improve" these without re-measuring:
 import base64
 import json
 import logging
-import time
 
 import numpy as np
 
-_log = logging.getLogger("voxis")
-
 from .base_translator import BaseTranslator, is_terminal_error
 from .config import QWEN_TRANSLATE_MODEL, QWEN_WORKSPACE
-from .playback_sync import AdaptivePlaybackStager as SyncStager
+
+_log = logging.getLogger("voxis")
 
 URL_TEMPLATE = ("wss://{ws}.ap-southeast-1.maas.aliyuncs.com"
                 "/api-ws/v1/realtime?model={model}")

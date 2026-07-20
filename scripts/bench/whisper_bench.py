@@ -31,7 +31,8 @@ def main() -> int:
     print(f"Loading faster-whisper {args.model} ({args.compute}, CPU)... (first run downloads the model)")
     model = WhisperModel(args.model, device="cpu", compute_type=args.compute)
 
-    clips = [json.loads(l) for l in open(args.manifest, encoding="utf-8") if l.strip()]
+    clips = [json.loads(line) for line in open(args.manifest, encoding="utf-8")
+             if line.strip()]
     print(f"Running {len(clips)} clip(s)...")
     with open(args.out, "w", encoding="utf-8") as out:
         for i, clip in enumerate(clips, 1):

@@ -11,8 +11,6 @@ overlay preference survives the shutdown, and nothing here can raise into
 pywebview's FormClosing handler.
 """
 import sys
-import threading
-import types
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

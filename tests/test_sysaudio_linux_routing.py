@@ -31,10 +31,12 @@ class _FakePactl:
         args = list(args)  # tuple slices never equal list literals -- normalize once
         self.calls.append(args)
         if args[:2] == ["load-module", "module-null-sink"]:
-            mid = str(self._next_module_id); self._next_module_id += 1
+            mid = str(self._next_module_id)
+            self._next_module_id += 1
             return mid
         if args[:2] == ["load-module", "module-loopback"]:
-            mid = str(self._next_module_id); self._next_module_id += 1
+            mid = str(self._next_module_id)
+            self._next_module_id += 1
             return mid
         if args == ["list", "sinks", "short"]:
             return self.sinks_short

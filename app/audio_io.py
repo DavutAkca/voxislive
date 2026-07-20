@@ -13,6 +13,7 @@ import numpy as np
 import sounddevice as sd
 
 from .mix_core import DelayLine, LookaheadLimiter, place_center
+from .i18n import t
 
 _log = logging.getLogger("voxis")
 
@@ -542,7 +543,7 @@ class LoopbackCapture:
                     self._err = e
                     if self._on_status is not None:
                         try:
-                            self._on_status(f"Loopback capture failed: {e}")
+                            self._on_status(t("st_capture_lost"))
                         except Exception:
                             pass
                 break
@@ -977,12 +978,12 @@ class Player:
         # under/overrun and every pulled block clicks.
         chunk = np.asarray(chunk, dtype=np.float32)
         if self._pass_rs_l is not None and chunk.ndim == 2 and chunk.shape[1] >= 2:
-            l = self._pass_rs_l(np.ascontiguousarray(chunk[:, 0]))
-            r = self._pass_rs_r(np.ascontiguousarray(chunk[:, 1]))
-            n = min(len(l), len(r))
+            left = self._pass_rs_l(np.ascontiguousarray(chunk[:, 0]))
+            right = self._pass_rs_r(np.ascontiguousarray(chunk[:, 1]))
+            n = min(len(left), len(right))
             if n == 0:
                 return
-            chunk = np.stack([l[:n], r[:n]], axis=1)
+            chunk = np.stack([left[:n], right[:n]], axis=1)
         self.passthrough.push(chunk)
         # Enable the M/S widening path only once a small jitter buffer has built
         # up, so the first blocks (and minor clock drift) never pull a near-empty

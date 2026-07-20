@@ -17,6 +17,8 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
+import threading
 
 from .paths import install_secret, user_path
 
@@ -29,6 +31,7 @@ _DPAPI_MAGIC = b"VXDP1\n"
 # unwrap path to use and a cross-platform copy is rejected cleanly, not
 # mis-decrypted.
 _FERNET_MAGIC = b"VXFN1\n"
+_STORE_LOCK = threading.RLock()
 
 
 # --- Windows DPAPI via ctypes (no pywin32 dependency) ----------------------
@@ -153,31 +156,39 @@ def _slot_path(user_id: str) -> str:
 
 
 def _write_slot(user_id: str, data: dict) -> None:
-    payload = json.dumps(data).encode()
-    if sys.platform == "win32":
-        blob = _DPAPI_MAGIC + _dpapi_protect(payload, _entropy(user_id))
-    else:
-        # Non-Windows: Fernet at rest, keyed by the same per-install entropy.
-        from . import secret_crypto
-        blob = _FERNET_MAGIC + secret_crypto.fernet_encrypt(payload, _entropy(user_id))
-    path = _slot_path(user_id)
-    # Atomic write: a crash mid-write must not leave a truncated/zero slot, which
-    # would fail to decrypt on next read and silently lose the stored key. Restrict
-    # the temp before the rename so the final file is never world-readable.
-    tmp = path + ".tmp"
-    with open(tmp, "wb") as f:
-        f.write(blob)
-        f.flush()
-        os.fsync(f.fileno())
-    _restrict_acl(tmp)  # Windows-only; no-op elsewhere
-    if os.name != "nt":
-        # POSIX: tighten to owner-only so another local user cannot read the blob
-        # (DPAPI already binds the Windows path to the account).
+    with _STORE_LOCK:
+        payload = json.dumps(data).encode()
+        if sys.platform == "win32":
+            blob = _DPAPI_MAGIC + _dpapi_protect(payload, _entropy(user_id))
+        else:
+            # Non-Windows: Fernet at rest, keyed by the same per-install entropy.
+            from . import secret_crypto
+            blob = _FERNET_MAGIC + secret_crypto.fernet_encrypt(
+                payload, _entropy(user_id))
+        path = _slot_path(user_id)
+        # Unique temp files prevent overlapping API calls from replacing or
+        # deleting one another's staging path.
+        fd, tmp = tempfile.mkstemp(
+            dir=os.path.dirname(path), prefix=f".{os.path.basename(path)}.",
+            suffix=".tmp")
         try:
-            os.chmod(tmp, 0o600)
-        except OSError:
-            pass
-    os.replace(tmp, path)
+            with os.fdopen(fd, "wb") as f:
+                f.write(blob)
+                f.flush()
+                os.fsync(f.fileno())
+            _restrict_acl(tmp)  # Windows-only; no-op elsewhere
+            if os.name != "nt":
+                try:
+                    os.chmod(tmp, 0o600)
+                except OSError:
+                    pass
+            os.replace(tmp, path)
+        except Exception:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            raise
 
 
 # Both vendor keys live in ONE slot per user_id. Always default-merge so a slot
@@ -196,12 +207,16 @@ def save_byok(user_id: str, gemini: str = "", openai: str = "") -> None:
 
 
 def load_byok(user_id: str) -> dict:
-    """Returns {gemini, openai}; empty strings if unset or decryption fails.
+    """Return both provider keys, or empty strings when unset/unreadable.
 
-    Always default-merges both fields so a slot from an older single-key build
-    still loads. Legacy Fernet slots are decrypted with the old derivation and
-    immediately re-wrapped with DPAPI (preserving openai) so each slot upgrades
-    on first read."""
+    The lock also makes migrate-on-read and engine-specific clear operations one
+    transaction with respect to concurrent pywebview API calls.
+    """
+    with _STORE_LOCK:
+        return _load_byok_unlocked(user_id)
+
+
+def _load_byok_unlocked(user_id: str) -> dict:
     path = _slot_path(user_id)
     if not os.path.exists(path):
         return dict(_EMPTY)
@@ -244,16 +259,18 @@ def has_byok(user_id: str, engine: str = "gemini") -> bool:
 
 def clear_byok(user_id: str, engine: str | None = None) -> None:
     """Clear one engine's key (engine given) or the whole slot (engine=None)."""
-    if engine is None:
-        path = _slot_path(user_id)
-        if os.path.exists(path):
-            os.remove(path)
-        return
-    cur = load_byok(user_id)
-    cur[engine] = ""
-    if any(cur.values()):
-        save_byok(user_id, gemini=cur.get("gemini", ""), openai=cur.get("openai", ""))
-    else:
-        path = _slot_path(user_id)
-        if os.path.exists(path):
-            os.remove(path)
+    with _STORE_LOCK:
+        if engine is None:
+            path = _slot_path(user_id)
+            if os.path.exists(path):
+                os.remove(path)
+            return
+        cur = _load_byok_unlocked(user_id)
+        cur[engine] = ""
+        if any(cur.values()):
+            save_byok(user_id, gemini=cur.get("gemini", ""),
+                      openai=cur.get("openai", ""))
+        else:
+            path = _slot_path(user_id)
+            if os.path.exists(path):
+                os.remove(path)

@@ -215,7 +215,8 @@ def main() -> int:
     args = ap.parse_args()
 
     key = _resolve_prod_key() if args.prod else _resolve_key(args.key, args.engine)
-    clips = [json.loads(l) for l in open(args.manifest, encoding="utf-8") if l.strip()]
+    clips = [json.loads(line) for line in open(args.manifest, encoding="utf-8")
+             if line.strip()]
     print(f"Running {len(clips)} clip(s) through engine={args.engine}...")
     with open(args.out, "w", encoding="utf-8") as out:
         for i, clip in enumerate(clips, 1):
