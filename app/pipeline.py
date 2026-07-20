@@ -1441,13 +1441,6 @@ class ModeController:
                 self.cfg["capture_backend"] = _premium.resolve_capture_backend(self.cfg)
             except Exception:
                 pass
-        # Dev cascade preview mirrors the FREE-TIER experience, which is the
-        # driverless session-duck path — not the premium vbcable spatial dub a
-        # cable on the dev machine would auto-route to. Re-resolved every start,
-        # so unticking the preview restores the premium routing next session.
-        from .config import IS_OFFICIAL_RELEASE  # noqa: PLC0415
-        if not IS_OFFICIAL_RELEASE and self.cfg.get("cascade_preview"):
-            self.cfg["capture_backend"] = "driverless"
         # Correlation id shared by this session's funnel milestones. Generated
         # before the retry loop so session_start/live/error all carry the same id.
         sid = uuid.uuid4().hex[:16]
