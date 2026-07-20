@@ -27,6 +27,14 @@ def test_idle_meter_does_not_claim_that_audio_capture_is_running():
     assert 'ru:"Запустите перевод для проверки сигнала"' in HTML
 
 
+def test_live_meter_separates_raw_system_audio_from_speech_detection():
+    assert '.meter.signal .rods i{background:var(--green)}' in HTML
+    assert "T(hasInputSignal ? 'system_audio_detected' : 'waiting_system_audio')" in HTML
+    assert 'system_audio_detected:"Системный звук есть · речи пока нет"' in HTML
+    assert "$('#mic').disabled = (p.mode==='video')" in HTML
+    assert 'mic_meeting_only:"Микрофон · только для встречи"' in HTML
+
+
 def test_history_list_accessible_name_follows_interface_language():
     assert 'id="history-list" role="listbox"' in HTML
     assert 'data-i18n-aria="history_title"' in HTML

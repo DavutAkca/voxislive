@@ -473,11 +473,11 @@ select:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3p
   background:var(--surface-2);border:1px solid var(--border)}
 .rods{display:flex;align-items:center;gap:3px;height:22px}
 .rods i{width:3px;height:4px;border-radius:2px;background:var(--text-3);transition:background var(--dur)}
-.meter.live .rods i{background:var(--green)}
+.meter.signal .rods i{background:var(--green)}
 .metertext{font-size:11.5px;font-weight:500;color:var(--text-3);letter-spacing:.01em}
-.meter.live .metertext{color:var(--green)}
+.meter.signal .metertext{color:var(--green)}
 .meter .ms{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums}
-.meter.live .ms{color:var(--text-2)}
+.meter.signal .ms{color:var(--text-2)}
 
 .sliderrow{margin-top:var(--s3)}
 .sliderrow .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
@@ -1127,7 +1127,7 @@ body.resizing,body.resizing *{user-select:none!important}
       <div class="cardlabel" data-i18n="audio">Ses</div>
       <div class="fieldlabel" data-i18n="out_device">Çıkış cihazı</div>
       <div class="selectwrap"><select id="out"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div class="fieldlabel" data-i18n="mic">Mikrofon</div>
+      <div class="fieldlabel" id="mic-label" data-i18n="mic">Mikrofon</div>
       <div class="selectwrap"><select id="mic"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
       <div class="meter" id="vad" role="status" aria-live="polite" aria-label="Sinyali kontrol etmek için çeviriyi başlatın" data-i18n-aria="waiting_signal">
         <span class="rods" id="rods" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -5945,6 +5945,37 @@ const I18N_IDLE_METER = {
 Object.keys(I18N_IDLE_METER).forEach(function(l){
   if(!I18N[l]) I18N[l]={}; I18N[l].waiting_signal=I18N_IDLE_METER[l];
 });
+/* A live raw-audio meter and a speech detector answer different questions.
+   Keep both states explicit so music/SFX never renders as green "silence", and
+   Video mode never looks as though it listens to the microphone selector. */
+const I18N_INPUT_METER = {
+  tr:{waiting_system_audio:"Sistem sesi bekleniyor",system_audio_detected:"Sistem sesi var · henüz konuşma yok",waiting_for_speech:"Konuşma bekleniyor",input_audio_detected:"Giriş sesi var · henüz konuşma yok",mic_meeting_only:"Mikrofon · yalnızca Toplantı"},
+  en:{waiting_system_audio:"Waiting for system audio",system_audio_detected:"System audio · no speech yet",waiting_for_speech:"Waiting for speech",input_audio_detected:"Input audio · no speech yet",mic_meeting_only:"Microphone · Meeting only"},
+  cs:{waiting_system_audio:"Čekání na systémový zvuk",system_audio_detected:"Systémový zvuk · zatím bez řeči",waiting_for_speech:"Čekání na řeč",input_audio_detected:"Vstupní zvuk · zatím bez řeči",mic_meeting_only:"Mikrofon · jen pro schůzku"},
+  de:{waiting_system_audio:"Warte auf Systemaudio",system_audio_detected:"Systemaudio · noch keine Sprache",waiting_for_speech:"Warte auf Sprache",input_audio_detected:"Eingangsaudio · noch keine Sprache",mic_meeting_only:"Mikrofon · nur Besprechung"},
+  fr:{waiting_system_audio:"En attente de l’audio système",system_audio_detected:"Audio système · pas encore de parole",waiting_for_speech:"En attente de parole",input_audio_detected:"Audio d’entrée · pas encore de parole",mic_meeting_only:"Microphone · réunion uniquement"},
+  es:{waiting_system_audio:"Esperando audio del sistema",system_audio_detected:"Audio del sistema · aún sin voz",waiting_for_speech:"Esperando voz",input_audio_detected:"Audio de entrada · aún sin voz",mic_meeting_only:"Micrófono · solo Reunión"},
+  pt:{waiting_system_audio:"Aguardando áudio do sistema",system_audio_detected:"Áudio do sistema · ainda sem fala",waiting_for_speech:"Aguardando fala",input_audio_detected:"Áudio de entrada · ainda sem fala",mic_meeting_only:"Microfone · somente Reunião"},
+  ja:{waiting_system_audio:"システム音声を待機中",system_audio_detected:"システム音声あり・まだ発話なし",waiting_for_speech:"発話を待機中",input_audio_detected:"入力音声あり・まだ発話なし",mic_meeting_only:"マイク・会議のみ"},
+  ko:{waiting_system_audio:"시스템 오디오 대기 중",system_audio_detected:"시스템 오디오 있음 · 아직 음성 없음",waiting_for_speech:"음성 대기 중",input_audio_detected:"입력 오디오 있음 · 아직 음성 없음",mic_meeting_only:"마이크 · 회의 전용"},
+  ru:{waiting_system_audio:"Ожидание системного звука",system_audio_detected:"Системный звук есть · речи пока нет",waiting_for_speech:"Ожидание речи",input_audio_detected:"Входной звук есть · речи пока нет",mic_meeting_only:"Микрофон · только для встречи"},
+  zh:{waiting_system_audio:"等待系统音频",system_audio_detected:"已有系统音频 · 尚未检测到语音",waiting_for_speech:"等待语音",input_audio_detected:"已有输入音频 · 尚未检测到语音",mic_meeting_only:"麦克风 · 仅用于会议"},
+  pl:{waiting_system_audio:"Oczekiwanie na dźwięk systemowy",system_audio_detected:"Dźwięk systemowy · jeszcze bez mowy",waiting_for_speech:"Oczekiwanie na mowę",input_audio_detected:"Dźwięk wejściowy · jeszcze bez mowy",mic_meeting_only:"Mikrofon · tylko Spotkanie"},
+  it:{waiting_system_audio:"In attesa dell’audio di sistema",system_audio_detected:"Audio di sistema · ancora nessuna voce",waiting_for_speech:"In attesa della voce",input_audio_detected:"Audio in ingresso · ancora nessuna voce",mic_meeting_only:"Microfono · solo Riunione"},
+  id:{waiting_system_audio:"Menunggu audio sistem",system_audio_detected:"Audio sistem ada · belum ada ucapan",waiting_for_speech:"Menunggu ucapan",input_audio_detected:"Audio masukan ada · belum ada ucapan",mic_meeting_only:"Mikrofon · hanya Rapat"},
+  nl:{waiting_system_audio:"Wachten op systeemaudio",system_audio_detected:"Systeemaudio · nog geen spraak",waiting_for_speech:"Wachten op spraak",input_audio_detected:"Invoeraudio · nog geen spraak",mic_meeting_only:"Microfoon · alleen Vergadering"},
+  vi:{waiting_system_audio:"Đang chờ âm thanh hệ thống",system_audio_detected:"Có âm thanh hệ thống · chưa có lời nói",waiting_for_speech:"Đang chờ giọng nói",input_audio_detected:"Có âm thanh đầu vào · chưa có lời nói",mic_meeting_only:"Micrô · chỉ dùng cho Cuộc họp"},
+  th:{waiting_system_audio:"กำลังรอเสียงระบบ",system_audio_detected:"มีเสียงระบบ · ยังไม่พบคำพูด",waiting_for_speech:"กำลังรอเสียงพูด",input_audio_detected:"มีเสียงอินพุต · ยังไม่พบคำพูด",mic_meeting_only:"ไมโครโฟน · ใช้เฉพาะการประชุม"},
+  ro:{waiting_system_audio:"Se așteaptă sunetul de sistem",system_audio_detected:"Sunet de sistem · încă fără vorbire",waiting_for_speech:"Se așteaptă vorbirea",input_audio_detected:"Sunet de intrare · încă fără vorbire",mic_meeting_only:"Microfon · doar Întâlnire"},
+  hi:{waiting_system_audio:"सिस्टम ऑडियो की प्रतीक्षा",system_audio_detected:"सिस्टम ऑडियो है · अभी वाणी नहीं",waiting_for_speech:"वाणी की प्रतीक्षा",input_audio_detected:"इनपुट ऑडियो है · अभी वाणी नहीं",mic_meeting_only:"माइक्रोफ़ोन · केवल मीटिंग"},
+  hu:{waiting_system_audio:"Várakozás rendszerhangra",system_audio_detected:"Van rendszerhang · még nincs beszéd",waiting_for_speech:"Várakozás beszédre",input_audio_detected:"Van bemeneti hang · még nincs beszéd",mic_meeting_only:"Mikrofon · csak Megbeszélés"},
+  sv:{waiting_system_audio:"Väntar på systemljud",system_audio_detected:"Systemljud · inget tal ännu",waiting_for_speech:"Väntar på tal",input_audio_detected:"Ingångsljud · inget tal ännu",mic_meeting_only:"Mikrofon · endast Möte"},
+  sr:{waiting_system_audio:"Čekanje sistemskog zvuka",system_audio_detected:"Sistemski zvuk · govor još nije detektovan",waiting_for_speech:"Čekanje govora",input_audio_detected:"Ulazni zvuk · govor još nije detektovan",mic_meeting_only:"Mikrofon · samo Sastanak"},
+  "zh-Hant":{waiting_system_audio:"等待系統音訊",system_audio_detected:"已有系統音訊 · 尚未偵測到語音",waiting_for_speech:"等待語音",input_audio_detected:"已有輸入音訊 · 尚未偵測到語音",mic_meeting_only:"麥克風 · 僅用於會議"}
+};
+Object.keys(I18N_INPUT_METER).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_INPUT_METER[l]);
+});
 /* Bilingual-export toggle label (History footer). Fill-if-undefined so a locale
    that never defined it falls back cleanly. */
 const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "cs":"Dvojjazyčné", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา", "ro":"Bilingv", "hi":"द्विभाषी", "hu":"Kétnyelvű", "sv":"Tvåspråkig", "sr":"Dvojezično", "zh-Hant":"雙語" };
@@ -7590,9 +7621,15 @@ async function poll(){
     $('#savechip').classList.toggle('on', !!document.querySelector('#scroll .turn'));
     SESSION_LIVE = liveSession;
     pollFast = liveSession;
-    targetLevel = p.level || 0;
+    targetLevel = Number(p.level) || 0;
     $('#vad').classList.toggle('live', liveSession);
-    const vadLabel = p.vad ? T('vad_speaking') : (p.mode ? T('vad_silent') : T('waiting_signal'));
+    const hasInputSignal = liveSession && targetLevel > 0.02;
+    $('#vad').classList.toggle('signal', hasInputSignal);
+    const vadLabel = p.vad ? T('vad_speaking')
+      : !p.mode ? T('waiting_signal')
+      : p.mode==='video'
+        ? T(hasInputSignal ? 'system_audio_detected' : 'waiting_system_audio')
+        : T(hasInputSignal ? 'input_audio_detected' : 'waiting_for_speech');
     $('#vadtxt').textContent = vadLabel;
     $('#vad').setAttribute('aria-label', vadLabel);
     $('#presence').classList.toggle('on', liveSession);
@@ -7616,6 +7653,10 @@ async function poll(){
     // session so the UI can't imply two-way translation there.
     $('#send').disabled = (p.mode==='video');
     $('#send-item').classList.toggle('lang-dim', p.mode==='video');
+    // Video/Game translates the system mix; its microphone selector is not an
+    // input to this mode. Make that explicit while the session is running.
+    $('#mic').disabled = (p.mode==='video');
+    $('#mic-label').textContent = p.mode==='video' ? T('mic_meeting_only') : T('mic');
     // Virtual-mic caveat is contextual: Meeting hover/focus (CSS) or live.
     $('#meeting-caveat').classList.toggle('show', p.mode==='meeting');
   }catch(e){}

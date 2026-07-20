@@ -433,6 +433,18 @@ class IncomingPipeline:
         Paid engines keep the preset's choice (Saver gated, the rest smart)."""
         return stream_gated(cfg) or self._engine == ENGINE_CASCADE
 
+    def _ingest_input(self, mono: np.ndarray) -> None:
+        """Account for raw captured audio before optional consumers process it.
+
+        The UI meter is capture telemetry, not VAD/translator telemetry. Keep it
+        truthful even when recording or speech processing raises; the capture
+        worker reports that downstream failure through its liveness channel.
+        """
+        self.input_level = _rms_level(self.input_level, mono)
+        if self._recorder is not None:
+            self._recorder.feed_source(mono)
+        self._source.feed(mono)
+
     def _acquire_capture(self, cfg, vad_cfg, send_fn, out_name, on_status):
         from .vad import SpeechGate  # noqa: PLC0415
         # OpenAI ingests 24 kHz; Gemini 16 kHz. Capture + the gate's send path run
@@ -458,10 +470,10 @@ class IncomingPipeline:
                 # would wrongly amplify already-full-level audio.
                 if getattr(self._sducker, "duck_affects_capture", True) and lvl < 0.95:
                     chunk = np.clip(chunk / max(lvl, 0.15), -1.0, 1.0)
-                if self._recorder is not None:
-                    self._recorder.feed_source(chunk)
-                self._source.feed(chunk)
-                self.input_level = _rms_level(self.input_level, chunk)
+                # Observe the raw capture before VAD/translator work. A consumer
+                # fault must not make a healthy WASAPI signal look like −∞ dB;
+                # the capture liveness path reports that downstream fault apart.
+                self._ingest_input(chunk)
                 # Mark speech onset here too (the spatial path does it in vbcable
                 # mode) so the ear-voice latency readout populates in driverless.
                 active = self._source.speech_active
@@ -529,10 +541,7 @@ class IncomingPipeline:
 
             def on_chunk(chunk: np.ndarray):
                 mono = chunk.mean(axis=1) if chunk.ndim > 1 else chunk
-                if self._recorder is not None:
-                    self._recorder.feed_source(mono)
-                self._source.feed(mono)
-                self.input_level = _rms_level(self.input_level, mono)
+                self._ingest_input(mono)
                 active = self._source.speech_active
                 if active and not self._prev_active:
                     self._rtt.mark_first_onset()  # session first-speech (no guard)
