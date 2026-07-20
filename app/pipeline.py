@@ -790,10 +790,13 @@ def _swap_to_gemini(pipe, target_key, name, exc):
     # Qwen queues seconds ahead of the source, so without this the user goes on
     # hearing the engine that just died, reading sentences the captions have long
     # passed, while the replacement waits its turn behind the backlog.
-    try:
-        pipe.player.clear_tts()
-    except Exception:
-        pass
+    for player in (getattr(pipe, "player", None),
+                   getattr(pipe, "monitor_player", None)):
+        if player is not None:
+            try:
+                player.clear_tts()
+            except Exception:
+                pass
 
     from_engine = pipe._engine
     pipe._engine = ENGINE_GEMINI
@@ -831,6 +834,7 @@ class OutgoingPipeline:
         # default-source switch (confirmed empirically: changing the default
         # source drags an already-open capture stream exactly like Faz 3's
         # sink-side finding, so it must never be touched).
+        self.monitor_player = None
         self._mic_handle = sysaudio.make_virtual_mic()
         before_streams = sysaudio.snapshot_own_audio_streams()
         if self._mic_handle is not None:
@@ -854,6 +858,25 @@ class OutgoingPipeline:
                 cable_out, channels=1,
                 tts_enhance=(_premium.enhance_tts if _premium is not None else None),
             )
+        # Optional confidence monitor: the primary Player remains pinned to the
+        # virtual microphone while a second Player renders the identical PCM to
+        # the user's selected headphones. Construct it only after the Linux pin
+        # above, otherwise the monitor could be mistaken for the new virtual-mic
+        # stream. Failure is soft: the call still receives the translation.
+        if cfg.get("monitor_outgoing_translation"):
+            try:
+                monitor_out = find_device(
+                    cfg["devices"].get("headphones_output", ""), "output",
+                    on_status=on_status, fallback_default=True)
+                self.monitor_player = Player(
+                    monitor_out,
+                    tts_enhance=(_premium.enhance_tts
+                                 if _premium is not None else None),
+                )
+                self.monitor_player.tts_gain = float(cfg.get("tts_volume", 1.0))
+            except Exception:
+                self.monitor_player = None
+                _log.exception("outgoing confidence monitor unavailable")
         self._engine, _key, _model = resolve(cfg["target_language_outgoing"])
         self.cfg = cfg
         self._resolve = resolve
@@ -861,10 +884,10 @@ class OutgoingPipeline:
         self._on_status = on_status
         self._failover_done = False
         # Outgoing feeds the virtual mic directly — no SyncStager on this leg.
-        self._tts_sink = self.player.feed_tts_pcm16
+        self._tts_sink = self._feed_translated_audio
         self.translator = make_translator(
             cfg, cfg["target_language_outgoing"], engine=self._engine, key=_key, model=_model,
-            on_audio=self.player.feed_tts_pcm16, on_text=on_text, on_status=on_status,
+            on_audio=self._tts_sink, on_text=on_text, on_status=on_status,
             name=t("name_out"), noise_reduction="near_field",
             on_fatal=self._failover_to_gemini,
             key_provider=getattr(resolve, "gemini_key_provider", None),
@@ -896,6 +919,7 @@ class OutgoingPipeline:
         if self._source is not None:
             self._source.closed = True
         for comp in (self.capture, getattr(self, "player", None),
+                     getattr(self, "monitor_player", None),
                      getattr(self, "translator", None)):
             if comp is not None:
                 try:
@@ -915,12 +939,28 @@ class OutgoingPipeline:
         self.input_level = _rms_level(self.input_level, mono)
         self._source.feed(c)
 
+    def _feed_translated_audio(self, data: bytes) -> None:
+        """Send outgoing translation to the call and optional local monitor."""
+        self.player.feed_tts_pcm16(data)
+        if self.monitor_player is not None:
+            self.monitor_player.feed_tts_pcm16(data)
+
     def start_translator(self):
         self.translator.start()
 
     def start_io(self):
         self.translator.wait_ready(timeout=6)
         self.player.start()
+        if self.monitor_player is not None:
+            try:
+                self.monitor_player.start()
+            except Exception:
+                _log.exception("could not start outgoing confidence monitor")
+                try:
+                    self.monitor_player.stop()
+                except Exception:
+                    pass
+                self.monitor_player = None
         self.capture.start()
 
     def start(self):
@@ -948,8 +988,8 @@ def _stop_all(pipeline):
     if src is not None:
         src.closed = True
     fns = []
-    for attr in ("capture", "_stager", "player", "translator", "_recorder",
-                 "_spk_tracker"):
+    for attr in ("capture", "_stager", "player", "monitor_player", "translator",
+                 "_recorder", "_spk_tracker"):
         comp = getattr(pipeline, attr, None)
         if comp is not None:
             fns.append(comp.stop)
@@ -1410,6 +1450,8 @@ class ModeController:
         for p in self._pipelines:
             if isinstance(p, IncomingPipeline):
                 p.player.tts_gain = volume
+            elif isinstance(p, OutgoingPipeline) and p.monitor_player is not None:
+                p.monitor_player.tts_gain = volume
 
     def set_duck_gain(self, gain: float):
         self.cfg["duck_gain"] = gain

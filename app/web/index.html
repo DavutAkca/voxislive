@@ -1129,6 +1129,9 @@ body.resizing,body.resizing *{user-select:none!important}
       <div class="selectwrap"><select id="out"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
       <div class="fieldlabel" id="mic-label" data-i18n="mic">Mikrofon</div>
       <div class="selectwrap"><select id="mic"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
+      <label class="switch" id="monitor-outgoing-wrap" style="margin-top:12px" title="Yalnızca Toplantı modunda" data-i18n-title="monitor_outgoing_hint">
+        <input type="checkbox" id="monitor-outgoing"><span class="track"></span><span data-i18n="monitor_outgoing">Çevirimi dinle</span>
+      </label>
       <div class="meter" id="vad" role="status" aria-live="polite" aria-label="Sinyali kontrol etmek için çeviriyi başlatın" data-i18n-aria="waiting_signal">
         <span class="rods" id="rods" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <span class="metertext" id="vadtxt" data-i18n="waiting_signal">Sinyali kontrol etmek için çeviriyi başlatın</span>
@@ -5976,6 +5979,36 @@ const I18N_INPUT_METER = {
 Object.keys(I18N_INPUT_METER).forEach(function(l){
   if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_INPUT_METER[l]);
 });
+/* Optional Meeting confidence monitor: outgoing translated speech keeps feeding
+   the virtual microphone and is also mirrored to the selected headphones. */
+const I18N_OUTGOING_MONITOR = {
+  tr:{monitor_outgoing:"Çevirimi dinle",monitor_outgoing_hint:"Yalnızca Toplantı. Çeviri sanal mikrofona ve seçili kulaklığa gönderilir. Geri beslemeyi önlemek için kulaklık kullanın."},
+  en:{monitor_outgoing:"Listen to my translation",monitor_outgoing_hint:"Meeting only. Sends the translation to both the virtual microphone and your selected headphones. Use headphones to prevent feedback."},
+  cs:{monitor_outgoing:"Poslouchat můj překlad",monitor_outgoing_hint:"Jen pro schůzku. Překlad jde do virtuálního mikrofonu i vybraných sluchátek. Použijte sluchátka, aby nevznikla zpětná vazba."},
+  de:{monitor_outgoing:"Meine Übersetzung anhören",monitor_outgoing_hint:"Nur Besprechung. Sendet die Übersetzung an das virtuelle Mikrofon und die gewählten Kopfhörer. Kopfhörer verhindern Rückkopplungen."},
+  fr:{monitor_outgoing:"Écouter ma traduction",monitor_outgoing_hint:"Réunion uniquement. Envoie la traduction au micro virtuel et au casque sélectionné. Utilisez un casque pour éviter le retour audio."},
+  es:{monitor_outgoing:"Escuchar mi traducción",monitor_outgoing_hint:"Solo Reunión. Envía la traducción al micrófono virtual y a los auriculares seleccionados. Usa auriculares para evitar realimentación."},
+  pt:{monitor_outgoing:"Ouvir minha tradução",monitor_outgoing_hint:"Somente Reunião. Envia a tradução ao microfone virtual e aos fones selecionados. Use fones para evitar realimentação."},
+  ja:{monitor_outgoing:"自分の翻訳を聞く",monitor_outgoing_hint:"会議のみ。翻訳を仮想マイクと選択したヘッドホンの両方へ送ります。フィードバック防止のためヘッドホンを使用してください。"},
+  ko:{monitor_outgoing:"내 번역 듣기",monitor_outgoing_hint:"회의 전용. 번역을 가상 마이크와 선택한 헤드폰으로 동시에 보냅니다. 피드백 방지를 위해 헤드폰을 사용하세요."},
+  ru:{monitor_outgoing:"Слушать мой перевод",monitor_outgoing_hint:"Только для встречи. Перевод одновременно отправляется в виртуальный микрофон и выбранные наушники. Используйте наушники, чтобы избежать обратной связи."},
+  zh:{monitor_outgoing:"收听我的翻译",monitor_outgoing_hint:"仅用于会议。翻译会同时发送到虚拟麦克风和所选耳机。请使用耳机以避免回声。"},
+  pl:{monitor_outgoing:"Słuchaj mojego tłumaczenia",monitor_outgoing_hint:"Tylko Spotkanie. Tłumaczenie trafia do wirtualnego mikrofonu i wybranych słuchawek. Użyj słuchawek, aby uniknąć sprzężenia."},
+  it:{monitor_outgoing:"Ascolta la mia traduzione",monitor_outgoing_hint:"Solo Riunione. Invia la traduzione al microfono virtuale e alle cuffie selezionate. Usa le cuffie per evitare il feedback."},
+  id:{monitor_outgoing:"Dengarkan terjemahan saya",monitor_outgoing_hint:"Hanya Rapat. Terjemahan dikirim ke mikrofon virtual dan headphone yang dipilih. Gunakan headphone untuk mencegah umpan balik."},
+  nl:{monitor_outgoing:"Luister naar mijn vertaling",monitor_outgoing_hint:"Alleen Vergadering. Stuurt de vertaling naar de virtuele microfoon en de gekozen hoofdtelefoon. Gebruik een hoofdtelefoon om feedback te voorkomen."},
+  vi:{monitor_outgoing:"Nghe bản dịch của tôi",monitor_outgoing_hint:"Chỉ dùng cho Cuộc họp. Gửi bản dịch đến micrô ảo và tai nghe đã chọn. Hãy dùng tai nghe để tránh phản hồi âm thanh."},
+  th:{monitor_outgoing:"ฟังคำแปลของฉัน",monitor_outgoing_hint:"ใช้เฉพาะการประชุม ส่งคำแปลไปยังไมโครโฟนเสมือนและหูฟังที่เลือกพร้อมกัน โปรดใช้หูฟังเพื่อป้องกันเสียงวนกลับ"},
+  ro:{monitor_outgoing:"Ascultă traducerea mea",monitor_outgoing_hint:"Doar Întâlnire. Trimite traducerea la microfonul virtual și la căștile selectate. Folosește căști pentru a evita feedbackul."},
+  hi:{monitor_outgoing:"मेरा अनुवाद सुनें",monitor_outgoing_hint:"केवल मीटिंग। अनुवाद वर्चुअल माइक्रोफ़ोन और चुने हुए हेडफ़ोन दोनों पर भेजता है। फ़ीडबैक से बचने के लिए हेडफ़ोन उपयोग करें।"},
+  hu:{monitor_outgoing:"Saját fordítás hallgatása",monitor_outgoing_hint:"Csak Megbeszélés. A fordítást a virtuális mikrofonra és a kiválasztott fejhallgatóra is elküldi. A visszacsatolás elkerüléséhez használj fejhallgatót."},
+  sv:{monitor_outgoing:"Lyssna på min översättning",monitor_outgoing_hint:"Endast Möte. Skickar översättningen till både den virtuella mikrofonen och valda hörlurar. Använd hörlurar för att undvika rundgång."},
+  sr:{monitor_outgoing:"Slušaj moj prevod",monitor_outgoing_hint:"Samo Sastanak. Prevod se šalje virtuelnom mikrofonu i izabranim slušalicama. Koristi slušalice da sprečiš povratni zvuk."},
+  "zh-Hant":{monitor_outgoing:"聆聽我的翻譯",monitor_outgoing_hint:"僅用於會議。翻譯會同時傳送到虛擬麥克風和所選耳機。請使用耳機以避免回授。"}
+};
+Object.keys(I18N_OUTGOING_MONITOR).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_OUTGOING_MONITOR[l]);
+});
 /* Bilingual-export toggle label (History footer). Fill-if-undefined so a locale
    that never defined it falls back cleanly. */
 const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "cs":"Dvojjazyčné", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา", "ro":"Bilingv", "hi":"द्विभाषी", "hu":"Kétnyelvű", "sv":"Tvåspråkig", "sr":"Dvojezično", "zh-Hant":"雙語" };
@@ -6309,6 +6342,7 @@ async function init(){
   $('#obs').checked     = !!cfg.obs_subtitle_enabled;
   { const ra = $('#record-audio'); if(ra) ra.checked = !!cfg.record_audio; }
   { const sl = $('#spk-labels'); if(sl) sl.checked = cfg.speaker_labels !== false; }
+  { const mo = $('#monitor-outgoing'); if(mo) mo.checked = !!cfg.monitor_outgoing_translation; }
   // Badge removal is a paid perk: only an official build with a paid subscription
   // may turn it off. Everyone else (free official + OSS) gets a locked, forced-on
   // toggle with a "subscription required" tooltip on hover.
@@ -6394,6 +6428,7 @@ $('#subs').onchange   = e=>api().set_cfg('show_subtitles', e.target.checked);
 $('#obs').onchange    = e=>api().set_cfg('obs_subtitle_enabled', e.target.checked);
 { const ra = $('#record-audio'); if(ra) ra.onchange = e=>api().set_cfg('record_audio', e.target.checked); }
 { const sl = $('#spk-labels'); if(sl) sl.onchange = e=>api().set_cfg('speaker_labels', e.target.checked); }
+{ const mo = $('#monitor-outgoing'); if(mo) mo.onchange = e=>api().set_cfg('monitor_outgoing_translation', e.target.checked); }
 $('#brandbadge').onchange = e=>api().set_cfg('branding_badge_enabled', e.target.checked);
 $('#overlay').onchange= e=>api().toggle_overlay(e.target.checked);
 $('#uilang').onchange = e=>{ applyI18n(e.target.value); try{api().set_cfg('ui_language', e.target.value);}catch(_){} };
@@ -7657,6 +7692,9 @@ async function poll(){
     // input to this mode. Make that explicit while the session is running.
     $('#mic').disabled = (p.mode==='video');
     $('#mic-label').textContent = p.mode==='video' ? T('mic_meeting_only') : T('mic');
+    { const mo=$('#monitor-outgoing'), wrap=$('#monitor-outgoing-wrap');
+      if(mo) mo.disabled=(p.mode==='video');
+      if(wrap) wrap.style.opacity=(p.mode==='video') ? '.45' : ''; }
     // Virtual-mic caveat is contextual: Meeting hover/focus (CSS) or live.
     $('#meeting-caveat').classList.toggle('show', p.mode==='meeting');
   }catch(e){}

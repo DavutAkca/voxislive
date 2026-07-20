@@ -801,7 +801,8 @@ class Bridge:
         elif key == "tts_volume":
             self.controller.set_tts_volume(float(value))
         elif key in ("quality_preset", "target_language_incoming",
-                     "target_language_outgoing", "gemini_voice", "engine"):
+                     "target_language_outgoing", "gemini_voice", "engine",
+                     "monitor_outgoing_translation"):
             if key == "quality_preset":
                 self._mark_custom()
             if key == "target_language_incoming":

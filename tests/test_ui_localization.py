@@ -38,3 +38,10 @@ def test_live_meter_separates_raw_system_audio_from_speech_detection():
 def test_history_list_accessible_name_follows_interface_language():
     assert 'id="history-list" role="listbox"' in HTML
     assert 'data-i18n-aria="history_title"' in HTML
+
+
+def test_outgoing_translation_monitor_is_explicit_and_localized():
+    assert 'id="monitor-outgoing"' in HTML
+    assert 'data-i18n="monitor_outgoing"' in HTML
+    assert 'data-i18n-title="monitor_outgoing_hint"' in HTML
+    assert 'monitor_outgoing:"Слушать мой перевод"' in HTML
