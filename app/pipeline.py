@@ -31,6 +31,7 @@ from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN,
                      gate_params, stream_gated)
 from .engines import make_translator
 from .i18n import t
+from .playback_sync import AdaptivePlaybackStager
 # LiveTranslator (google.genai) and SpeechGate (onnxruntime) are imported lazily
 # inside the pipeline constructors so the heavy runtimes don't load until a
 # session actually starts — shaving ~1-2 s off cold app startup.
@@ -352,14 +353,15 @@ class IncomingPipeline:
         self._on_text = on_text
         self._failover_done = False
 
-        # Qwen's translated speech runs longer than the source and carries no
-        # silence padding, so its stream is paced through a SyncStager (WSOLA
-        # speed-up, oldest-first trim) instead of the direct ring feed the
-        # self-timing Gemini/OpenAI streams use.
+        # Gemini and Qwen can deliver a long translated turn faster than
+        # realtime. Pace their already-generated audio through a client-side
+        # WSOLA stager so an accumulating playback tail catches up to the live
+        # captions without raising the voice's pitch. OpenAI self-times its
+        # output; cascade controls speed while synthesizing locally.
         self._stager = None
-        if self._engine == ENGINE_QWEN:
-            from .qwen_translator import SyncStager  # noqa: PLC0415
-            self._stager = SyncStager(self.player, on_status=on_status)
+        if self._engine in (ENGINE_GEMINI, ENGINE_QWEN):
+            self._stager = AdaptivePlaybackStager(
+                self.player, on_status=on_status, input_rate=24000)
 
         # While the free-voice preview speaks, the paid voice stands down: two
         # voices over one another would demo nothing. Captions keep flowing and
@@ -775,14 +777,14 @@ def _swap_to_gemini(pipe, target_key, name, exc):
         _log.exception("failover: could not build the Gemini translator")
         return False
 
-    # Qwen's stream needs WSOLA pacing; Gemini self-times. Retire the stager
-    # BEFORE the swap so the tts sink (which reads it live) never routes Gemini
-    # audio through it.
+    # Both Qwen and Gemini use the incoming adaptive playback stager. Clear its
+    # provider-side pending audio at the boundary, but keep the worker alive so
+    # the replacement Gemini stream gets the same catch-up behavior. Outgoing
+    # pipelines intentionally have no stager.
     stager = getattr(pipe, "_stager", None)
     if stager is not None:
-        pipe._stager = None
         try:
-            stager.stop()
+            stager.clear()
         except Exception:
             pass
 
@@ -800,6 +802,11 @@ def _swap_to_gemini(pipe, target_key, name, exc):
 
     from_engine = pipe._engine
     pipe._engine = ENGINE_GEMINI
+    if target_key == "target_language_incoming" and stager is None:
+        # An incoming OpenAI -> Gemini failover starts without a stager because
+        # OpenAI paces its own stream. Install one before Gemini can emit audio.
+        pipe._stager = AdaptivePlaybackStager(
+            pipe.player, on_status=pipe._on_status, input_rate=24000)
     pipe.translator = new   # the send path indirects through pipe.translator
     new.start()
     try:
