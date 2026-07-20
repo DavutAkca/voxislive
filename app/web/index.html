@@ -1552,11 +1552,17 @@ body.resizing,body.resizing *{user-select:none!important}
   </div>
   <div class="mbody">
     <div class="scgroup">
-      <div class="sclabel" data-i18n="audio">Ses</div>
+      <div class="sclabel" data-i18n="sound_check_system">Sistem sesi</div>
       <p data-i18n="sound_check_hint">Bir video ya da müzik çal — Voxis'in duyduğu sinyal aşağıdaki çubukta oynamalı.</p>
-      <button class="btn btn-ghost" id="sc-tone" style="width:auto;margin-top:10px"></button>
       <div class="scmeter" aria-hidden="true"><i id="sc-fill"></i></div>
       <div class="scstatus" id="sc-status" role="status" aria-live="polite" data-i18n="sound_check_wait">Sinyal bekleniyor…</div>
+    </div>
+    <div class="scgroup">
+      <div class="sclabel" data-i18n="out_device">Çıkış cihazı</div>
+      <p data-i18n="sound_check_output_hint">Düğmeye bas — seçilen çıkıştan kısa bir ses duymalısın.</p>
+      <button class="btn btn-ghost" id="sc-tone" style="width:auto;margin-top:10px" data-i18n="sound_check_tone">Test sinyalini çal</button>
+      <div class="scmeter" aria-hidden="true"><i id="sc-output-fill"></i></div>
+      <div class="scstatus" id="sc-output-status" role="status" aria-live="polite" data-i18n="sound_check_output_wait">Test bekleniyor…</div>
     </div>
     <div class="scgroup">
       <div class="sclabel" data-i18n="mic">Mikrofon</div>
@@ -5811,6 +5817,37 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
 /* Settings/auth strings (1.0.18) merged into the 16 language blocks above so
    they need no per-block edits; T()/applyI18n resolve them (en fallback if any). */
 Object.keys(I18N_EXTRA).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_EXTRA[l]; for(var k in s) I18N[l][k]=s[k]; });
+/* The output diagnostic is deliberately separate from system-audio capture:
+   the latter excludes Voxis itself, so its meter must not be presented as an
+   output-device meter. Keep these four short labels localized together. */
+const I18N_SOUND_CHECK_OUTPUT = {
+  tr:{sound_check_system:"Sistem sesi",sound_check_output_hint:"Düğmeye bas — seçilen çıkıştan kısa bir ses duymalısın.",sound_check_tone:"Test sinyalini çal",sound_check_output_wait:"Test bekleniyor…",sound_check_sent:"Test sinyali gönderildi ✓"},
+  en:{sound_check_system:"System audio",sound_check_output_hint:"Press the button — you should hear a short tone from the selected output.",sound_check_tone:"Play test signal",sound_check_output_wait:"Waiting for test…",sound_check_sent:"Test signal sent ✓"},
+  cs:{sound_check_system:"Systémový zvuk",sound_check_output_hint:"Stiskněte tlačítko — z vybraného výstupu by měl zaznít krátký tón.",sound_check_tone:"Přehrát testovací signál",sound_check_output_wait:"Čekání na test…",sound_check_sent:"Testovací signál odeslán ✓"},
+  de:{sound_check_system:"Systemaudio",sound_check_output_hint:"Drücke die Taste — über die gewählte Ausgabe sollte ein kurzer Ton zu hören sein.",sound_check_tone:"Testsignal abspielen",sound_check_output_wait:"Warte auf Test…",sound_check_sent:"Testsignal gesendet ✓"},
+  fr:{sound_check_system:"Audio système",sound_check_output_hint:"Appuyez sur le bouton — un bref signal doit être audible sur la sortie sélectionnée.",sound_check_tone:"Lire le signal test",sound_check_output_wait:"En attente du test…",sound_check_sent:"Signal test envoyé ✓"},
+  es:{sound_check_system:"Audio del sistema",sound_check_output_hint:"Pulsa el botón — deberías oír un tono breve por la salida seleccionada.",sound_check_tone:"Reproducir señal de prueba",sound_check_output_wait:"Esperando la prueba…",sound_check_sent:"Señal de prueba enviada ✓"},
+  pt:{sound_check_system:"Áudio do sistema",sound_check_output_hint:"Pressione o botão — você deverá ouvir um som curto na saída selecionada.",sound_check_tone:"Reproduzir sinal de teste",sound_check_output_wait:"Aguardando teste…",sound_check_sent:"Sinal de teste enviado ✓"},
+  ja:{sound_check_system:"システム音声",sound_check_output_hint:"ボタンを押すと、選択した出力から短い音が聞こえるはずです。",sound_check_tone:"テスト音を再生",sound_check_output_wait:"テスト待機中…",sound_check_sent:"テスト音を送信しました ✓"},
+  ko:{sound_check_system:"시스템 오디오",sound_check_output_hint:"버튼을 누르면 선택한 출력에서 짧은 소리가 들려야 합니다.",sound_check_tone:"테스트 신호 재생",sound_check_output_wait:"테스트 대기 중…",sound_check_sent:"테스트 신호 전송됨 ✓"},
+  ru:{sound_check_system:"Системный звук",sound_check_output_hint:"Нажмите кнопку — в выбранном выходе должен прозвучать короткий сигнал.",sound_check_tone:"Воспроизвести тестовый сигнал",sound_check_output_wait:"Ожидание проверки…",sound_check_sent:"Тестовый сигнал отправлен ✓"},
+  zh:{sound_check_system:"系统音频",sound_check_output_hint:"按下按钮后，应从所选输出听到一段短音。",sound_check_tone:"播放测试信号",sound_check_output_wait:"等待测试…",sound_check_sent:"测试信号已发送 ✓"},
+  pl:{sound_check_system:"Dźwięk systemowy",sound_check_output_hint:"Naciśnij przycisk — w wybranym wyjściu powinien zabrzmieć krótki dźwięk.",sound_check_tone:"Odtwórz sygnał testowy",sound_check_output_wait:"Oczekiwanie na test…",sound_check_sent:"Sygnał testowy wysłany ✓"},
+  it:{sound_check_system:"Audio di sistema",sound_check_output_hint:"Premi il pulsante — dovresti sentire un breve tono dall'uscita selezionata.",sound_check_tone:"Riproduci segnale di prova",sound_check_output_wait:"In attesa del test…",sound_check_sent:"Segnale di prova inviato ✓"},
+  id:{sound_check_system:"Audio sistem",sound_check_output_hint:"Tekan tombol — Anda akan mendengar nada singkat dari keluaran yang dipilih.",sound_check_tone:"Putar sinyal uji",sound_check_output_wait:"Menunggu pengujian…",sound_check_sent:"Sinyal uji dikirim ✓"},
+  nl:{sound_check_system:"Systeemaudio",sound_check_output_hint:"Druk op de knop — via de gekozen uitvoer hoort u een korte toon.",sound_check_tone:"Testsignaal afspelen",sound_check_output_wait:"Wachten op test…",sound_check_sent:"Testsignaal verzonden ✓"},
+  vi:{sound_check_system:"Âm thanh hệ thống",sound_check_output_hint:"Nhấn nút — bạn sẽ nghe một âm ngắn từ đầu ra đã chọn.",sound_check_tone:"Phát tín hiệu thử",sound_check_output_wait:"Đang chờ kiểm tra…",sound_check_sent:"Đã gửi tín hiệu thử ✓"},
+  th:{sound_check_system:"เสียงระบบ",sound_check_output_hint:"กดปุ่ม — คุณควรได้ยินเสียงสั้น ๆ จากเอาต์พุตที่เลือก",sound_check_tone:"เล่นสัญญาณทดสอบ",sound_check_output_wait:"กำลังรอการทดสอบ…",sound_check_sent:"ส่งสัญญาณทดสอบแล้ว ✓"},
+  ro:{sound_check_system:"Audio de sistem",sound_check_output_hint:"Apasă butonul — ar trebui să auzi un ton scurt la ieșirea selectată.",sound_check_tone:"Redă semnalul de test",sound_check_output_wait:"Se așteaptă testul…",sound_check_sent:"Semnal de test trimis ✓"},
+  hi:{sound_check_system:"सिस्टम ऑडियो",sound_check_output_hint:"बटन दबाएँ — चुने गए आउटपुट से एक छोटी ध्वनि सुनाई देनी चाहिए।",sound_check_tone:"टेस्ट सिग्नल चलाएँ",sound_check_output_wait:"टेस्ट की प्रतीक्षा…",sound_check_sent:"टेस्ट सिग्नल भेजा गया ✓"},
+  hu:{sound_check_system:"Rendszerhang",sound_check_output_hint:"Nyomd meg a gombot — a kiválasztott kimeneten rövid hangnak kell megszólalnia.",sound_check_tone:"Tesztjel lejátszása",sound_check_output_wait:"Várakozás a tesztre…",sound_check_sent:"Tesztjel elküldve ✓"},
+  sv:{sound_check_system:"Systemljud",sound_check_output_hint:"Tryck på knappen — en kort ton ska höras från den valda utgången.",sound_check_tone:"Spela testsignal",sound_check_output_wait:"Väntar på test…",sound_check_sent:"Testsignal skickad ✓"},
+  sr:{sound_check_system:"Sistemski zvuk",sound_check_output_hint:"Pritisni dugme — na izabranom izlazu treba da se čuje kratak ton.",sound_check_tone:"Pusti test signal",sound_check_output_wait:"Čekanje testa…",sound_check_sent:"Test signal je poslat ✓"},
+  "zh-Hant":{sound_check_system:"系統音訊",sound_check_output_hint:"按下按鈕後，應從所選輸出聽到一段短音。",sound_check_tone:"播放測試訊號",sound_check_output_wait:"等待測試…",sound_check_sent:"測試訊號已傳送 ✓"}
+};
+Object.keys(I18N_SOUND_CHECK_OUTPUT).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_SOUND_CHECK_OUTPUT[l]);
+});
 /* Bilingual-export toggle label (History footer). Fill-if-undefined so a locale
    that never defined it falls back cleanly. */
 const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "cs":"Dvojjazyčné", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา", "ro":"Bilingv", "hi":"द्विभाषी", "hu":"Kétnyelvű", "sv":"Tvåspråkig", "sr":"Dvojezično", "zh-Hant":"雙語" };
@@ -6131,7 +6168,6 @@ async function init(){
   $('#ver').textContent = STATE.version ? `Voxis v${STATE.version} · voxislive.com` : 'Voxis · voxislive.com';
   applyTheme(cfg.ui_theme || 'dark');
   applyI18n(cfg.ui_language || LANG);
-  $('#sc-tone').textContent = T('sound_check') + ': ' + T('out_device');
   opt($('#out'),  STATE.outputs||[], cfg.devices.headphones_output_label);
   opt($('#mic'),  STATE.mics||[],    cfg.devices.microphone_label);
   opt($('#hear'), (STATE.langs||[]).map(langPair), cfg.target_language_incoming);
@@ -6422,14 +6458,17 @@ function closeConsent(){ $('#consent-modal').classList.remove('open'); if(!$('#d
 let SESSION_LIVE=false, limitShown=false, warn80Shown=false, sessionT0=0;
 
 /* ---------- sound check ("do I hear this device?") ---------- */
-let scOpen=false, scHeard=false, scMicHeard=false;
+let scOpen=false, scHeard=false, scMicHeard=false, scOutputTimer=null;
 function openSoundcheck(){
   api().soundcheck_start().then(r=>{
     scOpen=true; scHeard=false; scMicHeard=false;
     $('#sc-fill').style.width='0%';
+    $('#sc-output-fill').style.width='0%';
     $('#sc-mic-fill').style.width='0%';
-    const st=$('#sc-status'), mst=$('#sc-mic-status');
-    st.classList.remove('ok','err'); mst.classList.remove('ok','err');
+    $('#sc-tone').disabled=false;
+    const st=$('#sc-status'), ost=$('#sc-output-status'), mst=$('#sc-mic-status');
+    st.classList.remove('ok','err'); ost.classList.remove('ok','err'); mst.classList.remove('ok','err');
+    ost.textContent=T('sound_check_output_wait');
     if(r && r.system_ok===false){ st.textContent=T('sound_check_fail'); st.classList.add('err'); }
     else { st.textContent=T('sound_check_wait'); }
     if(r && r.mic_ok===false){ mst.textContent=T('sound_check_fail'); mst.classList.add('err'); }
@@ -6439,18 +6478,24 @@ function openSoundcheck(){
   });
 }
 $('#sc-tone').onclick = async()=>{
-  const b=$('#sc-tone'); b.disabled=true;
+  const b=$('#sc-tone'), fill=$('#sc-output-fill'), st=$('#sc-output-status');
+  b.disabled=true; clearTimeout(scOutputTimer);
+  st.classList.remove('ok','err'); st.textContent=T('sound_check_output_wait');
+  fill.style.width='0%'; requestAnimationFrame(()=>{ fill.style.width='82%'; });
   try{
     const r=await api().soundcheck_play_tone();
     if(r && r.ok===false){
-      const st=$('#sc-status'); st.textContent=T('sound_check_fail'); st.classList.add('err');
-    }
+      fill.style.width='0%'; st.textContent=T('sound_check_fail'); st.classList.add('err');
+    }else{ st.textContent=T('sound_check_sent'); st.classList.add('ok'); }
   }catch(_){
-    const st=$('#sc-status'); st.textContent=T('sound_check_fail'); st.classList.add('err');
-  }finally{ setTimeout(()=>{ b.disabled=false; }, 350); }
+    fill.style.width='0%'; st.textContent=T('sound_check_fail'); st.classList.add('err');
+  }finally{
+    scOutputTimer=setTimeout(()=>{ fill.style.width='0%'; b.disabled=false; }, 550);
+  }
 };
 function closeSoundcheck(){
   scOpen=false;
+  clearTimeout(scOutputTimer); $('#sc-output-fill').style.width='0%'; $('#sc-tone').disabled=false;
   try{ api().soundcheck_stop(); }catch(_){}
   $('#soundcheck-modal').classList.remove('open');
   if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open');
