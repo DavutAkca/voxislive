@@ -1247,14 +1247,6 @@ body.resizing,body.resizing *{user-select:none!important}
           <div class="fieldlabel"><span data-i18n="gemini_key">Gemini API anahtarı</span> <span id="byok-badge" data-i18n="byok_active" style="display:none;font-size:10px;font-weight:600;color:var(--green);background:var(--green-soft);padding:2px 7px;border-radius:99px;margin-left:6px">BYOK aktif</span></div>
           <input type="password" id="gemkey" placeholder="AIza…" data-i18n-ph="ph_gemkey">
           <div class="fieldhint"><span data-i18n="byok_hint">Bu derlemede çalıştırmak için kendi Gemini API anahtarınız gereklidir. </span><a href="#" id="showgem" data-i18n="show">Göster</a> · <a href="#" id="clearbtn" data-i18n="clear" style="color:var(--red)">Temizle</a></div>
-          <!-- DEV-ONLY free-tier preview toggle: it lives inside #byok-section so
-               the official build hides it with the rest. OSS users still see it,
-               therefore its label and explanation must follow the UI language. -->
-          <div class="fieldlabel" style="margin-top:12px" data-i18n="cascade_preview_label">Ücretsiz mod testi</div>
-          <label class="fieldhint" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="cascadeprev" style="width:auto;margin:0">
-            <span data-i18n="cascade_preview_hint">Kaskad motorunu kullan: bulut metin çevirisi ve yerel sentetik ses. Sonraki oturumda etkinleşir.</span>
-          </label>
         </div>
         <div class="dsection">
           <h3 data-i18n="general">Genel</h3>
@@ -5889,36 +5881,6 @@ const I18N_DIRECTION_LABELS = {
 };
 Object.keys(I18N_DIRECTION_LABELS).forEach(function(l){
   if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_DIRECTION_LABELS[l]);
-});
-/* The developer-only cascade switch is hidden in official builds, but is part
-   of the visible Settings UI in OSS builds and must not stay hardcoded Turkish. */
-const I18N_CASCADE_PREVIEW = {
-  tr:{cascade_preview_label:"Ücretsiz mod testi",cascade_preview_hint:"Kaskad motorunu kullan: bulut metin çevirisi ve yerel sentetik ses. Sonraki oturumda etkinleşir."},
-  en:{cascade_preview_label:"Free-mode preview",cascade_preview_hint:"Use the cascade engine: cloud text translation and a local synthetic voice. Takes effect in the next session."},
-  cs:{cascade_preview_label:"Náhled bezplatného režimu",cascade_preview_hint:"Použít kaskádový modul: cloudový překlad textu a místní syntetický hlas. Projeví se od příští relace."},
-  de:{cascade_preview_label:"Vorschau des kostenlosen Modus",cascade_preview_hint:"Kaskaden-Engine verwenden: Cloud-Textübersetzung und lokale synthetische Stimme. Wird ab der nächsten Sitzung aktiv."},
-  fr:{cascade_preview_label:"Aperçu du mode gratuit",cascade_preview_hint:"Utiliser le moteur en cascade : traduction de texte dans le cloud et voix de synthèse locale. Actif à la prochaine session."},
-  es:{cascade_preview_label:"Vista previa del modo gratuito",cascade_preview_hint:"Usar el motor en cascada: traducción de texto en la nube y voz sintética local. Se aplicará en la próxima sesión."},
-  pt:{cascade_preview_label:"Prévia do modo gratuito",cascade_preview_hint:"Usar o mecanismo em cascata: tradução de texto na nuvem e voz sintética local. Entra em vigor na próxima sessão."},
-  ja:{cascade_preview_label:"無料モードのプレビュー",cascade_preview_hint:"カスケードエンジンを使用：クラウドでのテキスト翻訳とローカルの合成音声。次のセッションから有効になります。"},
-  ko:{cascade_preview_label:"무료 모드 미리보기",cascade_preview_hint:"캐스케이드 엔진 사용: 클라우드 텍스트 번역과 로컬 합성 음성. 다음 세션부터 적용됩니다."},
-  ru:{cascade_preview_label:"Тест бесплатного режима",cascade_preview_hint:"Использовать каскадный режим: облачный перевод текста и локальный синтезированный голос. Применится со следующего сеанса."},
-  zh:{cascade_preview_label:"免费模式预览",cascade_preview_hint:"使用级联引擎：云端文本翻译和本地合成语音。将在下次会话中生效。"},
-  pl:{cascade_preview_label:"Podgląd trybu bezpłatnego",cascade_preview_hint:"Użyj silnika kaskadowego: tłumaczenie tekstu w chmurze i lokalny głos syntetyczny. Zacznie działać w następnej sesji."},
-  it:{cascade_preview_label:"Anteprima modalità gratuita",cascade_preview_hint:"Usa il motore a cascata: traduzione del testo nel cloud e voce sintetica locale. Sarà attivo dalla prossima sessione."},
-  id:{cascade_preview_label:"Pratinjau mode gratis",cascade_preview_hint:"Gunakan mesin kaskade: terjemahan teks cloud dan suara sintetis lokal. Berlaku mulai sesi berikutnya."},
-  nl:{cascade_preview_label:"Voorbeeld gratis modus",cascade_preview_hint:"Gebruik de cascade-engine: tekstvertaling in de cloud en een lokale synthetische stem. Wordt actief in de volgende sessie."},
-  vi:{cascade_preview_label:"Xem trước chế độ miễn phí",cascade_preview_hint:"Dùng công cụ nối tầng: dịch văn bản trên đám mây và giọng nói tổng hợp cục bộ. Có hiệu lực từ phiên tiếp theo."},
-  th:{cascade_preview_label:"ทดลองโหมดฟรี",cascade_preview_hint:"ใช้เอนจินแบบลำดับขั้น: แปลข้อความบนคลาวด์และเสียงสังเคราะห์ในเครื่อง จะมีผลในเซสชันถัดไป"},
-  ro:{cascade_preview_label:"Previzualizare mod gratuit",cascade_preview_hint:"Folosește motorul în cascadă: traducere de text în cloud și voce sintetică locală. Se aplică din sesiunea următoare."},
-  hi:{cascade_preview_label:"मुफ़्त मोड का पूर्वावलोकन",cascade_preview_hint:"कैस्केड इंजन का उपयोग करें: क्लाउड में टेक्स्ट अनुवाद और स्थानीय सिंथेटिक आवाज़। अगला सत्र शुरू होने पर लागू होगा।"},
-  hu:{cascade_preview_label:"Ingyenes mód előnézete",cascade_preview_hint:"A kaszkádmotor használata: felhőalapú szövegfordítás és helyi szintetikus hang. A következő munkamenetben lép életbe."},
-  sv:{cascade_preview_label:"Förhandsvisning av gratisläget",cascade_preview_hint:"Använd kaskadmotorn: textöversättning i molnet och lokal syntetisk röst. Börjar gälla i nästa session."},
-  sr:{cascade_preview_label:"Pregled besplatnog režima",cascade_preview_hint:"Koristi kaskadni motor: prevod teksta u oblaku i lokalni sintetički glas. Aktivira se u sledećoj sesiji."},
-  "zh-Hant":{cascade_preview_label:"免費模式預覽",cascade_preview_hint:"使用級聯引擎：雲端文字翻譯和本機合成語音。將於下次工作階段生效。"}
-};
-Object.keys(I18N_CASCADE_PREVIEW).forEach(function(l){
-  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_CASCADE_PREVIEW[l]);
 });
 /* The main meter reads active translation pipelines only. At idle, say that a
    session must be started instead of implying that capture is already running. */
