@@ -92,14 +92,14 @@ Voxis wird in zwei Varianten ausgeliefert, die zur Build-Zeit über `IS_OFFICIAL
 | | Offizielle SaaS-`.exe` (`True`) | Open Source / Entwickler (`False`) |
 | --- | --- | --- |
 | API-Schlüssel | Pro Sitzung vom Server abgerufen; keine Schlüssel-UI | Eigener Schlüssel (BYOK), in den Einstellungen eingegeben |
-| Übersetzungs-Engine | Google Gemini Live + OpenAI, je nach Zielsprache geroutet | Nur Google Gemini Live |
+| Übersetzungs-Engine | Serverseitig geroutetes Gemini Live / Qwen (OpenAI-Adapter unterstützt) | Nur Google Gemini Live |
 | Authentifizierung | Anmeldung (PocketBase) | Keine — lokal, offline |
 | Telemetrie / Abrechnung | Nutzungs-Heartbeat an den Server | Vollständig deaktiviert |
 | Übersetzungseinstellungen | Auf die besten Simultan-Standardwerte festgelegt | Alle Einstellungen zum Feinabstimmen verfügbar |
 
 `start.bat` setzt `VOXIS_OFFICIAL_RELEASE` nicht, sodass ein Start aus dem Quellcode standardmäßig den BYOK-/Entwickler-Pfad verwendet (dein eigener Schlüssel — kein Server, keine Authentifizierung). Die offizielle SaaS-`.exe` wird separat von `release.py` erzeugt, dessen Build-Schritt den `OFFICIAL`-Marker in das eingefrorene Bundle schreibt.
 
-**Netzwerk-Oberfläche des Open-Source-Builds.** Ein eingefrorener (frozen) Entwickler-Build trägt keinen `OFFICIAL`-Marker, fällt daher auf BYOK zurück und macht **von sich aus keine ausgehenden Aufrufe**: Registrierung, Anmeldung, Verifizierung, Kontingent, das serverseitige Abrufen des Sitzungsschlüssels, der Nutzungs-Heartbeat und sämtliche Telemetrie sind deaktiviert oder fest auf lokale Mock-Antworten verdrahtet. Das einzige Netzwerk, das er berührt, ist der Gemini-Live-WebSocket, den dein eigener Schlüssel öffnet. Es gibt keinen In-App-Auto-Updater (er wurde entfernt; die offizielle App aktualisiert sich über den Microsoft Store). Das öffentliche Repository wird durch ein Release-Hygiene-Gate (`scripts/check_release_hygiene.py`, in CI und einen Pre-Push-Hook eingebunden) frei von Closed-Core-Pfaden und Live-Secrets gehalten.
+**Netzwerk-Oberfläche des Open-Source-Builds.** Ein eingefrorener (frozen) Entwickler-Build trägt keinen `OFFICIAL`-Marker, fällt daher auf BYOK zurück und kontaktiert keine Voxis-Dienste: Registrierung, Anmeldung, Verifizierung, Kontingent, serverseitiger Sitzungsschlüssel, Nutzungs-Heartbeat und Telemetrie sind deaktiviert oder fest auf lokale Mock-Antworten verdrahtet. Die Übersetzung nutzt den Gemini-Live-WebSocket, den dein eigener Schlüssel öffnet. Optionale lokale Funktionen können bei der ersten Nutzung außerdem hash-verifizierte Modelldateien aus den GitHub-Releases von `k2-fsa/sherpa-onnx` laden: das Sprecherkennungsmodell (~27 MB) und eine lokale TTS-Stimme (~60 MB pro Sprache). Diese Downloads enthalten weder Sitzungsaudio noch Transkriptdaten und entfallen, wenn die Dateien bereits gebündelt oder zwischengespeichert sind. Es gibt keinen In-App-Auto-Updater (die offizielle App aktualisiert sich über den Microsoft Store). Das öffentliche Repository wird durch ein Release-Hygiene-Gate (`scripts/check_release_hygiene.py`, in CI und einen Pre-Push-Hook eingebunden) frei von Closed-Core-Pfaden und Live-Secrets gehalten.
 
 ---
 

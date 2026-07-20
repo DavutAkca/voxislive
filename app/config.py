@@ -133,6 +133,11 @@ DEFAULTS = {
     # Off by default because hearing one's delayed translated voice is distracting
     # and speakers (rather than headphones) could leak it back into the mic.
     "monitor_outgoing_translation": False,
+    # Advanced opt-in. Multiple live sessions can contend for loopback capture,
+    # virtual endpoints and system routing, so single-instance remains the safe
+    # default. Startup reads this before creating the window; changes therefore
+    # take effect on the next launch.
+    "allow_multiple_instances": False,
     "overlay_enabled": False,
     "obs_subtitle_enabled": False,
     "branding_badge_enabled": True,

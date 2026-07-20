@@ -324,8 +324,8 @@ def check_speech(voice_dir: str, lang: str, text: str) -> dict:
     proc = subprocess.run(
         [sys.executable, os.path.abspath(__file__), "--probe", voice_dir, text],
         capture_output=True, text=True, encoding="utf-8", timeout=300)
-    line = next((l for l in proc.stdout.splitlines()
-                 if l.startswith("VOXIS_PROBE ")), None)
+    line = next((item for item in proc.stdout.splitlines()
+                 if item.startswith("VOXIS_PROBE ")), None)
     if line is None:
         tail = (proc.stderr or proc.stdout).strip().splitlines()[-1:] or [""]
         return {"ok": False, "rms": 0.0, "dur": 0.0, "rtf": float("inf"),
@@ -467,7 +467,7 @@ def main() -> int:
     else:
         table, pinned = CANDIDATES, {}
 
-    langs = ([l.strip() for l in args.langs.split(",")] if args.langs
+    langs = ([lang.strip() for lang in args.langs.split(",")] if args.langs
              else list(table))
     work = tempfile.mkdtemp(prefix="voxis-tts-work-")
     accepted, rejected = {}, []

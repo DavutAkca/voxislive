@@ -21,12 +21,17 @@ the session degrades to captions-only: translation continues, no local audio.
 """
 from __future__ import annotations
 
+import logging
 import queue
 import re
 import threading
 import time
 
 import numpy as np
+
+from .i18n import t
+
+_log = logging.getLogger("voxis")
 
 OUT_RATE = 24000  # emitted PCM16 rate — matches the Gemini engine exactly
 
@@ -134,6 +139,7 @@ class CascadeTranslator(threading.Thread):
         self._play_deadline = 0.0      # when already-emitted audio finishes
         self._asm = SentenceAssembler(self._enqueue_sentence)
         self._tts = None
+        self._tts_error_warned = False
         self._tts_factory = tts_factory  # tests inject a fake; None = LocalTTS
         self._synth_thread = threading.Thread(
             target=self._synth_loop, daemon=True, name=f"{name}-tts")
@@ -198,7 +204,8 @@ class CascadeTranslator(threading.Thread):
         except Exception as e:
             # Captions-only degrade: translation must never die for a voice.
             self._tts = None
-            self.on_status(f"cascade: local voice unavailable ({e}) — captions only")
+            _log.warning("cascade local voice unavailable; captions only: %s", e)
+            self.on_status(t("st_no_voice_warning"))
         self._inner.start()
         if self._tts is not None:
             self._synth_thread.start()
@@ -266,7 +273,10 @@ class CascadeTranslator(threading.Thread):
             try:
                 samples, rate = self._tts.synth(text, speed=speed)
             except Exception as e:
-                self.on_status(f"cascade: tts error ({e})")
+                _log.warning("cascade local TTS failed: %s", e)
+                if not self._tts_error_warned:
+                    self._tts_error_warned = True
+                    self.on_status(t("st_no_voice_warning"))
                 continue
             pcm = _resample_to_out(samples, rate)
             dur = len(pcm) / (OUT_RATE * 2.0)

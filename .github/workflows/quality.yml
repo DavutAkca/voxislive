@@ -1,0 +1,88 @@
+name: Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install locked runtime and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --require-hashes -r requirements.lock
+          python -m pip install pytest==9.1.1 ruff==0.15.22
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Check localization parity
+        run: python scripts/check_i18n.py
+
+      - name: Run static analysis
+        run: ruff check app tests scripts
+
+      - name: Compile Python sources
+        run: python -m compileall -q app main.py scripts
+
+  build:
+    name: Windows frozen-build smoke test
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Install locked runtime and build tool
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --require-hashes -r requirements.lock
+          python -m pip install pyinstaller==6.21.0
+
+      - name: Seed build configuration
+        shell: pwsh
+        run: Copy-Item config.example.json config.json
+
+      - name: Build frozen application
+        run: python app/build_official.py
+
+      - name: Verify frozen artifact
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/VoxisLive/VoxisLive.exe)) {
+            throw "VoxisLive.exe was not produced"
+          }
+          if (-not (Test-Path dist/VoxisLive/_internal/BUILD_VERSION)) {
+            throw "BUILD_VERSION stamp is missing"
+          }

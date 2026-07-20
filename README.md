@@ -92,14 +92,14 @@ Voxis ships in two flavors, selected at build time by `IS_OFFICIAL_RELEASE` (env
 | | Official SaaS `.exe` (`True`) | Open-source / developer (`False`) |
 | --- | --- | --- |
 | API key | Fetched from the server per session; no key UI | Your own key (BYOK), entered in Settings |
-| Translation engine | Google Gemini Live + OpenAI, routed per target language | Google Gemini Live only |
+| Translation engine | Server-routed Gemini Live / Qwen (OpenAI adapter supported) | Google Gemini Live only |
 | Auth | Sign in (PocketBase) | None — local, offline |
 | Telemetry / billing | Usage heartbeat to the server | Fully disabled |
 | Translation settings | Locked to the best simultaneous defaults | All settings exposed for tuning |
 
 `start.bat` leaves `VOXIS_OFFICIAL_RELEASE` unset, so a launch from source defaults to the BYOK / developer path (your own key — no server, no auth). The official SaaS `.exe` is produced separately by `release.py`, whose build step writes the `OFFICIAL` marker into the frozen bundle.
 
-**Network surface of the open-source build.** A frozen developer build carries no `OFFICIAL` marker, so it resolves to BYOK and makes **no outbound calls of its own**: registration, login, verification, quota, server session-key fetch, usage heartbeat, and all telemetry are bypassed or hard-gated to local mock responses. The only network it touches is the Gemini Live WebSocket your own key opens. There is no in-app auto-updater (it was removed; the official app updates through the Microsoft Store). The public repo is kept free of any closed-core path or live secret by a release-hygiene gate (`scripts/check_release_hygiene.py`, wired into CI and a pre-push hook).
+**Network surface of the open-source build.** A frozen developer build carries no `OFFICIAL` marker, so it resolves to BYOK and never contacts Voxis services: registration, login, verification, quota, server session-key fetch, usage heartbeat, and telemetry are bypassed or hard-gated to local mock responses. Translation uses the Gemini Live WebSocket opened by your own key. On first use, optional local features can also download hash-verified model files from the `k2-fsa/sherpa-onnx` GitHub releases: the speaker-label model (~27 MB) and a local TTS voice (~60 MB per language). Those downloads contain no session audio or transcript data and are skipped when the assets are already bundled or cached. There is no in-app auto-updater (the official app updates through the Microsoft Store). The public repo is kept free of any closed-core path or live secret by a release-hygiene gate (`scripts/check_release_hygiene.py`, wired into CI and a pre-push hook).
 
 ---
 

@@ -8,6 +8,7 @@ and packaging into a distributable installer or ZIP bundle.
 
 import os
 import sys
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -225,7 +226,8 @@ def main():
         else:
             # Check if PyInstaller is available as a module
             try:
-                import PyInstaller
+                if importlib.util.find_spec("PyInstaller") is None:
+                    raise ImportError
                 pyinstaller_cmd = [sys.executable, "-m", "PyInstaller"]
             except ImportError:
                 pass

@@ -5,7 +5,6 @@ The CAM++ embedding model itself is exercised by the scripted simulation
 unit tests pin down the pure-numpy featurizer and the clustering/hysteresis
 state machine with injected embeddings, so they run without the 27 MB model.
 """
-import threading
 import time
 
 import numpy as np

@@ -168,3 +168,25 @@ def test_drain_lets_the_ring_empty_then_returns():
     took = time.time() - t0
     assert translator.stopped            # no new audio while draining
     assert 0.2 <= took < 2.0             # waited for the ring, not the timeout
+
+
+def test_drain_waits_for_audio_still_pending_in_the_stager():
+    translator = types.SimpleNamespace(stopped=[])
+    translator.stop = lambda: translator.stopped.append(True)
+    player = types.SimpleNamespace(tts_active=False)
+    stager = types.SimpleNamespace(backlog_s=2.0)
+    inc = types.SimpleNamespace(
+        translator=translator, player=player, _stager=stager)
+    b = Bridge.__new__(Bridge)
+    b.controller = types.SimpleNamespace(incoming=lambda: inc)
+
+    def drain_pending():
+        time.sleep(0.3)
+        stager.backlog_s = 0.0
+
+    threading.Thread(target=drain_pending, daemon=True).start()
+    t0 = time.time()
+    Bridge._drain_tts(b, timeout=5.0)
+    took = time.time() - t0
+    assert translator.stopped
+    assert 0.2 <= took < 2.0

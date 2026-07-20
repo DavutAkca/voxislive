@@ -223,7 +223,8 @@ def test_ephemeral_without_provider_fails_closed_after_first_connect(fake_genai)
 
 
 def test_make_translator_threads_provider_into_gemini():
-    provider = lambda: "auth_tokens/x"
+    def provider():
+        return "auth_tokens/x"
     tr = make_translator(
         {}, "en", engine="gemini", key="auth_tokens/first",
         on_audio=lambda *a: None, on_text=lambda *a: None,

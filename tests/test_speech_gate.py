@@ -70,7 +70,8 @@ def test_stays_open_through_modulated_speech(gate):
     alive through natural speech modulation."""
     g, fake = gate
     fake.probs = [0.9, 0.9, 0.4, 0.4, 0.4]  # 0.4 is < threshold(0.5) but > neg(0.35)
-    g.process(_frame()); g.process(_frame())  # opens
+    g.process(_frame())
+    g.process(_frame())  # opens
     for _ in range(3):
         active, send = g.process(_frame())
         assert active and len(send) == 1
@@ -79,7 +80,8 @@ def test_stays_open_through_modulated_speech(gate):
 def test_stays_open_through_short_pause(gate):
     g, fake = gate
     fake.probs = [0.9, 0.9, 0.0, 0.9]
-    g.process(_frame()); g.process(_frame())
+    g.process(_frame())
+    g.process(_frame())
     active, send = g.process(_frame())  # 1 silent frame < hangover(2)
     assert active and len(send) == 1
     active, _ = g.process(_frame())
@@ -89,7 +91,8 @@ def test_stays_open_through_short_pause(gate):
 def test_closes_after_hangover(gate):
     g, fake = gate
     fake.probs = [0.9, 0.9, 0.0, 0.0, 0.0]
-    g.process(_frame()); g.process(_frame())
+    g.process(_frame())
+    g.process(_frame())
     g.process(_frame())                # silence 1/2 — still open
     active, _ = g.process(_frame())    # silence 2/2 — closes
     assert not active
