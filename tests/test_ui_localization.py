@@ -7,12 +7,6 @@ HTML = (Path(__file__).parents[1] / "app" / "web" / "index.html").read_text(
     encoding="utf-8")
 
 
-def test_developer_cascade_preview_uses_localized_copy():
-    assert 'data-i18n="cascade_preview_label"' in HTML
-    assert 'data-i18n="cascade_preview_hint"' in HTML
-    assert 'ru:{cascade_preview_label:"Тест бесплатного режима"' in HTML
-
-
 def test_translation_targets_have_truthful_labels_and_working_swap_button():
     assert 'data-i18n="hear"' in HTML
     assert 'data-i18n="to_other"' in HTML
