@@ -695,11 +695,6 @@ class Bridge:
             # the JS handler on Windows too would double-drag against the
             # native path.
             "is_linux": sys.platform.startswith("linux"),
-            # Dev-only free-tier preview state (checkbox in the BYOK section;
-            # the official build hides that whole section, and the setter below
-            # refuses anyway, so this never leaks into production behavior).
-            "cascade_preview": (not IS_OFFICIAL_RELEASE
-                                and bool(self.cfg.get("cascade_preview", False))),
             "badge_removable": self._badge_removable(),
             "onboarding_done": bool(self.cfg.get("onboarding_done", False)),
             "cfg": self._cfg_view(outs, mics),
@@ -750,16 +745,6 @@ class Bridge:
         except Exception as e:
             _log.exception("open_store_page failed")
             return {"ok": False, "error": str(e)}
-
-    def set_cascade_preview(self, enabled):
-        """DEV-ONLY: force the free-tier cascade engine for the next session
-        (Settings checkbox inside the BYOK section). Double-gated like every
-        dev affordance: the official build hides the UI and refuses here."""
-        if IS_OFFICIAL_RELEASE:
-            return False
-        self.cfg["cascade_preview"] = bool(enabled)
-        save_config(self.cfg)
-        return True
 
     def _cfg_view(self, outs=None, mics=None):
         outs = outs or list_device_names("output")
@@ -1768,20 +1753,6 @@ class Bridge:
             from .config import ENGINE_GEMINI, ENGINE_QWEN
             uid = self._ensure_user_id()
             keys = byok_store.load_byok(uid) if uid else {}
-            # Dev free-tier preview WINS over every other dev route (a leftover
-            # beta/qwen config must not shadow it — that is exactly what shipped
-            # Qwen instead of cascade on the first field try). force_gemini
-            # (mid-session failover) still yields the real engine.
-            if self.cfg.get("cascade_preview") and keys.get("gemini"):
-                from .config import ENGINE_CASCADE  # noqa: PLC0415
-
-                def resolve(target, force_gemini=False):
-                    if force_gemini or not self.cfg.get("cascade_preview"):
-                        return (ENGINE_GEMINI, keys.get("gemini"),
-                                resolve_model(self.cfg, ENGINE_GEMINI))
-                    return (ENGINE_CASCADE, keys.get("gemini"),
-                            resolve_model(self.cfg, ENGINE_GEMINI))
-                return resolve
             # Dev beta path: a DashScope key in config.json ("qwen_key") selects
             # the Qwen engine locally — sandbox-style, no server round-trip.
             if beta_qwen and self.cfg.get("qwen_key"):
