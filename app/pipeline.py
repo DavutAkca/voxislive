@@ -31,6 +31,7 @@ from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN,
                      gate_params, stream_gated)
 from .engines import make_translator
 from .i18n import t
+from .playback_sync import AdaptivePlaybackStager
 # LiveTranslator (google.genai) and SpeechGate (onnxruntime) are imported lazily
 # inside the pipeline constructors so the heavy runtimes don't load until a
 # session actually starts — shaving ~1-2 s off cold app startup.
@@ -352,14 +353,15 @@ class IncomingPipeline:
         self._on_text = on_text
         self._failover_done = False
 
-        # Qwen's translated speech runs longer than the source and carries no
-        # silence padding, so its stream is paced through a SyncStager (WSOLA
-        # speed-up, oldest-first trim) instead of the direct ring feed the
-        # self-timing Gemini/OpenAI streams use.
+        # Gemini and Qwen can deliver a long translated turn faster than
+        # realtime. Pace their already-generated audio through a client-side
+        # WSOLA stager so an accumulating playback tail catches up to the live
+        # captions without raising the voice's pitch. OpenAI self-times its
+        # output; cascade controls speed while synthesizing locally.
         self._stager = None
-        if self._engine == ENGINE_QWEN:
-            from .qwen_translator import SyncStager  # noqa: PLC0415
-            self._stager = SyncStager(self.player, on_status=on_status)
+        if self._engine in (ENGINE_GEMINI, ENGINE_QWEN):
+            self._stager = AdaptivePlaybackStager(
+                self.player, on_status=on_status, input_rate=24000)
 
         # While the free-voice preview speaks, the paid voice stands down: two
         # voices over one another would demo nothing. Captions keep flowing and
@@ -433,6 +435,18 @@ class IncomingPipeline:
         Paid engines keep the preset's choice (Saver gated, the rest smart)."""
         return stream_gated(cfg) or self._engine == ENGINE_CASCADE
 
+    def _ingest_input(self, mono: np.ndarray) -> None:
+        """Account for raw captured audio before optional consumers process it.
+
+        The UI meter is capture telemetry, not VAD/translator telemetry. Keep it
+        truthful even when recording or speech processing raises; the capture
+        worker reports that downstream failure through its liveness channel.
+        """
+        self.input_level = _rms_level(self.input_level, mono)
+        if self._recorder is not None:
+            self._recorder.feed_source(mono)
+        self._source.feed(mono)
+
     def _acquire_capture(self, cfg, vad_cfg, send_fn, out_name, on_status):
         from .vad import SpeechGate  # noqa: PLC0415
         # OpenAI ingests 24 kHz; Gemini 16 kHz. Capture + the gate's send path run
@@ -458,10 +472,10 @@ class IncomingPipeline:
                 # would wrongly amplify already-full-level audio.
                 if getattr(self._sducker, "duck_affects_capture", True) and lvl < 0.95:
                     chunk = np.clip(chunk / max(lvl, 0.15), -1.0, 1.0)
-                if self._recorder is not None:
-                    self._recorder.feed_source(chunk)
-                self._source.feed(chunk)
-                self.input_level = _rms_level(self.input_level, chunk)
+                # Observe the raw capture before VAD/translator work. A consumer
+                # fault must not make a healthy WASAPI signal look like −∞ dB;
+                # the capture liveness path reports that downstream fault apart.
+                self._ingest_input(chunk)
                 # Mark speech onset here too (the spatial path does it in vbcable
                 # mode) so the ear-voice latency readout populates in driverless.
                 active = self._source.speech_active
@@ -529,10 +543,7 @@ class IncomingPipeline:
 
             def on_chunk(chunk: np.ndarray):
                 mono = chunk.mean(axis=1) if chunk.ndim > 1 else chunk
-                if self._recorder is not None:
-                    self._recorder.feed_source(mono)
-                self._source.feed(mono)
-                self.input_level = _rms_level(self.input_level, mono)
+                self._ingest_input(mono)
                 active = self._source.speech_active
                 if active and not self._prev_active:
                     self._rtt.mark_first_onset()  # session first-speech (no guard)
@@ -766,14 +777,14 @@ def _swap_to_gemini(pipe, target_key, name, exc):
         _log.exception("failover: could not build the Gemini translator")
         return False
 
-    # Qwen's stream needs WSOLA pacing; Gemini self-times. Retire the stager
-    # BEFORE the swap so the tts sink (which reads it live) never routes Gemini
-    # audio through it.
+    # Both Qwen and Gemini use the incoming adaptive playback stager. Clear its
+    # provider-side pending audio at the boundary, but keep the worker alive so
+    # the replacement Gemini stream gets the same catch-up behavior. Outgoing
+    # pipelines intentionally have no stager.
     stager = getattr(pipe, "_stager", None)
     if stager is not None:
-        pipe._stager = None
         try:
-            stager.stop()
+            stager.clear()
         except Exception:
             pass
 
@@ -781,13 +792,21 @@ def _swap_to_gemini(pipe, target_key, name, exc):
     # Qwen queues seconds ahead of the source, so without this the user goes on
     # hearing the engine that just died, reading sentences the captions have long
     # passed, while the replacement waits its turn behind the backlog.
-    try:
-        pipe.player.clear_tts()
-    except Exception:
-        pass
+    for player in (getattr(pipe, "player", None),
+                   getattr(pipe, "monitor_player", None)):
+        if player is not None:
+            try:
+                player.clear_tts()
+            except Exception:
+                pass
 
     from_engine = pipe._engine
     pipe._engine = ENGINE_GEMINI
+    if target_key == "target_language_incoming" and stager is None:
+        # An incoming OpenAI -> Gemini failover starts without a stager because
+        # OpenAI paces its own stream. Install one before Gemini can emit audio.
+        pipe._stager = AdaptivePlaybackStager(
+            pipe.player, on_status=pipe._on_status, input_rate=24000)
     pipe.translator = new   # the send path indirects through pipe.translator
     new.start()
     try:
@@ -822,6 +841,7 @@ class OutgoingPipeline:
         # default-source switch (confirmed empirically: changing the default
         # source drags an already-open capture stream exactly like Faz 3's
         # sink-side finding, so it must never be touched).
+        self.monitor_player = None
         self._mic_handle = sysaudio.make_virtual_mic()
         before_streams = sysaudio.snapshot_own_audio_streams()
         if self._mic_handle is not None:
@@ -845,6 +865,25 @@ class OutgoingPipeline:
                 cable_out, channels=1,
                 tts_enhance=(_premium.enhance_tts if _premium is not None else None),
             )
+        # Optional confidence monitor: the primary Player remains pinned to the
+        # virtual microphone while a second Player renders the identical PCM to
+        # the user's selected headphones. Construct it only after the Linux pin
+        # above, otherwise the monitor could be mistaken for the new virtual-mic
+        # stream. Failure is soft: the call still receives the translation.
+        if cfg.get("monitor_outgoing_translation"):
+            try:
+                monitor_out = find_device(
+                    cfg["devices"].get("headphones_output", ""), "output",
+                    on_status=on_status, fallback_default=True)
+                self.monitor_player = Player(
+                    monitor_out,
+                    tts_enhance=(_premium.enhance_tts
+                                 if _premium is not None else None),
+                )
+                self.monitor_player.tts_gain = float(cfg.get("tts_volume", 1.0))
+            except Exception:
+                self.monitor_player = None
+                _log.exception("outgoing confidence monitor unavailable")
         self._engine, _key, _model = resolve(cfg["target_language_outgoing"])
         self.cfg = cfg
         self._resolve = resolve
@@ -852,10 +891,10 @@ class OutgoingPipeline:
         self._on_status = on_status
         self._failover_done = False
         # Outgoing feeds the virtual mic directly — no SyncStager on this leg.
-        self._tts_sink = self.player.feed_tts_pcm16
+        self._tts_sink = self._feed_translated_audio
         self.translator = make_translator(
             cfg, cfg["target_language_outgoing"], engine=self._engine, key=_key, model=_model,
-            on_audio=self.player.feed_tts_pcm16, on_text=on_text, on_status=on_status,
+            on_audio=self._tts_sink, on_text=on_text, on_status=on_status,
             name=t("name_out"), noise_reduction="near_field",
             on_fatal=self._failover_to_gemini,
             key_provider=getattr(resolve, "gemini_key_provider", None),
@@ -887,6 +926,7 @@ class OutgoingPipeline:
         if self._source is not None:
             self._source.closed = True
         for comp in (self.capture, getattr(self, "player", None),
+                     getattr(self, "monitor_player", None),
                      getattr(self, "translator", None)):
             if comp is not None:
                 try:
@@ -906,12 +946,28 @@ class OutgoingPipeline:
         self.input_level = _rms_level(self.input_level, mono)
         self._source.feed(c)
 
+    def _feed_translated_audio(self, data: bytes) -> None:
+        """Send outgoing translation to the call and optional local monitor."""
+        self.player.feed_tts_pcm16(data)
+        if self.monitor_player is not None:
+            self.monitor_player.feed_tts_pcm16(data)
+
     def start_translator(self):
         self.translator.start()
 
     def start_io(self):
         self.translator.wait_ready(timeout=6)
         self.player.start()
+        if self.monitor_player is not None:
+            try:
+                self.monitor_player.start()
+            except Exception:
+                _log.exception("could not start outgoing confidence monitor")
+                try:
+                    self.monitor_player.stop()
+                except Exception:
+                    pass
+                self.monitor_player = None
         self.capture.start()
 
     def start(self):
@@ -939,8 +995,8 @@ def _stop_all(pipeline):
     if src is not None:
         src.closed = True
     fns = []
-    for attr in ("capture", "_stager", "player", "translator", "_recorder",
-                 "_spk_tracker"):
+    for attr in ("capture", "_stager", "player", "monitor_player", "translator",
+                 "_recorder", "_spk_tracker"):
         comp = getattr(pipeline, attr, None)
         if comp is not None:
             fns.append(comp.stop)
@@ -1401,6 +1457,8 @@ class ModeController:
         for p in self._pipelines:
             if isinstance(p, IncomingPipeline):
                 p.player.tts_gain = volume
+            elif isinstance(p, OutgoingPipeline) and p.monitor_player is not None:
+                p.monitor_player.tts_gain = volume
 
     def set_duck_gain(self, gain: float):
         self.cfg["duck_gain"] = gain

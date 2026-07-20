@@ -473,11 +473,11 @@ select:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3p
   background:var(--surface-2);border:1px solid var(--border)}
 .rods{display:flex;align-items:center;gap:3px;height:22px}
 .rods i{width:3px;height:4px;border-radius:2px;background:var(--text-3);transition:background var(--dur)}
-.meter.live .rods i{background:var(--green)}
+.meter.signal .rods i{background:var(--green)}
 .metertext{font-size:11.5px;font-weight:500;color:var(--text-3);letter-spacing:.01em}
-.meter.live .metertext{color:var(--green)}
+.meter.signal .metertext{color:var(--green)}
 .meter .ms{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums}
-.meter.live .ms{color:var(--text-2)}
+.meter.signal .ms{color:var(--text-2)}
 
 .sliderrow{margin-top:var(--s3)}
 .sliderrow .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
@@ -515,6 +515,12 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .stagebar{display:flex;align-items:center;gap:18px;padding:12px var(--s4);flex-wrap:wrap}
 .langgroup{display:flex;align-items:center;gap:14px;padding:8px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--r-card)}
 .langgroup .arrow{color:var(--accent)}
+.langswap{width:30px;height:30px;flex:none;display:grid;place-items:center;padding:0;border:0;
+  border-radius:var(--r-ctl);background:transparent;cursor:pointer;transition:background var(--dfast),color var(--dfast)}
+.langswap:hover{background:var(--accent-soft)}
+.langswap:active{transform:scale(.94)}
+.langswap:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.langswap:disabled{opacity:.4;cursor:default;transform:none}
 .langitem{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
 .langitem .lbl{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3)}
 /* Outgoing language is a Meeting-mode control: dimmed + locked during a
@@ -893,6 +899,8 @@ body.resizing,body.resizing *{user-select:none!important}
 @keyframes ostepin{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 
 /* ============ SOUND CHECK MODAL ============ */
+.scgroup+.scgroup{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.sclabel{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
 .scmeter{height:10px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border);
   overflow:hidden;margin:14px 0 10px}
 .scmeter i{display:block;height:100%;width:0%;border-radius:6px;background:var(--green);
@@ -1119,11 +1127,14 @@ body.resizing,body.resizing *{user-select:none!important}
       <div class="cardlabel" data-i18n="audio">Ses</div>
       <div class="fieldlabel" data-i18n="out_device">Çıkış cihazı</div>
       <div class="selectwrap"><select id="out"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div class="fieldlabel" data-i18n="mic">Mikrofon</div>
+      <div class="fieldlabel" id="mic-label" data-i18n="mic">Mikrofon</div>
       <div class="selectwrap"><select id="mic"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div class="meter" id="vad" role="status" aria-live="polite" aria-label="Giriş sinyali bekleniyor">
+      <label class="switch" id="monitor-outgoing-wrap" style="margin-top:12px" title="Yalnızca Toplantı modunda" data-i18n-title="monitor_outgoing_hint">
+        <input type="checkbox" id="monitor-outgoing"><span class="track"></span><span data-i18n="monitor_outgoing">Çevirimi dinle</span>
+      </label>
+      <div class="meter" id="vad" role="status" aria-live="polite" aria-label="Sinyali kontrol etmek için çeviriyi başlatın" data-i18n-aria="waiting_signal">
         <span class="rods" id="rods" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-        <span class="metertext" id="vadtxt" data-i18n="waiting_signal">Giriş sinyali bekleniyor</span>
+        <span class="metertext" id="vadtxt" data-i18n="waiting_signal">Sinyali kontrol etmek için çeviriyi başlatın</span>
         <span class="ms" id="meterdb">−∞ dB</span>
       </div>
       <button class="btn btn-ghost" id="soundcheckbtn" style="margin-top:10px" aria-haspopup="dialog">
@@ -1154,12 +1165,12 @@ body.resizing,body.resizing *{user-select:none!important}
   <section class="stage">
     <div class="card stagebar">
       <div class="langgroup">
-        <div class="langitem"><span class="lbl" data-i18n="hear">Şu dile çevir</span>
+        <div class="langitem"><span class="lbl" data-i18n="hear">Ben duyuyorum</span>
           <div class="selectwrap"><select id="hear"></select><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
           <span class="fieldhint" id="hear-novoice" data-i18n="no_voice_free" style="display:none">—</span>
         </div>
-        <svg class="arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg>
-        <div class="langitem" id="send-item" title="Yalnızca Toplantı modunda kullanılır" data-i18n-title="to_other_hint"><span class="lbl" data-i18n="to_other">Karşıya</span>
+        <button class="arrow langswap" id="langswap" type="button" title="Dilleri değiştir" data-i18n-title="swap_languages" aria-label="Dilleri değiştir" data-i18n-aria="swap_languages"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg></button>
+        <div class="langitem" id="send-item" title="Yalnızca Toplantı modunda kullanılır" data-i18n-title="to_other_hint"><span class="lbl" data-i18n="to_other">Karşı taraf duyuyor</span>
           <div class="selectwrap"><select id="send"></select><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
         </div>
       </div>
@@ -1236,13 +1247,13 @@ body.resizing,body.resizing *{user-select:none!important}
           <div class="fieldlabel"><span data-i18n="gemini_key">Gemini API anahtarı</span> <span id="byok-badge" data-i18n="byok_active" style="display:none;font-size:10px;font-weight:600;color:var(--green);background:var(--green-soft);padding:2px 7px;border-radius:99px;margin-left:6px">BYOK aktif</span></div>
           <input type="password" id="gemkey" placeholder="AIza…" data-i18n-ph="ph_gemkey">
           <div class="fieldhint"><span data-i18n="byok_hint">Bu derlemede çalıştırmak için kendi Gemini API anahtarınız gereklidir. </span><a href="#" id="showgem" data-i18n="show">Göster</a> · <a href="#" id="clearbtn" data-i18n="clear" style="color:var(--red)">Temizle</a></div>
-          <!-- DEV-ONLY free-tier preview toggle: lives inside #byok-section so the
-               official build hides it with the rest; raw text on purpose (never
-               shipped to end users, exempt from the i18n dicts). -->
-          <div class="fieldlabel" style="margin-top:12px">Ücretsiz katman önizleme</div>
+          <!-- DEV-ONLY free-tier preview toggle: it lives inside #byok-section so
+               the official build hides it with the rest. OSS users still see it,
+               therefore its label and explanation must follow the UI language. -->
+          <div class="fieldlabel" style="margin-top:12px" data-i18n="cascade_preview_label">Ücretsiz mod testi</div>
           <label class="fieldhint" style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="cascadeprev" style="width:auto;margin:0">
-            <span>Kaskad motoru kullan: bulut metin + yerel robot ses (sonraki oturum başlatışında etkin)</span>
+            <span data-i18n="cascade_preview_hint">Kaskad motorunu kullan: bulut metin çevirisi ve yerel sentetik ses. Sonraki oturumda etkinleşir.</span>
           </label>
         </div>
         <div class="dsection">
@@ -1549,9 +1560,24 @@ body.resizing,body.resizing *{user-select:none!important}
     <h2 id="sc-title" data-i18n="sound_check">Ses testi</h2>
   </div>
   <div class="mbody">
-    <p data-i18n="sound_check_hint">Bir video ya da müzik çal — Voxis'in duyduğu sinyal aşağıdaki çubukta oynamalı.</p>
-    <div class="scmeter" aria-hidden="true"><i id="sc-fill"></i></div>
-    <div class="scstatus" id="sc-status" role="status" aria-live="polite" data-i18n="sound_check_wait">Sinyal bekleniyor…</div>
+    <div class="scgroup">
+      <div class="sclabel" data-i18n="sound_check_system">Sistem sesi</div>
+      <p data-i18n="sound_check_hint">Bir video ya da müzik çal — Voxis'in duyduğu sinyal aşağıdaki çubukta oynamalı.</p>
+      <div class="scmeter" aria-hidden="true"><i id="sc-fill"></i></div>
+      <div class="scstatus" id="sc-status" role="status" aria-live="polite" data-i18n="sound_check_wait">Sinyal bekleniyor…</div>
+    </div>
+    <div class="scgroup">
+      <div class="sclabel" data-i18n="out_device">Çıkış cihazı</div>
+      <p data-i18n="sound_check_output_hint">Düğmeye bas — seçilen çıkıştan kısa bir ses duymalısın.</p>
+      <button class="btn btn-ghost" id="sc-tone" style="width:auto;margin-top:10px" data-i18n="sound_check_tone">Test sinyalini çal</button>
+      <div class="scmeter" aria-hidden="true"><i id="sc-output-fill"></i></div>
+      <div class="scstatus" id="sc-output-status" role="status" aria-live="polite" data-i18n="sound_check_output_wait">Test bekleniyor…</div>
+    </div>
+    <div class="scgroup">
+      <div class="sclabel" data-i18n="mic">Mikrofon</div>
+      <div class="scmeter" aria-hidden="true"><i id="sc-mic-fill"></i></div>
+      <div class="scstatus" id="sc-mic-status" role="status" aria-live="polite" data-i18n="sound_check_wait">Sinyal bekleniyor…</div>
+    </div>
   </div>
   <div class="mfoot">
     <span class="spacer"></span>
@@ -1650,7 +1676,7 @@ body.resizing,body.resizing *{user-select:none!important}
   <div class="mbody">
     <div class="histsearchwrap"><input type="search" id="history-search" placeholder="Geçmişte ara…" data-i18n-ph="history_search_ph" aria-label="Geçmişte ara" data-i18n-aria="history_search_ph"></div>
     <div class="histpanes">
-      <div class="histlist" id="history-list" role="listbox" aria-label="Oturumlar"></div>
+      <div class="histlist" id="history-list" role="listbox" aria-label="Çeviri geçmişi" data-i18n-aria="history_title"></div>
       <div class="histview" id="history-view">
         <div class="histempty" id="history-empty" data-i18n="history_pick">Görüntülemek için bir oturum seç.</div>
         <div class="histturns" id="history-turns" hidden></div>
@@ -1782,7 +1808,7 @@ const I18N = {
     meeting_t1:"Toplantı", stop:"Durdur", start_cue:"Başlat", to_other_hint:"Yalnızca Toplantı modunda kullanılır",
     session_summary:"Oturum bitti · {m} dk", settings_live_note:"Değişiklikler anında uygulanır",
     sound_check:"Ses testi", sound_check_hint:"Bir video ya da müzik çal — Voxis'in duyduğu sinyal aşağıdaki çubukta oynamalı.",
-    sound_check_ok:"Sinyal algılandı — cihaz doğru ✓", sound_check_wait:"Sinyal bekleniyor…", sound_check_fail:"Ses yakalama başlatılamadı.",
+    sound_check_ok:"Sinyal algılandı ✓", sound_check_wait:"Sinyal bekleniyor…", sound_check_fail:"Ses yakalama başlatılamadı.",
     audio:"Ses", out_device:"Çıkış cihazı", mic:"Mikrofon",
     waiting_signal:"Giriş sinyali bekleniyor", translation:"Çeviri", profile:"Profil", quality:"Kalite",
     voice:"Çeviri sesi", duck_label:"Orijinal ses (konuşmada)", vol_label:"Çeviri ses seviyesi",
@@ -1900,7 +1926,7 @@ const I18N = {
     meeting_t1:"Meeting", stop:"Stop", start_cue:"Start", to_other_hint:"Used in Meeting mode only",
     session_summary:"Session ended · {m} min", settings_live_note:"Changes apply immediately",
     sound_check:"Sound check", sound_check_hint:"Play a video or some music — the signal Voxis hears should move the bar below.",
-    sound_check_ok:"Signal detected — device is correct ✓", sound_check_wait:"Waiting for signal…", sound_check_fail:"Could not start audio capture.",
+    sound_check_ok:"Signal detected ✓", sound_check_wait:"Waiting for signal…", sound_check_fail:"Could not start audio capture.",
     audio:"Audio", out_device:"Output device", mic:"Microphone",
     waiting_signal:"Waiting for input signal", translation:"Translation", profile:"Profile", quality:"Quality",
     voice:"Translation voice", duck_label:"Original audio (while speaking)", vol_label:"Translation volume",
@@ -1981,7 +2007,7 @@ const I18N = {
     settings_live_note:"Změny se projeví okamžitě",
     sound_check:"Test zvuku",
     sound_check_hint:"Přehrajte video nebo hudbu — signál, který Voxis slyší, by měl rozhýbat lištu níže.",
-    sound_check_ok:"Signál zachycen — zařízení je správné ✓",
+    sound_check_ok:"Signál zachycen ✓",
     sound_check_wait:"Čekání na signál…",
     sound_check_fail:"Nepodařilo se spustit záznam zvuku.",
     al_contact:"Kontakt",
@@ -2283,7 +2309,7 @@ const I18N = {
     meeting_t1:"Meeting", stop:"Stopp", start_cue:"Starten", to_other_hint:"Wird nur im Meeting-Modus verwendet",
     session_summary:"Sitzung beendet · {m} Min.", settings_live_note:"Änderungen gelten sofort",
     sound_check:"Soundtest", sound_check_hint:"Spiele ein Video oder Musik ab — das Signal, das Voxis hört, sollte den Balken unten bewegen.",
-    sound_check_ok:"Signal erkannt — Gerät ist korrekt ✓", sound_check_wait:"Warte auf Signal…", sound_check_fail:"Audioaufnahme konnte nicht gestartet werden.",
+    sound_check_ok:"Signal erkannt ✓", sound_check_wait:"Warte auf Signal…", sound_check_fail:"Audioaufnahme konnte nicht gestartet werden.",
     audio:"Audio", out_device:"Ausgabegerät", mic:"Mikrofon",
     waiting_signal:"Warte auf Eingangssignal", translation:"Übersetzung", profile:"Profil", quality:"Qualität",
     voice:"Übersetzungsstimme", duck_label:"Originalton (beim Sprechen)", vol_label:"Übersetzungslautstärke",
@@ -2398,7 +2424,7 @@ const I18N = {
     meeting_t1:"Réunion", stop:"Arrêter", start_cue:"Démarrer", to_other_hint:"Utilisé uniquement en mode Réunion",
     session_summary:"Session terminée · {m} min", settings_live_note:"Les modifications s'appliquent immédiatement",
     sound_check:"Test audio", sound_check_hint:"Lancez une vidéo ou de la musique — le signal entendu par Voxis doit faire bouger la barre ci-dessous.",
-    sound_check_ok:"Signal détecté — le périphérique est correct ✓", sound_check_wait:"En attente de signal…", sound_check_fail:"Impossible de démarrer la capture audio.",
+    sound_check_ok:"Signal détecté ✓", sound_check_wait:"En attente de signal…", sound_check_fail:"Impossible de démarrer la capture audio.",
     audio:"Audio", out_device:"Périphérique de sortie", mic:"Microphone",
     waiting_signal:"En attente du signal d'entrée", translation:"Traduction", profile:"Profil", quality:"Qualité",
     voice:"Voix de traduction", duck_label:"Audio original (pendant la parole)", vol_label:"Volume de traduction",
@@ -2513,7 +2539,7 @@ const I18N = {
     meeting_t1:"Reunión", stop:"Detener", start_cue:"Iniciar", to_other_hint:"Solo se usa en modo Reunión",
     session_summary:"Sesión finalizada · {m} min", settings_live_note:"Los cambios se aplican al instante",
     sound_check:"Prueba de sonido", sound_check_hint:"Reproduce un video o música — la señal que Voxis oye debería mover la barra de abajo.",
-    sound_check_ok:"Señal detectada — el dispositivo es correcto ✓", sound_check_wait:"Esperando señal…", sound_check_fail:"No se pudo iniciar la captura de audio.",
+    sound_check_ok:"Señal detectada ✓", sound_check_wait:"Esperando señal…", sound_check_fail:"No se pudo iniciar la captura de audio.",
     audio:"Audio", out_device:"Dispositivo de salida", mic:"Micrófono",
     waiting_signal:"Esperando señal de entrada", translation:"Traducción", profile:"Perfil", quality:"Calidad",
     voice:"Voz de traducción", duck_label:"Audio original (mientras se habla)", vol_label:"Volumen de traducción",
@@ -2628,7 +2654,7 @@ const I18N = {
     meeting_t1:"Reunião", stop:"Parar", start_cue:"Iniciar", to_other_hint:"Usado apenas no modo Reunião",
     session_summary:"Sessão encerrada · {m} min", settings_live_note:"As alterações são aplicadas imediatamente",
     sound_check:"Teste de som", sound_check_hint:"Reproduza um vídeo ou música — o sinal que o Voxis ouve deve mover a barra abaixo.",
-    sound_check_ok:"Sinal detectado — o dispositivo está correto ✓", sound_check_wait:"Aguardando sinal…", sound_check_fail:"Não foi possível iniciar a captura de áudio.",
+    sound_check_ok:"Sinal detectado ✓", sound_check_wait:"Aguardando sinal…", sound_check_fail:"Não foi possível iniciar a captura de áudio.",
     audio:"Áudio", out_device:"Dispositivo de saída", mic:"Microfone",
     waiting_signal:"Aguardando sinal de entrada", translation:"Tradução", profile:"Perfil", quality:"Qualidade",
     voice:"Voz de tradução", duck_label:"Áudio original (ao falar)", vol_label:"Volume da tradução",
@@ -2743,7 +2769,7 @@ const I18N = {
     meeting_t1:"ミーティング", stop:"停止", start_cue:"開始", to_other_hint:"ミーティングモードでのみ使用されます",
     session_summary:"セッション終了 · {m}分", settings_live_note:"変更は即座に適用されます",
     sound_check:"サウンドチェック", sound_check_hint:"動画や音楽を再生してください — Voxisが聞いている信号で下のバーが動くはずです。",
-    sound_check_ok:"信号を検出 — デバイスは正常です ✓", sound_check_wait:"信号を待っています…", sound_check_fail:"音声キャプチャを開始できませんでした。",
+    sound_check_ok:"信号を検出しました ✓", sound_check_wait:"信号を待っています…", sound_check_fail:"音声キャプチャを開始できませんでした。",
     audio:"オーディオ", out_device:"出力デバイス", mic:"マイク",
     waiting_signal:"入力信号待機中", translation:"翻訳", profile:"プロフィール", quality:"品質",
     voice:"翻訳の音声", duck_label:"元の音声（発話中）", vol_label:"翻訳の音量",
@@ -2858,7 +2884,7 @@ const I18N = {
     meeting_t1:"미팅", stop:"중지", start_cue:"시작", to_other_hint:"미팅 모드에서만 사용됩니다",
     session_summary:"세션 종료 · {m}분", settings_live_note:"변경 사항은 즉시 적용됩니다",
     sound_check:"사운드 체크", sound_check_hint:"동영상이나 음악을 재생하세요 — Voxis가 듣는 신호로 아래 막대가 움직여야 합니다.",
-    sound_check_ok:"신호 감지됨 — 장치가 올바릅니다 ✓", sound_check_wait:"신호 대기 중…", sound_check_fail:"오디오 캡처를 시작할 수 없습니다.",
+    sound_check_ok:"신호 감지됨 ✓", sound_check_wait:"신호 대기 중…", sound_check_fail:"오디오 캡처를 시작할 수 없습니다.",
     audio:"오디오", out_device:"출력 장치", mic:"마이크",
     waiting_signal:"입력 신호 대기 중", translation:"번역", profile:"프로필", quality:"품질",
     voice:"번역 음성", duck_label:"원본 오디오 (말하는 동안)", vol_label:"번역 볼륨",
@@ -2973,7 +2999,7 @@ const I18N = {
     meeting_t1:"Встреча", stop:"Стоп", start_cue:"Старт", to_other_hint:"Используется только в режиме встречи",
     session_summary:"Сессия завершена · {m} мин", settings_live_note:"Изменения применяются сразу",
     sound_check:"Проверка звука", sound_check_hint:"Включите видео или музыку — сигнал, который слышит Voxis, должен двигать полосу ниже.",
-    sound_check_ok:"Сигнал обнаружен — устройство выбрано верно ✓", sound_check_wait:"Ожидание сигнала…", sound_check_fail:"Не удалось запустить захват звука.",
+    sound_check_ok:"Сигнал обнаружен ✓", sound_check_wait:"Ожидание сигнала…", sound_check_fail:"Не удалось запустить захват звука.",
     audio:"Аудио", out_device:"Устройство вывода", mic:"Микрофон",
     waiting_signal:"Ожидание входного сигнала", translation:"Перевод", profile:"Профиль", quality:"Качество",
     voice:"Голос перевода", duck_label:"Оригинальный звук (во время речи)", vol_label:"Громкость перевода",
@@ -3088,7 +3114,7 @@ const I18N = {
     meeting_t1:"会议", stop:"停止", start_cue:"开始", to_other_hint:"仅在会议模式下使用",
     session_summary:"会话已结束 · {m} 分钟", settings_live_note:"更改立即生效",
     sound_check:"声音测试", sound_check_hint:"播放视频或音乐 — Voxis 听到的信号应使下方的进度条跳动。",
-    sound_check_ok:"已检测到信号 — 设备正确 ✓", sound_check_wait:"等待信号…", sound_check_fail:"无法启动音频捕获。",
+    sound_check_ok:"已检测到信号 ✓", sound_check_wait:"等待信号…", sound_check_fail:"无法启动音频捕获。",
     audio:"音频", out_device:"输出设备", mic:"麦克风",
     waiting_signal:"等待输入信号", translation:"翻译", profile:"配置文件", quality:"质量",
     voice:"翻译语音", duck_label:"原始音频（讲话时）", vol_label:"翻译音量",
@@ -3203,7 +3229,7 @@ const I18N = {
     meeting_t1:"Spotkanie", stop:"Zatrzymaj", start_cue:"Start", to_other_hint:"Używane tylko w trybie spotkania",
     session_summary:"Sesja zakończona · {m} min", settings_live_note:"Zmiany obowiązują od razu",
     sound_check:"Test dźwięku", sound_check_hint:"Odtwórz wideo lub muzykę — sygnał słyszany przez Voxis powinien poruszać paskiem poniżej.",
-    sound_check_ok:"Wykryto sygnał — urządzenie jest właściwe ✓", sound_check_wait:"Oczekiwanie na sygnał…", sound_check_fail:"Nie udało się uruchomić przechwytywania dźwięku.",
+    sound_check_ok:"Wykryto sygnał ✓", sound_check_wait:"Oczekiwanie na sygnał…", sound_check_fail:"Nie udało się uruchomić przechwytywania dźwięku.",
     audio:"Dźwięk", out_device:"Urządzenie wyjściowe", mic:"Mikrofon",
     waiting_signal:"Oczekiwanie na sygnał wejściowy", translation:"Tłumaczenie", profile:"Profil", quality:"Jakość",
     voice:"Głos tłumaczenia", duck_label:"Oryginalny dźwięk (podczas mówienia)", vol_label:"Głośność tłumaczenia",
@@ -3318,7 +3344,7 @@ const I18N = {
     meeting_t1:"Riunione", stop:"Ferma", start_cue:"Avvia", to_other_hint:"Usato solo in modalità Riunione",
     session_summary:"Sessione terminata · {m} min", settings_live_note:"Le modifiche si applicano subito",
     sound_check:"Test audio", sound_check_hint:"Riproduci un video o della musica — il segnale che Voxis sente dovrebbe muovere la barra qui sotto.",
-    sound_check_ok:"Segnale rilevato — il dispositivo è corretto ✓", sound_check_wait:"In attesa del segnale…", sound_check_fail:"Impossibile avviare l'acquisizione audio.",
+    sound_check_ok:"Segnale rilevato ✓", sound_check_wait:"In attesa del segnale…", sound_check_fail:"Impossibile avviare l'acquisizione audio.",
     audio:"Audio", out_device:"Dispositivo di uscita", mic:"Microfono",
     waiting_signal:"In attesa del segnale di ingresso", translation:"Traduzione", profile:"Profilo", quality:"Qualità",
     voice:"Voce di traduzione", duck_label:"Audio originale (durante la voce)", vol_label:"Volume traduzione",
@@ -3433,7 +3459,7 @@ const I18N = {
     meeting_t1:"Rapat", stop:"Berhenti", start_cue:"Mulai", to_other_hint:"Hanya digunakan dalam mode Rapat",
     session_summary:"Sesi berakhir · {m} mnt", settings_live_note:"Perubahan langsung diterapkan",
     sound_check:"Tes suara", sound_check_hint:"Putar video atau musik — sinyal yang didengar Voxis akan menggerakkan bilah di bawah.",
-    sound_check_ok:"Sinyal terdeteksi — perangkat sudah benar ✓", sound_check_wait:"Menunggu sinyal…", sound_check_fail:"Tidak dapat memulai penangkapan audio.",
+    sound_check_ok:"Sinyal terdeteksi ✓", sound_check_wait:"Menunggu sinyal…", sound_check_fail:"Tidak dapat memulai penangkapan audio.",
     audio:"Audio", out_device:"Perangkat keluaran", mic:"Mikrofon",
     waiting_signal:"Menunggu sinyal masukan", translation:"Terjemahan", profile:"Profil", quality:"Kualitas",
     voice:"Suara terjemahan", duck_label:"Audio asli (saat berbicara)", vol_label:"Volume terjemahan",
@@ -3548,7 +3574,7 @@ const I18N = {
     meeting_t1:"Vergadering", stop:"Stop", start_cue:"Starten", to_other_hint:"Alleen gebruikt in vergadermodus",
     session_summary:"Sessie beëindigd · {m} min", settings_live_note:"Wijzigingen gelden direct",
     sound_check:"Geluidstest", sound_check_hint:"Speel een video of muziek af — het signaal dat Voxis hoort moet de balk hieronder bewegen.",
-    sound_check_ok:"Signaal gedetecteerd — apparaat klopt ✓", sound_check_wait:"Wachten op signaal…", sound_check_fail:"Audio-opname kon niet worden gestart.",
+    sound_check_ok:"Signaal gedetecteerd ✓", sound_check_wait:"Wachten op signaal…", sound_check_fail:"Audio-opname kon niet worden gestart.",
     audio:"Audio", out_device:"Uitvoerapparaat", mic:"Microfoon",
     waiting_signal:"Wachten op ingangssignaal", translation:"Vertaling", profile:"Profiel", quality:"Kwaliteit",
     voice:"Vertaalstem", duck_label:"Originele audio (tijdens spreken)", vol_label:"Vertaalvolume",
@@ -3663,7 +3689,7 @@ const I18N = {
     meeting_t1:"Cuộc họp", stop:"Dừng", start_cue:"Bắt đầu", to_other_hint:"Chỉ dùng trong chế độ Cuộc họp",
     session_summary:"Phiên kết thúc · {m} phút", settings_live_note:"Thay đổi được áp dụng ngay",
     sound_check:"Kiểm tra âm thanh", sound_check_hint:"Phát video hoặc nhạc — tín hiệu Voxis nghe được sẽ làm thanh bên dưới chuyển động.",
-    sound_check_ok:"Đã phát hiện tín hiệu — thiết bị chính xác ✓", sound_check_wait:"Đang chờ tín hiệu…", sound_check_fail:"Không thể bắt đầu thu âm thanh.",
+    sound_check_ok:"Đã phát hiện tín hiệu ✓", sound_check_wait:"Đang chờ tín hiệu…", sound_check_fail:"Không thể bắt đầu thu âm thanh.",
     audio:"Âm thanh", out_device:"Thiết bị đầu ra", mic:"Micrô",
     waiting_signal:"Đang chờ tín hiệu đầu vào", translation:"Bản dịch", profile:"Hồ sơ", quality:"Chất lượng",
     voice:"Giọng dịch", duck_label:"Âm thanh gốc (khi nói)", vol_label:"Âm lượng dịch",
@@ -3778,7 +3804,7 @@ const I18N = {
     meeting_t1:"การประชุม", stop:"หยุด", start_cue:"เริ่ม", to_other_hint:"ใช้เฉพาะในโหมดประชุม",
     session_summary:"จบเซสชัน · {m} นาที", settings_live_note:"การเปลี่ยนแปลงมีผลทันที",
     sound_check:"ทดสอบเสียง", sound_check_hint:"เล่นวิดีโอหรือเพลง — สัญญาณที่ Voxis ได้ยินควรทำให้แถบด้านล่างขยับ",
-    sound_check_ok:"ตรวจพบสัญญาณ — อุปกรณ์ถูกต้อง ✓", sound_check_wait:"กำลังรอสัญญาณ…", sound_check_fail:"ไม่สามารถเริ่มจับเสียงได้",
+    sound_check_ok:"ตรวจพบสัญญาณ ✓", sound_check_wait:"กำลังรอสัญญาณ…", sound_check_fail:"ไม่สามารถเริ่มจับเสียงได้",
     audio:"เสียง", out_device:"อุปกรณ์ส่งออก", mic:"ไมโครโฟน",
     waiting_signal:"รอสัญญาณอินพุต", translation:"การแปล", profile:"โปรไฟล์", quality:"คุณภาพ",
     voice:"เสียงแปล", duck_label:"เสียงต้นฉบับ (ขณะพูด)", vol_label:"ระดับเสียงแปล",
@@ -4031,7 +4057,7 @@ const I18N = {
     "sound_check":"Test de sunet",
     "sound_check_fail":"Captura audio nu a putut porni.",
     "sound_check_hint":"Redă un videoclip sau niște muzică — semnalul auzit de Voxis ar trebui să miște bara de mai jos.",
-    "sound_check_ok":"Semnal detectat — dispozitivul este corect ✓",
+    "sound_check_ok":"Semnal detectat ✓",
     "sound_check_wait":"Se așteaptă semnal…",
     "source":"Sursă",
     "spk_labels":"Etichete de vorbitor (S1/S2)",
@@ -4279,7 +4305,7 @@ const I18N = {
     "sound_check":"साउंड चेक",
     "sound_check_fail":"ऑडियो कैप्चर शुरू नहीं हो सका।",
     "sound_check_hint":"कोई वीडियो या संगीत चलाएँ — Voxis को सुनाई देने वाले सिग्नल से नीचे की पट्टी हिलनी चाहिए।",
-    "sound_check_ok":"सिग्नल मिला — डिवाइस सही है ✓",
+    "sound_check_ok":"सिग्नल मिला ✓",
     "sound_check_wait":"सिग्नल की प्रतीक्षा…",
     "source":"स्रोत",
     "spk_labels":"वक्ता लेबल (S1/S2)",
@@ -4527,7 +4553,7 @@ const I18N = {
     "sound_check":"Hangpróba",
     "sound_check_fail":"A hangrögzítést nem sikerült elindítani.",
     "sound_check_hint":"Játssz le egy videót vagy zenét — a Voxis által hallott jelnek mozgatnia kell az alábbi sávot.",
-    "sound_check_ok":"Jel észlelve — az eszköz megfelelő ✓",
+    "sound_check_ok":"Jel észlelve ✓",
     "sound_check_wait":"Várakozás jelre…",
     "source":"Forrás",
     "spk_labels":"Beszélőcímkék (S1/S2)",
@@ -4775,7 +4801,7 @@ const I18N = {
     "sound_check":"Ljudtest",
     "sound_check_fail":"Kunde inte starta ljudupptagningen.",
     "sound_check_hint":"Spela upp en video eller lite musik — signalen som Voxis hör ska få stapeln nedan att röra sig.",
-    "sound_check_ok":"Signal upptäckt — rätt enhet ✓",
+    "sound_check_ok":"Signal upptäckt ✓",
     "sound_check_wait":"Väntar på signal…",
     "source":"Källa",
     "spk_labels":"Talaretiketter (S1/S2)",
@@ -5023,7 +5049,7 @@ const I18N = {
     "sound_check":"Provera zvuka",
     "sound_check_fail":"Hvatanje zvuka nije moglo da se pokrene.",
     "sound_check_hint":"Pusti video ili muziku — signal koji Voxis čuje treba da pomera traku ispod.",
-    "sound_check_ok":"Signal detektovan — uređaj je ispravan ✓",
+    "sound_check_ok":"Signal detektovan ✓",
     "sound_check_wait":"Čekanje signala…",
     "source":"Izvor",
     "spk_labels":"Oznake govornika (S1/S2)",
@@ -5271,7 +5297,7 @@ const I18N = {
     "sound_check":"聲音檢查",
     "sound_check_fail":"無法啟動音訊擷取。",
     "sound_check_hint":"播放影片或音樂——Voxis 聽到的訊號應該會讓下方的音量條跳動。",
-    "sound_check_ok":"偵測到訊號——裝置正確 ✓",
+    "sound_check_ok":"偵測到訊號 ✓",
     "sound_check_wait":"等待訊號中…",
     "source":"來源",
     "spk_labels":"說話者標籤（S1/S2）",
@@ -5800,6 +5826,189 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
 /* Settings/auth strings (1.0.18) merged into the 16 language blocks above so
    they need no per-block edits; T()/applyI18n resolve them (en fallback if any). */
 Object.keys(I18N_EXTRA).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_EXTRA[l]; for(var k in s) I18N[l][k]=s[k]; });
+/* The output diagnostic is deliberately separate from system-audio capture:
+   the latter excludes Voxis itself, so its meter must not be presented as an
+   output-device meter. Keep these four short labels localized together. */
+const I18N_SOUND_CHECK_OUTPUT = {
+  tr:{sound_check_system:"Sistem sesi",sound_check_output_hint:"Düğmeye bas — seçilen çıkıştan kısa bir ses duymalısın.",sound_check_tone:"Test sinyalini çal",sound_check_output_wait:"Test bekleniyor…",sound_check_sent:"Test sinyali gönderildi ✓"},
+  en:{sound_check_system:"System audio",sound_check_output_hint:"Press the button — you should hear a short tone from the selected output.",sound_check_tone:"Play test signal",sound_check_output_wait:"Waiting for test…",sound_check_sent:"Test signal sent ✓"},
+  cs:{sound_check_system:"Systémový zvuk",sound_check_output_hint:"Stiskněte tlačítko — z vybraného výstupu by měl zaznít krátký tón.",sound_check_tone:"Přehrát testovací signál",sound_check_output_wait:"Čekání na test…",sound_check_sent:"Testovací signál odeslán ✓"},
+  de:{sound_check_system:"Systemaudio",sound_check_output_hint:"Drücke die Taste — über die gewählte Ausgabe sollte ein kurzer Ton zu hören sein.",sound_check_tone:"Testsignal abspielen",sound_check_output_wait:"Warte auf Test…",sound_check_sent:"Testsignal gesendet ✓"},
+  fr:{sound_check_system:"Audio système",sound_check_output_hint:"Appuyez sur le bouton — un bref signal doit être audible sur la sortie sélectionnée.",sound_check_tone:"Lire le signal test",sound_check_output_wait:"En attente du test…",sound_check_sent:"Signal test envoyé ✓"},
+  es:{sound_check_system:"Audio del sistema",sound_check_output_hint:"Pulsa el botón — deberías oír un tono breve por la salida seleccionada.",sound_check_tone:"Reproducir señal de prueba",sound_check_output_wait:"Esperando la prueba…",sound_check_sent:"Señal de prueba enviada ✓"},
+  pt:{sound_check_system:"Áudio do sistema",sound_check_output_hint:"Pressione o botão — você deverá ouvir um som curto na saída selecionada.",sound_check_tone:"Reproduzir sinal de teste",sound_check_output_wait:"Aguardando teste…",sound_check_sent:"Sinal de teste enviado ✓"},
+  ja:{sound_check_system:"システム音声",sound_check_output_hint:"ボタンを押すと、選択した出力から短い音が聞こえるはずです。",sound_check_tone:"テスト音を再生",sound_check_output_wait:"テスト待機中…",sound_check_sent:"テスト音を送信しました ✓"},
+  ko:{sound_check_system:"시스템 오디오",sound_check_output_hint:"버튼을 누르면 선택한 출력에서 짧은 소리가 들려야 합니다.",sound_check_tone:"테스트 신호 재생",sound_check_output_wait:"테스트 대기 중…",sound_check_sent:"테스트 신호 전송됨 ✓"},
+  ru:{sound_check_system:"Системный звук",sound_check_output_hint:"Нажмите кнопку — в выбранном выходе должен прозвучать короткий сигнал.",sound_check_tone:"Воспроизвести тестовый сигнал",sound_check_output_wait:"Ожидание проверки…",sound_check_sent:"Тестовый сигнал отправлен ✓"},
+  zh:{sound_check_system:"系统音频",sound_check_output_hint:"按下按钮后，应从所选输出听到一段短音。",sound_check_tone:"播放测试信号",sound_check_output_wait:"等待测试…",sound_check_sent:"测试信号已发送 ✓"},
+  pl:{sound_check_system:"Dźwięk systemowy",sound_check_output_hint:"Naciśnij przycisk — w wybranym wyjściu powinien zabrzmieć krótki dźwięk.",sound_check_tone:"Odtwórz sygnał testowy",sound_check_output_wait:"Oczekiwanie na test…",sound_check_sent:"Sygnał testowy wysłany ✓"},
+  it:{sound_check_system:"Audio di sistema",sound_check_output_hint:"Premi il pulsante — dovresti sentire un breve tono dall'uscita selezionata.",sound_check_tone:"Riproduci segnale di prova",sound_check_output_wait:"In attesa del test…",sound_check_sent:"Segnale di prova inviato ✓"},
+  id:{sound_check_system:"Audio sistem",sound_check_output_hint:"Tekan tombol — Anda akan mendengar nada singkat dari keluaran yang dipilih.",sound_check_tone:"Putar sinyal uji",sound_check_output_wait:"Menunggu pengujian…",sound_check_sent:"Sinyal uji dikirim ✓"},
+  nl:{sound_check_system:"Systeemaudio",sound_check_output_hint:"Druk op de knop — via de gekozen uitvoer hoort u een korte toon.",sound_check_tone:"Testsignaal afspelen",sound_check_output_wait:"Wachten op test…",sound_check_sent:"Testsignaal verzonden ✓"},
+  vi:{sound_check_system:"Âm thanh hệ thống",sound_check_output_hint:"Nhấn nút — bạn sẽ nghe một âm ngắn từ đầu ra đã chọn.",sound_check_tone:"Phát tín hiệu thử",sound_check_output_wait:"Đang chờ kiểm tra…",sound_check_sent:"Đã gửi tín hiệu thử ✓"},
+  th:{sound_check_system:"เสียงระบบ",sound_check_output_hint:"กดปุ่ม — คุณควรได้ยินเสียงสั้น ๆ จากเอาต์พุตที่เลือก",sound_check_tone:"เล่นสัญญาณทดสอบ",sound_check_output_wait:"กำลังรอการทดสอบ…",sound_check_sent:"ส่งสัญญาณทดสอบแล้ว ✓"},
+  ro:{sound_check_system:"Audio de sistem",sound_check_output_hint:"Apasă butonul — ar trebui să auzi un ton scurt la ieșirea selectată.",sound_check_tone:"Redă semnalul de test",sound_check_output_wait:"Se așteaptă testul…",sound_check_sent:"Semnal de test trimis ✓"},
+  hi:{sound_check_system:"सिस्टम ऑडियो",sound_check_output_hint:"बटन दबाएँ — चुने गए आउटपुट से एक छोटी ध्वनि सुनाई देनी चाहिए।",sound_check_tone:"टेस्ट सिग्नल चलाएँ",sound_check_output_wait:"टेस्ट की प्रतीक्षा…",sound_check_sent:"टेस्ट सिग्नल भेजा गया ✓"},
+  hu:{sound_check_system:"Rendszerhang",sound_check_output_hint:"Nyomd meg a gombot — a kiválasztott kimeneten rövid hangnak kell megszólalnia.",sound_check_tone:"Tesztjel lejátszása",sound_check_output_wait:"Várakozás a tesztre…",sound_check_sent:"Tesztjel elküldve ✓"},
+  sv:{sound_check_system:"Systemljud",sound_check_output_hint:"Tryck på knappen — en kort ton ska höras från den valda utgången.",sound_check_tone:"Spela testsignal",sound_check_output_wait:"Väntar på test…",sound_check_sent:"Testsignal skickad ✓"},
+  sr:{sound_check_system:"Sistemski zvuk",sound_check_output_hint:"Pritisni dugme — na izabranom izlazu treba da se čuje kratak ton.",sound_check_tone:"Pusti test signal",sound_check_output_wait:"Čekanje testa…",sound_check_sent:"Test signal je poslat ✓"},
+  "zh-Hant":{sound_check_system:"系統音訊",sound_check_output_hint:"按下按鈕後，應從所選輸出聽到一段短音。",sound_check_tone:"播放測試訊號",sound_check_output_wait:"等待測試…",sound_check_sent:"測試訊號已傳送 ✓"}
+};
+Object.keys(I18N_SOUND_CHECK_OUTPUT).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_SOUND_CHECK_OUTPUT[l]);
+});
+/* These selectors are two translation TARGETS, not source/target. Gemini
+   detects the source language automatically: the left side is what the user
+   hears, the right side is what the other person hears in Meeting mode. */
+const I18N_DIRECTION_LABELS = {
+  tr:{hear:"Ben duyuyorum",to_other:"Karşı taraf duyuyor",swap_languages:"Dilleri değiştir"},
+  en:{hear:"I hear",to_other:"Other person hears",swap_languages:"Swap languages"},
+  cs:{hear:"Já slyším",to_other:"Druhá strana slyší",swap_languages:"Prohodit jazyky"},
+  de:{hear:"Ich höre",to_other:"Gesprächspartner hört",swap_languages:"Sprachen tauschen"},
+  fr:{hear:"J’entends",to_other:"L’autre personne entend",swap_languages:"Inverser les langues"},
+  es:{hear:"Yo oigo",to_other:"La otra persona oye",swap_languages:"Intercambiar idiomas"},
+  pt:{hear:"Eu ouço",to_other:"A outra pessoa ouve",swap_languages:"Trocar idiomas"},
+  ja:{hear:"自分が聞く",to_other:"相手が聞く",swap_languages:"言語を入れ替える"},
+  ko:{hear:"내가 듣는 언어",to_other:"상대방이 듣는 언어",swap_languages:"언어 바꾸기"},
+  ru:{hear:"Я слышу",to_other:"Собеседник слышит",swap_languages:"Поменять языки местами"},
+  zh:{hear:"我听到",to_other:"对方听到",swap_languages:"交换语言"},
+  pl:{hear:"Ja słyszę",to_other:"Rozmówca słyszy",swap_languages:"Zamień języki"},
+  it:{hear:"Io sento",to_other:"L’altra persona sente",swap_languages:"Scambia lingue"},
+  id:{hear:"Saya mendengar",to_other:"Lawan bicara mendengar",swap_languages:"Tukar bahasa"},
+  nl:{hear:"Ik hoor",to_other:"De ander hoort",swap_languages:"Talen wisselen"},
+  vi:{hear:"Tôi nghe",to_other:"Người kia nghe",swap_languages:"Đổi ngôn ngữ"},
+  th:{hear:"ฉันได้ยิน",to_other:"อีกฝ่ายได้ยิน",swap_languages:"สลับภาษา"},
+  ro:{hear:"Eu aud",to_other:"Cealaltă persoană aude",swap_languages:"Inversează limbile"},
+  hi:{hear:"मैं सुनता हूँ",to_other:"दूसरा व्यक्ति सुनता है",swap_languages:"भाषाएँ बदलें"},
+  hu:{hear:"Én hallom",to_other:"A másik fél hallja",swap_languages:"Nyelvek felcserélése"},
+  sv:{hear:"Jag hör",to_other:"Den andra personen hör",swap_languages:"Byt språk"},
+  sr:{hear:"Ja čujem",to_other:"Sagovornik čuje",swap_languages:"Zameni jezike"},
+  "zh-Hant":{hear:"我聽到",to_other:"對方聽到",swap_languages:"交換語言"}
+};
+Object.keys(I18N_DIRECTION_LABELS).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_DIRECTION_LABELS[l]);
+});
+/* The developer-only cascade switch is hidden in official builds, but is part
+   of the visible Settings UI in OSS builds and must not stay hardcoded Turkish. */
+const I18N_CASCADE_PREVIEW = {
+  tr:{cascade_preview_label:"Ücretsiz mod testi",cascade_preview_hint:"Kaskad motorunu kullan: bulut metin çevirisi ve yerel sentetik ses. Sonraki oturumda etkinleşir."},
+  en:{cascade_preview_label:"Free-mode preview",cascade_preview_hint:"Use the cascade engine: cloud text translation and a local synthetic voice. Takes effect in the next session."},
+  cs:{cascade_preview_label:"Náhled bezplatného režimu",cascade_preview_hint:"Použít kaskádový modul: cloudový překlad textu a místní syntetický hlas. Projeví se od příští relace."},
+  de:{cascade_preview_label:"Vorschau des kostenlosen Modus",cascade_preview_hint:"Kaskaden-Engine verwenden: Cloud-Textübersetzung und lokale synthetische Stimme. Wird ab der nächsten Sitzung aktiv."},
+  fr:{cascade_preview_label:"Aperçu du mode gratuit",cascade_preview_hint:"Utiliser le moteur en cascade : traduction de texte dans le cloud et voix de synthèse locale. Actif à la prochaine session."},
+  es:{cascade_preview_label:"Vista previa del modo gratuito",cascade_preview_hint:"Usar el motor en cascada: traducción de texto en la nube y voz sintética local. Se aplicará en la próxima sesión."},
+  pt:{cascade_preview_label:"Prévia do modo gratuito",cascade_preview_hint:"Usar o mecanismo em cascata: tradução de texto na nuvem e voz sintética local. Entra em vigor na próxima sessão."},
+  ja:{cascade_preview_label:"無料モードのプレビュー",cascade_preview_hint:"カスケードエンジンを使用：クラウドでのテキスト翻訳とローカルの合成音声。次のセッションから有効になります。"},
+  ko:{cascade_preview_label:"무료 모드 미리보기",cascade_preview_hint:"캐스케이드 엔진 사용: 클라우드 텍스트 번역과 로컬 합성 음성. 다음 세션부터 적용됩니다."},
+  ru:{cascade_preview_label:"Тест бесплатного режима",cascade_preview_hint:"Использовать каскадный режим: облачный перевод текста и локальный синтезированный голос. Применится со следующего сеанса."},
+  zh:{cascade_preview_label:"免费模式预览",cascade_preview_hint:"使用级联引擎：云端文本翻译和本地合成语音。将在下次会话中生效。"},
+  pl:{cascade_preview_label:"Podgląd trybu bezpłatnego",cascade_preview_hint:"Użyj silnika kaskadowego: tłumaczenie tekstu w chmurze i lokalny głos syntetyczny. Zacznie działać w następnej sesji."},
+  it:{cascade_preview_label:"Anteprima modalità gratuita",cascade_preview_hint:"Usa il motore a cascata: traduzione del testo nel cloud e voce sintetica locale. Sarà attivo dalla prossima sessione."},
+  id:{cascade_preview_label:"Pratinjau mode gratis",cascade_preview_hint:"Gunakan mesin kaskade: terjemahan teks cloud dan suara sintetis lokal. Berlaku mulai sesi berikutnya."},
+  nl:{cascade_preview_label:"Voorbeeld gratis modus",cascade_preview_hint:"Gebruik de cascade-engine: tekstvertaling in de cloud en een lokale synthetische stem. Wordt actief in de volgende sessie."},
+  vi:{cascade_preview_label:"Xem trước chế độ miễn phí",cascade_preview_hint:"Dùng công cụ nối tầng: dịch văn bản trên đám mây và giọng nói tổng hợp cục bộ. Có hiệu lực từ phiên tiếp theo."},
+  th:{cascade_preview_label:"ทดลองโหมดฟรี",cascade_preview_hint:"ใช้เอนจินแบบลำดับขั้น: แปลข้อความบนคลาวด์และเสียงสังเคราะห์ในเครื่อง จะมีผลในเซสชันถัดไป"},
+  ro:{cascade_preview_label:"Previzualizare mod gratuit",cascade_preview_hint:"Folosește motorul în cascadă: traducere de text în cloud și voce sintetică locală. Se aplică din sesiunea următoare."},
+  hi:{cascade_preview_label:"मुफ़्त मोड का पूर्वावलोकन",cascade_preview_hint:"कैस्केड इंजन का उपयोग करें: क्लाउड में टेक्स्ट अनुवाद और स्थानीय सिंथेटिक आवाज़। अगला सत्र शुरू होने पर लागू होगा।"},
+  hu:{cascade_preview_label:"Ingyenes mód előnézete",cascade_preview_hint:"A kaszkádmotor használata: felhőalapú szövegfordítás és helyi szintetikus hang. A következő munkamenetben lép életbe."},
+  sv:{cascade_preview_label:"Förhandsvisning av gratisläget",cascade_preview_hint:"Använd kaskadmotorn: textöversättning i molnet och lokal syntetisk röst. Börjar gälla i nästa session."},
+  sr:{cascade_preview_label:"Pregled besplatnog režima",cascade_preview_hint:"Koristi kaskadni motor: prevod teksta u oblaku i lokalni sintetički glas. Aktivira se u sledećoj sesiji."},
+  "zh-Hant":{cascade_preview_label:"免費模式預覽",cascade_preview_hint:"使用級聯引擎：雲端文字翻譯和本機合成語音。將於下次工作階段生效。"}
+};
+Object.keys(I18N_CASCADE_PREVIEW).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_CASCADE_PREVIEW[l]);
+});
+/* The main meter reads active translation pipelines only. At idle, say that a
+   session must be started instead of implying that capture is already running. */
+const I18N_IDLE_METER = {
+  tr:"Sinyali kontrol etmek için çeviriyi başlatın",
+  en:"Start translation to check the signal",
+  cs:"Spusťte překlad pro kontrolu signálu",
+  de:"Übersetzung starten, um das Signal zu prüfen",
+  fr:"Lancez la traduction pour vérifier le signal",
+  es:"Inicia la traducción para comprobar la señal",
+  pt:"Inicie a tradução para verificar o sinal",
+  ja:"信号を確認するには翻訳を開始してください",
+  ko:"신호를 확인하려면 번역을 시작하세요",
+  ru:"Запустите перевод для проверки сигнала",
+  zh:"开始翻译以检查信号",
+  pl:"Uruchom tłumaczenie, aby sprawdzić sygnał",
+  it:"Avvia la traduzione per controllare il segnale",
+  id:"Mulai terjemahan untuk memeriksa sinyal",
+  nl:"Start de vertaling om het signaal te controleren",
+  vi:"Bắt đầu dịch để kiểm tra tín hiệu",
+  th:"เริ่มการแปลเพื่อตรวจสอบสัญญาณ",
+  ro:"Pornește traducerea pentru a verifica semnalul",
+  hi:"सिग्नल जाँचने के लिए अनुवाद शुरू करें",
+  hu:"Indítsd el a fordítást a jel ellenőrzéséhez",
+  sv:"Starta översättningen för att kontrollera signalen",
+  sr:"Pokreni prevod da proveriš signal",
+  "zh-Hant":"開始翻譯以檢查訊號"
+};
+Object.keys(I18N_IDLE_METER).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; I18N[l].waiting_signal=I18N_IDLE_METER[l];
+});
+/* A live raw-audio meter and a speech detector answer different questions.
+   Keep both states explicit so music/SFX never renders as green "silence", and
+   Video mode never looks as though it listens to the microphone selector. */
+const I18N_INPUT_METER = {
+  tr:{waiting_system_audio:"Sistem sesi bekleniyor",system_audio_detected:"Sistem sesi var · henüz konuşma yok",waiting_for_speech:"Konuşma bekleniyor",input_audio_detected:"Giriş sesi var · henüz konuşma yok",mic_meeting_only:"Mikrofon · yalnızca Toplantı"},
+  en:{waiting_system_audio:"Waiting for system audio",system_audio_detected:"System audio · no speech yet",waiting_for_speech:"Waiting for speech",input_audio_detected:"Input audio · no speech yet",mic_meeting_only:"Microphone · Meeting only"},
+  cs:{waiting_system_audio:"Čekání na systémový zvuk",system_audio_detected:"Systémový zvuk · zatím bez řeči",waiting_for_speech:"Čekání na řeč",input_audio_detected:"Vstupní zvuk · zatím bez řeči",mic_meeting_only:"Mikrofon · jen pro schůzku"},
+  de:{waiting_system_audio:"Warte auf Systemaudio",system_audio_detected:"Systemaudio · noch keine Sprache",waiting_for_speech:"Warte auf Sprache",input_audio_detected:"Eingangsaudio · noch keine Sprache",mic_meeting_only:"Mikrofon · nur Besprechung"},
+  fr:{waiting_system_audio:"En attente de l’audio système",system_audio_detected:"Audio système · pas encore de parole",waiting_for_speech:"En attente de parole",input_audio_detected:"Audio d’entrée · pas encore de parole",mic_meeting_only:"Microphone · réunion uniquement"},
+  es:{waiting_system_audio:"Esperando audio del sistema",system_audio_detected:"Audio del sistema · aún sin voz",waiting_for_speech:"Esperando voz",input_audio_detected:"Audio de entrada · aún sin voz",mic_meeting_only:"Micrófono · solo Reunión"},
+  pt:{waiting_system_audio:"Aguardando áudio do sistema",system_audio_detected:"Áudio do sistema · ainda sem fala",waiting_for_speech:"Aguardando fala",input_audio_detected:"Áudio de entrada · ainda sem fala",mic_meeting_only:"Microfone · somente Reunião"},
+  ja:{waiting_system_audio:"システム音声を待機中",system_audio_detected:"システム音声あり・まだ発話なし",waiting_for_speech:"発話を待機中",input_audio_detected:"入力音声あり・まだ発話なし",mic_meeting_only:"マイク・会議のみ"},
+  ko:{waiting_system_audio:"시스템 오디오 대기 중",system_audio_detected:"시스템 오디오 있음 · 아직 음성 없음",waiting_for_speech:"음성 대기 중",input_audio_detected:"입력 오디오 있음 · 아직 음성 없음",mic_meeting_only:"마이크 · 회의 전용"},
+  ru:{waiting_system_audio:"Ожидание системного звука",system_audio_detected:"Системный звук есть · речи пока нет",waiting_for_speech:"Ожидание речи",input_audio_detected:"Входной звук есть · речи пока нет",mic_meeting_only:"Микрофон · только для встречи"},
+  zh:{waiting_system_audio:"等待系统音频",system_audio_detected:"已有系统音频 · 尚未检测到语音",waiting_for_speech:"等待语音",input_audio_detected:"已有输入音频 · 尚未检测到语音",mic_meeting_only:"麦克风 · 仅用于会议"},
+  pl:{waiting_system_audio:"Oczekiwanie na dźwięk systemowy",system_audio_detected:"Dźwięk systemowy · jeszcze bez mowy",waiting_for_speech:"Oczekiwanie na mowę",input_audio_detected:"Dźwięk wejściowy · jeszcze bez mowy",mic_meeting_only:"Mikrofon · tylko Spotkanie"},
+  it:{waiting_system_audio:"In attesa dell’audio di sistema",system_audio_detected:"Audio di sistema · ancora nessuna voce",waiting_for_speech:"In attesa della voce",input_audio_detected:"Audio in ingresso · ancora nessuna voce",mic_meeting_only:"Microfono · solo Riunione"},
+  id:{waiting_system_audio:"Menunggu audio sistem",system_audio_detected:"Audio sistem ada · belum ada ucapan",waiting_for_speech:"Menunggu ucapan",input_audio_detected:"Audio masukan ada · belum ada ucapan",mic_meeting_only:"Mikrofon · hanya Rapat"},
+  nl:{waiting_system_audio:"Wachten op systeemaudio",system_audio_detected:"Systeemaudio · nog geen spraak",waiting_for_speech:"Wachten op spraak",input_audio_detected:"Invoeraudio · nog geen spraak",mic_meeting_only:"Microfoon · alleen Vergadering"},
+  vi:{waiting_system_audio:"Đang chờ âm thanh hệ thống",system_audio_detected:"Có âm thanh hệ thống · chưa có lời nói",waiting_for_speech:"Đang chờ giọng nói",input_audio_detected:"Có âm thanh đầu vào · chưa có lời nói",mic_meeting_only:"Micrô · chỉ dùng cho Cuộc họp"},
+  th:{waiting_system_audio:"กำลังรอเสียงระบบ",system_audio_detected:"มีเสียงระบบ · ยังไม่พบคำพูด",waiting_for_speech:"กำลังรอเสียงพูด",input_audio_detected:"มีเสียงอินพุต · ยังไม่พบคำพูด",mic_meeting_only:"ไมโครโฟน · ใช้เฉพาะการประชุม"},
+  ro:{waiting_system_audio:"Se așteaptă sunetul de sistem",system_audio_detected:"Sunet de sistem · încă fără vorbire",waiting_for_speech:"Se așteaptă vorbirea",input_audio_detected:"Sunet de intrare · încă fără vorbire",mic_meeting_only:"Microfon · doar Întâlnire"},
+  hi:{waiting_system_audio:"सिस्टम ऑडियो की प्रतीक्षा",system_audio_detected:"सिस्टम ऑडियो है · अभी वाणी नहीं",waiting_for_speech:"वाणी की प्रतीक्षा",input_audio_detected:"इनपुट ऑडियो है · अभी वाणी नहीं",mic_meeting_only:"माइक्रोफ़ोन · केवल मीटिंग"},
+  hu:{waiting_system_audio:"Várakozás rendszerhangra",system_audio_detected:"Van rendszerhang · még nincs beszéd",waiting_for_speech:"Várakozás beszédre",input_audio_detected:"Van bemeneti hang · még nincs beszéd",mic_meeting_only:"Mikrofon · csak Megbeszélés"},
+  sv:{waiting_system_audio:"Väntar på systemljud",system_audio_detected:"Systemljud · inget tal ännu",waiting_for_speech:"Väntar på tal",input_audio_detected:"Ingångsljud · inget tal ännu",mic_meeting_only:"Mikrofon · endast Möte"},
+  sr:{waiting_system_audio:"Čekanje sistemskog zvuka",system_audio_detected:"Sistemski zvuk · govor još nije detektovan",waiting_for_speech:"Čekanje govora",input_audio_detected:"Ulazni zvuk · govor još nije detektovan",mic_meeting_only:"Mikrofon · samo Sastanak"},
+  "zh-Hant":{waiting_system_audio:"等待系統音訊",system_audio_detected:"已有系統音訊 · 尚未偵測到語音",waiting_for_speech:"等待語音",input_audio_detected:"已有輸入音訊 · 尚未偵測到語音",mic_meeting_only:"麥克風 · 僅用於會議"}
+};
+Object.keys(I18N_INPUT_METER).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_INPUT_METER[l]);
+});
+/* Optional Meeting confidence monitor: outgoing translated speech keeps feeding
+   the virtual microphone and is also mirrored to the selected headphones. */
+const I18N_OUTGOING_MONITOR = {
+  tr:{monitor_outgoing:"Çevirimi dinle",monitor_outgoing_hint:"Yalnızca Toplantı. Çeviri sanal mikrofona ve seçili kulaklığa gönderilir. Geri beslemeyi önlemek için kulaklık kullanın."},
+  en:{monitor_outgoing:"Listen to my translation",monitor_outgoing_hint:"Meeting only. Sends the translation to both the virtual microphone and your selected headphones. Use headphones to prevent feedback."},
+  cs:{monitor_outgoing:"Poslouchat můj překlad",monitor_outgoing_hint:"Jen pro schůzku. Překlad jde do virtuálního mikrofonu i vybraných sluchátek. Použijte sluchátka, aby nevznikla zpětná vazba."},
+  de:{monitor_outgoing:"Meine Übersetzung anhören",monitor_outgoing_hint:"Nur Besprechung. Sendet die Übersetzung an das virtuelle Mikrofon und die gewählten Kopfhörer. Kopfhörer verhindern Rückkopplungen."},
+  fr:{monitor_outgoing:"Écouter ma traduction",monitor_outgoing_hint:"Réunion uniquement. Envoie la traduction au micro virtuel et au casque sélectionné. Utilisez un casque pour éviter le retour audio."},
+  es:{monitor_outgoing:"Escuchar mi traducción",monitor_outgoing_hint:"Solo Reunión. Envía la traducción al micrófono virtual y a los auriculares seleccionados. Usa auriculares para evitar realimentación."},
+  pt:{monitor_outgoing:"Ouvir minha tradução",monitor_outgoing_hint:"Somente Reunião. Envia a tradução ao microfone virtual e aos fones selecionados. Use fones para evitar realimentação."},
+  ja:{monitor_outgoing:"自分の翻訳を聞く",monitor_outgoing_hint:"会議のみ。翻訳を仮想マイクと選択したヘッドホンの両方へ送ります。フィードバック防止のためヘッドホンを使用してください。"},
+  ko:{monitor_outgoing:"내 번역 듣기",monitor_outgoing_hint:"회의 전용. 번역을 가상 마이크와 선택한 헤드폰으로 동시에 보냅니다. 피드백 방지를 위해 헤드폰을 사용하세요."},
+  ru:{monitor_outgoing:"Слушать мой перевод",monitor_outgoing_hint:"Только для встречи. Перевод одновременно отправляется в виртуальный микрофон и выбранные наушники. Используйте наушники, чтобы избежать обратной связи."},
+  zh:{monitor_outgoing:"收听我的翻译",monitor_outgoing_hint:"仅用于会议。翻译会同时发送到虚拟麦克风和所选耳机。请使用耳机以避免回声。"},
+  pl:{monitor_outgoing:"Słuchaj mojego tłumaczenia",monitor_outgoing_hint:"Tylko Spotkanie. Tłumaczenie trafia do wirtualnego mikrofonu i wybranych słuchawek. Użyj słuchawek, aby uniknąć sprzężenia."},
+  it:{monitor_outgoing:"Ascolta la mia traduzione",monitor_outgoing_hint:"Solo Riunione. Invia la traduzione al microfono virtuale e alle cuffie selezionate. Usa le cuffie per evitare il feedback."},
+  id:{monitor_outgoing:"Dengarkan terjemahan saya",monitor_outgoing_hint:"Hanya Rapat. Terjemahan dikirim ke mikrofon virtual dan headphone yang dipilih. Gunakan headphone untuk mencegah umpan balik."},
+  nl:{monitor_outgoing:"Luister naar mijn vertaling",monitor_outgoing_hint:"Alleen Vergadering. Stuurt de vertaling naar de virtuele microfoon en de gekozen hoofdtelefoon. Gebruik een hoofdtelefoon om feedback te voorkomen."},
+  vi:{monitor_outgoing:"Nghe bản dịch của tôi",monitor_outgoing_hint:"Chỉ dùng cho Cuộc họp. Gửi bản dịch đến micrô ảo và tai nghe đã chọn. Hãy dùng tai nghe để tránh phản hồi âm thanh."},
+  th:{monitor_outgoing:"ฟังคำแปลของฉัน",monitor_outgoing_hint:"ใช้เฉพาะการประชุม ส่งคำแปลไปยังไมโครโฟนเสมือนและหูฟังที่เลือกพร้อมกัน โปรดใช้หูฟังเพื่อป้องกันเสียงวนกลับ"},
+  ro:{monitor_outgoing:"Ascultă traducerea mea",monitor_outgoing_hint:"Doar Întâlnire. Trimite traducerea la microfonul virtual și la căștile selectate. Folosește căști pentru a evita feedbackul."},
+  hi:{monitor_outgoing:"मेरा अनुवाद सुनें",monitor_outgoing_hint:"केवल मीटिंग। अनुवाद वर्चुअल माइक्रोफ़ोन और चुने हुए हेडफ़ोन दोनों पर भेजता है। फ़ीडबैक से बचने के लिए हेडफ़ोन उपयोग करें।"},
+  hu:{monitor_outgoing:"Saját fordítás hallgatása",monitor_outgoing_hint:"Csak Megbeszélés. A fordítást a virtuális mikrofonra és a kiválasztott fejhallgatóra is elküldi. A visszacsatolás elkerüléséhez használj fejhallgatót."},
+  sv:{monitor_outgoing:"Lyssna på min översättning",monitor_outgoing_hint:"Endast Möte. Skickar översättningen till både den virtuella mikrofonen och valda hörlurar. Använd hörlurar för att undvika rundgång."},
+  sr:{monitor_outgoing:"Slušaj moj prevod",monitor_outgoing_hint:"Samo Sastanak. Prevod se šalje virtuelnom mikrofonu i izabranim slušalicama. Koristi slušalice da sprečiš povratni zvuk."},
+  "zh-Hant":{monitor_outgoing:"聆聽我的翻譯",monitor_outgoing_hint:"僅用於會議。翻譯會同時傳送到虛擬麥克風和所選耳機。請使用耳機以避免回授。"}
+};
+Object.keys(I18N_OUTGOING_MONITOR).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_OUTGOING_MONITOR[l]);
+});
 /* Bilingual-export toggle label (History footer). Fill-if-undefined so a locale
    that never defined it falls back cleanly. */
 const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "cs":"Dvojjazyčné", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา", "ro":"Bilingv", "hi":"द्विभाषी", "hu":"Kétnyelvű", "sv":"Tvåspråkig", "sr":"Dvojezično", "zh-Hant":"雙語" };
@@ -6133,6 +6342,7 @@ async function init(){
   $('#obs').checked     = !!cfg.obs_subtitle_enabled;
   { const ra = $('#record-audio'); if(ra) ra.checked = !!cfg.record_audio; }
   { const sl = $('#spk-labels'); if(sl) sl.checked = cfg.speaker_labels !== false; }
+  { const mo = $('#monitor-outgoing'); if(mo) mo.checked = !!cfg.monitor_outgoing_translation; }
   // Badge removal is a paid perk: only an official build with a paid subscription
   // may turn it off. Everyone else (free official + OSS) gets a locked, forced-on
   // toggle with a "subscription required" tooltip on hover.
@@ -6197,6 +6407,20 @@ $('#hear').onchange   = e=>{
   return api().set_cfg('target_language_incoming', e.target.value);
 };
 $('#send').onchange   = e=>api().set_cfg('target_language_outgoing', e.target.value);
+$('#langswap').onclick = async()=>{
+  const b=$('#langswap'); b.disabled=true;
+  try{
+    const r=await api().swap_languages();
+    if(r && r.ok!==false){
+      $('#hear').value=r.incoming; $('#send').value=r.outgoing;
+      if(STATE.cfg){
+        STATE.cfg.target_language_incoming=r.incoming;
+        STATE.cfg.target_language_outgoing=r.outgoing;
+      }
+      renderVoiceHint();
+    }
+  }finally{ b.disabled=false; }
+};
 $('#profile').onchange= e=>api().set_profile(e.target.value).then(refreshFromCfg);
 $('#out').onchange    = e=>api().set_device('output', e.target.value);
 $('#mic').onchange    = e=>api().set_device('mic', e.target.value);
@@ -6204,6 +6428,7 @@ $('#subs').onchange   = e=>api().set_cfg('show_subtitles', e.target.checked);
 $('#obs').onchange    = e=>api().set_cfg('obs_subtitle_enabled', e.target.checked);
 { const ra = $('#record-audio'); if(ra) ra.onchange = e=>api().set_cfg('record_audio', e.target.checked); }
 { const sl = $('#spk-labels'); if(sl) sl.onchange = e=>api().set_cfg('speaker_labels', e.target.checked); }
+{ const mo = $('#monitor-outgoing'); if(mo) mo.onchange = e=>api().set_cfg('monitor_outgoing_translation', e.target.checked); }
 $('#brandbadge').onchange = e=>api().set_cfg('branding_badge_enabled', e.target.checked);
 $('#overlay').onchange= e=>api().toggle_overlay(e.target.checked);
 $('#uilang').onchange = e=>{ applyI18n(e.target.value); try{api().set_cfg('ui_language', e.target.value);}catch(_){} };
@@ -6410,31 +6635,63 @@ function closeConsent(){ $('#consent-modal').classList.remove('open'); if(!$('#d
 let SESSION_LIVE=false, limitShown=false, warn80Shown=false, sessionT0=0;
 
 /* ---------- sound check ("do I hear this device?") ---------- */
-let scOpen=false, scHeard=false;
+let scOpen=false, scHeard=false, scMicHeard=false, scOutputTimer=null;
 function openSoundcheck(){
   api().soundcheck_start().then(r=>{
-    scOpen=true; scHeard=false;
+    scOpen=true; scHeard=false; scMicHeard=false;
     $('#sc-fill').style.width='0%';
-    const st=$('#sc-status'); st.classList.remove('ok','err');
-    if(r && r.ok===false){ st.textContent=T('sound_check_fail'); st.classList.add('err'); }
+    $('#sc-output-fill').style.width='0%';
+    $('#sc-mic-fill').style.width='0%';
+    $('#sc-tone').disabled=false;
+    const st=$('#sc-status'), ost=$('#sc-output-status'), mst=$('#sc-mic-status');
+    st.classList.remove('ok','err'); ost.classList.remove('ok','err'); mst.classList.remove('ok','err');
+    ost.textContent=T('sound_check_output_wait');
+    if(r && r.system_ok===false){ st.textContent=T('sound_check_fail'); st.classList.add('err'); }
     else { st.textContent=T('sound_check_wait'); }
+    if(r && r.mic_ok===false){ mst.textContent=T('sound_check_fail'); mst.classList.add('err'); }
+    else { mst.textContent=T('sound_check_wait'); }
     $('#scrim').classList.add('open'); $('#soundcheck-modal').classList.add('open');
     openModal($('#soundcheck-modal'), closeSoundcheck, $('#soundcheckbtn'));
   });
 }
+$('#sc-tone').onclick = async()=>{
+  const b=$('#sc-tone'), fill=$('#sc-output-fill'), st=$('#sc-output-status');
+  b.disabled=true; clearTimeout(scOutputTimer);
+  st.classList.remove('ok','err'); st.textContent=T('sound_check_output_wait');
+  fill.style.width='0%'; requestAnimationFrame(()=>{ fill.style.width='82%'; });
+  try{
+    const r=await api().soundcheck_play_tone();
+    if(r && r.ok===false){
+      fill.style.width='0%'; st.textContent=T('sound_check_fail'); st.classList.add('err');
+    }else{ st.textContent=T('sound_check_sent'); st.classList.add('ok'); }
+  }catch(_){
+    fill.style.width='0%'; st.textContent=T('sound_check_fail'); st.classList.add('err');
+  }finally{
+    scOutputTimer=setTimeout(()=>{ fill.style.width='0%'; b.disabled=false; }, 550);
+  }
+};
 function closeSoundcheck(){
   scOpen=false;
+  clearTimeout(scOutputTimer); $('#sc-output-fill').style.width='0%'; $('#sc-tone').disabled=false;
   try{ api().soundcheck_stop(); }catch(_){}
   $('#soundcheck-modal').classList.remove('open');
   if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open');
   closeModal();
 }
-function driveSoundcheck(level){
-  if(typeof level!=='number') return;
-  $('#sc-fill').style.width=Math.min(100, Math.round(level*130))+'%';
-  if(!scHeard && level>0.05){
-    scHeard=true;
-    const st=$('#sc-status'); st.textContent=T('sound_check_ok'); st.classList.add('ok');
+function driveSoundcheck(level, micLevel){
+  if(typeof level==='number'){
+    $('#sc-fill').style.width=Math.min(100, Math.round(level*130))+'%';
+    if(!scHeard && level>0.05){
+      scHeard=true;
+      const st=$('#sc-status'); st.textContent=T('sound_check_ok'); st.classList.add('ok');
+    }
+  }
+  if(typeof micLevel==='number'){
+    $('#sc-mic-fill').style.width=Math.min(100, Math.round(micLevel*130))+'%';
+    if(!scMicHeard && micLevel>0.05){
+      scMicHeard=true;
+      const st=$('#sc-mic-status'); st.textContent=T('sound_check_ok'); st.classList.add('ok');
+    }
   }
 }
 function openLimitModal(){ $('#scrim').classList.add('open'); $('#limit-modal').classList.add('open'); openModal($('#limit-modal'), closeLimitModal, null); }
@@ -7379,7 +7636,7 @@ async function poll(){
       else if(ev[0]==='daily_wall'){ openDailyWall(); }
       else if(ev[0]==='device_blocked'){ openDeviceBlockWall(ev[1]); }
     });
-    if(scOpen) driveSoundcheck(p.sc);
+    if(scOpen) driveSoundcheck(p.sc, p.sc_mic);
     $('#badge').textContent = p.badge.text;
     setPillState(p);
     const liveSession = !!p.mode;
@@ -7399,9 +7656,15 @@ async function poll(){
     $('#savechip').classList.toggle('on', !!document.querySelector('#scroll .turn'));
     SESSION_LIVE = liveSession;
     pollFast = liveSession;
-    targetLevel = p.level || 0;
+    targetLevel = Number(p.level) || 0;
     $('#vad').classList.toggle('live', liveSession);
-    const vadLabel = p.vad ? T('vad_speaking') : (p.mode ? T('vad_silent') : T('waiting_signal'));
+    const hasInputSignal = liveSession && targetLevel > 0.02;
+    $('#vad').classList.toggle('signal', hasInputSignal);
+    const vadLabel = p.vad ? T('vad_speaking')
+      : !p.mode ? T('waiting_signal')
+      : p.mode==='video'
+        ? T(hasInputSignal ? 'system_audio_detected' : 'waiting_system_audio')
+        : T(hasInputSignal ? 'input_audio_detected' : 'waiting_for_speech');
     $('#vadtxt').textContent = vadLabel;
     $('#vad').setAttribute('aria-label', vadLabel);
     $('#presence').classList.toggle('on', liveSession);
@@ -7425,6 +7688,13 @@ async function poll(){
     // session so the UI can't imply two-way translation there.
     $('#send').disabled = (p.mode==='video');
     $('#send-item').classList.toggle('lang-dim', p.mode==='video');
+    // Video/Game translates the system mix; its microphone selector is not an
+    // input to this mode. Make that explicit while the session is running.
+    $('#mic').disabled = (p.mode==='video');
+    $('#mic-label').textContent = p.mode==='video' ? T('mic_meeting_only') : T('mic');
+    { const mo=$('#monitor-outgoing'), wrap=$('#monitor-outgoing-wrap');
+      if(mo) mo.disabled=(p.mode==='video');
+      if(wrap) wrap.style.opacity=(p.mode==='video') ? '.45' : ''; }
     // Virtual-mic caveat is contextual: Meeting hover/focus (CSS) or live.
     $('#meeting-caveat').classList.toggle('show', p.mode==='meeting');
   }catch(e){}

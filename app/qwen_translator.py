@@ -3,8 +3,8 @@
 Shares the field-hardened session machine (bounded drop-oldest queue, carryover
 across reconnect, planned rotation, stall/no-output watchdogs, terminal-error
 classification) with the Gemini and OpenAI engines via app/base_translator.py,
-and adds only the DashScope realtime protocol plus the SyncStager pacing this
-engine needs.
+and adds only the DashScope realtime protocol. Playback catch-up pacing is
+shared with Gemini through app/playback_sync.py.
 
 Verified protocol + behavior (sandbox-qwen-livetranslate/FINDINGS.md +
 TEST_REPORT_2026-07-04.md, all live-measured):
@@ -28,15 +28,12 @@ Hard-won rules baked in here — do not "improve" these without re-measuring:
   * turn_detection {type: server_vad, silence_duration_ms} IS accepted
     (undocumented) and is the only safe segmentation knob (500 ms validated).
   * `source: "auto"` works (undocumented); the field is a hint, not a filter.
-  * Output speech runs LONGER than the source (+15-30%), so playback is paced
-    through SyncStager (WSOLA speed-up first, oldest-first trim as last resort)
-    instead of being fed straight into the Player ring like Gemini/OpenAI.
+  * Output speech runs LONGER than the source (+15-30%), so playback uses the
+    shared AdaptivePlaybackStager (WSOLA first, stale trim as last resort).
 """
 import base64
-import collections
 import json
 import logging
-import threading
 import time
 
 import numpy as np
@@ -45,6 +42,7 @@ _log = logging.getLogger("voxis")
 
 from .base_translator import BaseTranslator, is_terminal_error
 from .config import QWEN_TRANSLATE_MODEL, QWEN_WORKSPACE
+from .playback_sync import AdaptivePlaybackStager as SyncStager
 
 URL_TEMPLATE = ("wss://{ws}.ap-southeast-1.maas.aliyuncs.com"
                 "/api-ws/v1/realtime?model={model}")
@@ -71,156 +69,6 @@ _TERMINAL_PHRASES = (
 
 def _is_terminal_error(exc) -> bool:
     return is_terminal_error(exc, _TERMINAL_PHRASES)
-
-
-def _wsola(x: np.ndarray, speed: float, sr: int) -> np.ndarray:
-    """Pitch-preserving time compression (WSOLA): 30 ms frames, 50% overlap,
-    ±8 ms similarity search — clean for speech at <= 1.3x. Runs on the stager
-    thread, never in the audio callback. (Validated: duration ratio exact,
-    zero-crossing rate — i.e. pitch — preserved within 1%.)"""
-    frame = int(sr * 0.030)
-    hop_out = frame // 2
-    hop_in = int(hop_out * speed)
-    search = int(sr * 0.008)
-    if speed <= 1.01 or len(x) < frame + hop_in + search + 1:
-        return x
-    win = np.hanning(frame).astype(np.float32)
-    n_frames = (len(x) - frame - search) // hop_in
-    if n_frames < 2:
-        return x
-    out = np.zeros(n_frames * hop_out + frame, dtype=np.float32)
-    norm = np.zeros_like(out)
-    sel = 0
-    out[:frame] += x[:frame] * win
-    norm[:frame] += win
-    for k in range(1, n_frames):
-        target = k * hop_in
-        lo = max(0, target - search)
-        hi = min(len(x) - frame, target + search)
-        tmpl = x[sel + hop_out: sel + hop_out + frame]
-        if hi <= lo or len(tmpl) < frame:
-            sel = target
-        else:
-            corr = np.correlate(x[lo:hi + frame], tmpl, mode="valid")
-            sel = lo + int(np.argmax(corr))
-        o = k * hop_out
-        out[o:o + frame] += x[sel:sel + frame] * win
-        norm[o:o + frame] += win
-    np.maximum(norm, 1e-6, out=norm)
-    return out / norm
-
-
-class SyncStager:
-    """Live-sync pacing between the Qwen stream and the Player.
-
-    Qwen's translated speech is longer than the source and carries no silence
-    padding (unlike OpenAI's self-timing stream), so feeding the Player ring
-    directly drifts the dub minutes behind. This stager keeps the ring only
-    ~2.5 s deep and, as backlog grows, WSOLA-compresses blocks (>=3 s -> 1.12x,
-    >=6 s -> 1.25x, pitch preserved); beyond 12 s the OLDEST audio is trimmed to
-    4 s — the loss is always stale content, never the line currently playing.
-    Exposes telemetry for the beta UI.
-    """
-
-    FEED_AHEAD_S = 2.5
-    SPEED_STEPS = ((6.0, 1.25), (3.0, 1.12))
-    PENDING_MAX_S = 12.0
-    PENDING_KEEP_S = 4.0
-
-    def __init__(self, player, on_status=None):
-        self._player = player
-        self._on_status = on_status
-        self._pending: collections.deque[bytes] = collections.deque()
-        self._pending_bytes = 0
-        self._lock = threading.Lock()
-        self.speed = 1.0
-        self.skipped_s = 0.0
-        self.sped_s = 0.0
-        # Player-feed fault telemetry: a persistently raising feed_tts_pcm16 would
-        # silently drop ALL translated audio (text keeps flowing) — the exact
-        # "subtitles but no voice" failure. Counted + surfaced once instead of
-        # swallowed, so a field report captures it.
-        self.feed_errors = 0
-        self._feed_err_warned = False
-        self._run = True
-        self._thread = threading.Thread(target=self._loop, daemon=True,
-                                        name="qwen-stager")
-        self._thread.start()
-
-    @property
-    def backlog_s(self) -> float:
-        p = self._player
-        ring = p.tts.fill / p.rate if p is not None else 0.0
-        return self._pending_bytes / (OUT_RATE * 2) + ring
-
-    def feed(self, data: bytes):
-        trimmed = 0
-        with self._lock:
-            self._pending.append(data)
-            self._pending_bytes += len(data)
-            if self._pending_bytes > int(self.PENDING_MAX_S * OUT_RATE * 2):
-                keep = int(self.PENDING_KEEP_S * OUT_RATE * 2)
-                while self._pending and self._pending_bytes > keep:
-                    c = self._pending.popleft()
-                    self._pending_bytes -= len(c)
-                    trimmed += len(c)
-        if trimmed:
-            self.skipped_s += trimmed / (OUT_RATE * 2)
-
-    def _loop(self):
-        block = int(0.6 * OUT_RATE) * 2
-        while self._run:
-            player = self._player
-            if player is not None:
-                try:
-                    while (self._run and self._pending_bytes
-                           and player.tts.fill / player.rate < self.FEED_AHEAD_S):
-                        buf = bytearray()
-                        with self._lock:
-                            while self._pending and len(buf) < block:
-                                c = self._pending.popleft()
-                                self._pending_bytes -= len(c)
-                                buf.extend(c)
-                        if not buf:
-                            break
-                        backlog = self.backlog_s
-                        speed = 1.0
-                        for thresh, sp in self.SPEED_STEPS:
-                            if backlog >= thresh:
-                                speed = sp
-                                break
-                        self.speed = speed
-                        data = bytes(buf)
-                        if speed > 1.0:
-                            x = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
-                            y = _wsola(x, speed, OUT_RATE)
-                            self.sped_s += max(0.0, (len(x) - len(y)) / OUT_RATE)
-                            data = (np.clip(y, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
-                        player.feed_tts_pcm16(data)
-                except Exception:
-                    # A persistent feed fault here is exactly how the translated
-                    # voice goes missing while captions still flow. Count EVERY
-                    # occurrence (telemetry), but log the stack trace + surface the
-                    # status only ONCE — a sustained fault must not flood the log
-                    # with a fresh traceback on every 20 ms iteration.
-                    self.feed_errors += 1
-                    if not self._feed_err_warned:
-                        self._feed_err_warned = True
-                        _log.exception("qwen stager player-feed failed (#%d)", self.feed_errors)
-                        if self._on_status is not None:
-                            try:
-                                self._on_status(
-                                    "translator: audio playback fault — translated "
-                                    "voice may be silent")
-                            except Exception:
-                                pass
-            time.sleep(0.02)
-
-    def stop(self):
-        self._run = False
-        if self._thread.is_alive():
-            self._thread.join(timeout=1.5)
-        self._player = None
 
 
 class QwenTranslator(BaseTranslator):

@@ -235,6 +235,37 @@ def device_rate(index: int | None, kind: str) -> int:
     return int(info["default_samplerate"])
 
 
+def play_test_tone(device: int | None, duration: float = 0.45,
+                   frequency: float = 660.0, gain: float = 0.08) -> None:
+    """Play a short, gently faded diagnostic tone on one output endpoint.
+
+    Uses an explicit stream instead of ``sd.play`` so the selected device is
+    the device being tested. The conservative gain and 20 ms fades make repeat
+    clicks safe and avoid start/stop pops on USB headsets.
+    """
+    info = sd.query_devices(
+        device if device is not None else sd.default.device[1])
+    rate = int(info["default_samplerate"])
+    channels = max(1, min(2, int(info["max_output_channels"])))
+    frames = max(1, int(rate * duration))
+    phase = np.arange(frames, dtype=np.float32) * (2.0 * np.pi * frequency / rate)
+    mono = (np.sin(phase) * float(gain)).astype(np.float32)
+    fade = min(frames // 2, max(1, int(rate * 0.02)))
+    ramp = np.linspace(0.0, 1.0, fade, endpoint=True, dtype=np.float32)
+    mono[:fade] *= ramp
+    mono[-fade:] *= ramp[::-1]
+    data = (mono[:, None] if channels == 1
+            else np.repeat(mono[:, None], channels, axis=1))
+    with sd.OutputStream(
+        device=device,
+        samplerate=rate,
+        channels=channels,
+        dtype="float32",
+        latency=LATENCY,
+    ) as stream:
+        stream.write(data)
+
+
 class Capture:
     """Reads float32 audio from an input device and forwards it to a callback.
 

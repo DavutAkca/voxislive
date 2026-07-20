@@ -10,6 +10,7 @@ needed downstream.
 """
 import collections
 import ctypes
+import logging
 import threading
 import time
 from ctypes import POINTER, Structure, Union, byref, c_uint64, c_void_p, sizeof
@@ -31,6 +32,8 @@ AUDCLNT_STREAMFLAGS_LOOPBACK = 0x00020000
 AUDCLNT_BUFFERFLAGS_SILENT = 0x2
 VT_BLOB = 65
 RATE = 16000
+
+_log = logging.getLogger("voxis.process_loopback")
 
 
 class AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS(Structure):
@@ -298,7 +301,7 @@ class ProcessExcludeLoopback:
                 # Rate-limited logging: first failure, then every ~200th, so a
                 # persistent fault is visible without flooding the log per frame.
                 if fails == 1 or fails % 200 == 0:
-                    print(f"[ploopback] consumer fault #{fails}: {e!r}")
+                    _log.warning("consumer fault #%d", fails, exc_info=True)
                 if fails >= 50 and self._err is None:
                     self._err = e
                 continue

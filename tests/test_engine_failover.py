@@ -38,6 +38,10 @@ class _FakeTr:
 class _FakeStager:
     def __init__(self):
         self.stopped = False
+        self.cleared = 0
+
+    def clear(self):
+        self.cleared += 1
 
     def stop(self):
         self.stopped = True
@@ -118,8 +122,10 @@ def test_failover_swaps_engine_and_redirects_audio(pipe):
     # The whole point: audio follows the swap without rebuilding the capture.
     assert live.sent == [b"after"]
     assert dead.sent == [b"before"]
-    # Qwen's WSOLA pacing must not survive onto Gemini's self-timed stream.
-    assert stager.stopped and pipe._stager is None
+    # Pending audio from the dead provider is cleared, while the shared
+    # adaptive playback worker remains available to catch Gemini up too.
+    assert stager.cleared == 1 and not stager.stopped
+    assert pipe._stager is stager
     assert pipe.statuses  # user is told, once
 
 

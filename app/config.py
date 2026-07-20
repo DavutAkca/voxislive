@@ -127,6 +127,12 @@ DEFAULTS = {
     # language in Settings, which then wins over the OS locale forever.
     "ui_language": "",
     "tts_volume": 1.0,
+    # Meeting-only local confidence monitor. The outgoing translation still goes
+    # to the virtual microphone; when enabled, a second copy is played in the
+    # selected headphones so the speaker can verify what the other side hears.
+    # Off by default because hearing one's delayed translated voice is distracting
+    # and speakers (rather than headphones) could leak it back into the mic.
+    "monitor_outgoing_translation": False,
     "overlay_enabled": False,
     "obs_subtitle_enabled": False,
     "branding_badge_enabled": True,

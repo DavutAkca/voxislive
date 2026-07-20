@@ -15,7 +15,13 @@ import time
 import webview
 
 from . import APP_VERSION, i18n, sysaudio
-from .audio_io import detect_virtual_cable, find_device, list_device_names
+from .audio_io import (
+    Capture,
+    detect_virtual_cable,
+    find_device,
+    list_device_names,
+    play_test_tone,
+)
 from .config import (
     ENGINE_CASCADE,
     GEMINI_VOICES,
@@ -85,8 +91,9 @@ HOTKEY_CAPTURE_TIMEOUT = 8.0
 _log = logging.getLogger("voxis.webui")
 
 # Locale-independent default-device sentinel. set_device treats an empty string
-# as "system default"; the UI renders t('default_mic') but always round-trips
-# this sentinel so device matching never depends on the active UI language.
+# as "system default" for both input and output; the UI renders
+# t('default_mic') but always round-trips this sentinel so device matching never
+# depends on the active UI language.
 DEFAULT_DEVICE = ""
 
 
@@ -291,6 +298,8 @@ class Bridge:
         # alongside a session (see soundcheck_start / _start).
         self._sc = None
         self._sc_level = 0.0
+        self._sc_mic = None
+        self._sc_mic_level = 0.0
         self._sc_timer = None
         self._sc_routing = None
         # One-time move of transcripts from the old (virtualized) AppData location
@@ -662,7 +671,7 @@ class Bridge:
         return {
             "version": APP_VERSION,
             "channel": client_channel(),
-            "outputs": outs,
+            "outputs": [t("default_mic")] + outs,
             "mics": [t("default_mic")] + mics,
             "langs": LANGS,
             # Targets the FREE tier can actually speak. It translates all 79 but
@@ -753,7 +762,7 @@ class Bridge:
         cur_mic = self.cfg["devices"].get("microphone", "")
         c["devices"] = dict(self.cfg["devices"])
         c["devices"]["headphones_output_label"] = next(
-            (n for n in outs if cur_out and cur_out.lower() in n.lower()), outs[0] if outs else "")
+            (n for n in outs if cur_out and cur_out.lower() in n.lower()), t("default_mic"))
         c["devices"]["microphone_label"] = next(
             (n for n in mics if cur_mic and cur_mic.lower() in n.lower()), t("default_mic"))
         # Resolved transcript folder for the Settings readout (the raw
@@ -792,7 +801,8 @@ class Bridge:
         elif key == "tts_volume":
             self.controller.set_tts_volume(float(value))
         elif key in ("quality_preset", "target_language_incoming",
-                     "target_language_outgoing", "gemini_voice", "engine"):
+                     "target_language_outgoing", "gemini_voice", "engine",
+                     "monitor_outgoing_translation"):
             if key == "quality_preset":
                 self._mark_custom()
             if key == "target_language_incoming":
@@ -801,6 +811,26 @@ class Bridge:
                 self._prefetch_session_key()
             self._maybe_restart()
         return self._save_cfg()
+
+    def swap_languages(self):
+        """Atomically exchange the two translation targets.
+
+        The center arrow looks like one action, so persist and restart only once;
+        two concurrent ``set_cfg`` calls would race config writes and could
+        rebuild a live Meeting session twice.
+        """
+        incoming = self.cfg.get("target_language_incoming", "")
+        outgoing = self.cfg.get("target_language_outgoing", "")
+        self.cfg["target_language_incoming"] = outgoing
+        self.cfg["target_language_outgoing"] = incoming
+        ok = self._save_cfg()
+        if not ok:
+            self.cfg["target_language_incoming"] = incoming
+            self.cfg["target_language_outgoing"] = outgoing
+            return {"ok": False, "incoming": incoming, "outgoing": outgoing}
+        self._prefetch_session_key()
+        self._maybe_restart()
+        return {"ok": True, "incoming": outgoing, "outgoing": incoming}
 
     # ---------- attribution badge gating ----------
     def _is_paid(self) -> bool:
@@ -835,14 +865,15 @@ class Bridge:
         return ok
 
     def _is_default_device(self, name) -> bool:
-        """True when the UI returned the 'default mic' entry. Matches the empty
+        """True when the UI returned a default-device entry. Matches the empty
         sentinel and the localized label rather than the Turkish literal so a
         non-TR UI maps back to the system default correctly."""
         return not name or name == t("default_mic")
 
     def set_device(self, kind, name):
         if kind == "output":
-            self.cfg["devices"]["headphones_output"] = name
+            self.cfg["devices"]["headphones_output"] = (
+                DEFAULT_DEVICE if self._is_default_device(name) else name)
         else:
             self.cfg["devices"]["microphone"] = (
                 DEFAULT_DEVICE if self._is_default_device(name) else name)
@@ -2610,12 +2641,14 @@ class Bridge:
                 pass
         return True
 
-    # ---------- sound check (idle-only loopback level probe) ----------
+    # ---------- sound check (idle-only system + microphone level probes) ----------
     def soundcheck_start(self):
-        """Start the 'do I hear this device?' probe: the same process-exclude
-        loopback the session uses, but its only output is a peak level for the
-        modal's meter (poll's 'sc' field). Refused while a session runs; auto
-        stops after 60 s so an abandoned modal can't hold the capture forever.
+        """Start independent system-loopback and selected-microphone probes.
+
+        Each probe only produces a peak level for the modal meters (poll's
+        ``sc`` / ``sc_mic`` fields). A failure on one side does not hide a
+        healthy device on the other. Refused while a session runs; auto-stops
+        after 60 s so an abandoned modal cannot hold either capture forever.
 
         Goes through the sysaudio dispatch layer (not a direct
         process_loopback import) so this works on Linux too -- the direct
@@ -2624,30 +2657,39 @@ class Bridge:
         2026-07-19). On Linux, make_process_loopback needs a routing handle
         (make_capture_routing sets up + tears down the same VoxisCapture
         routing a real session would use); Windows ignores it."""
-        if self.controller.mode or self._sc is not None:
-            return {"ok": self._sc is not None}
-        try:
-            def on_chunk(pcm):
-                # ProcessExcludeLoopback/PipeWireCapture hand us float32
-                # samples already normalized to -1..1, not raw PCM16 bytes —
-                # casting that buffer to shorts always raised and left the
-                # meter frozen at 0.
-                try:
-                    peak = float(max(pcm.max(), -pcm.min(), 0.0)) if pcm.size else 0.0
-                except Exception:
-                    return
-                # Fast attack, slow decay so short transients stay visible a beat.
-                self._sc_level = max(peak, self._sc_level * 0.85)
+        if self.controller.mode or self._sc is not None or self._sc_mic is not None:
+            return {
+                "ok": self._sc is not None or self._sc_mic is not None,
+                "system_ok": self._sc is not None,
+                "mic_ok": self._sc_mic is not None,
+            }
 
+        system_ok = False
+        mic_ok = False
+
+        def on_system_chunk(pcm):
+            # ProcessExcludeLoopback/PipeWireCapture hand us float32 samples
+            # already normalized to -1..1, not raw PCM16 bytes.
+            try:
+                peak = float(max(pcm.max(), -pcm.min(), 0.0)) if pcm.size else 0.0
+            except Exception:
+                return
+            # Fast attack, slow decay so short transients stay visible a beat.
+            self._sc_level = max(peak, self._sc_level * 0.85)
+
+        try:
             self._sc_routing = sysaudio.make_capture_routing()
-            self._sc = sysaudio.make_process_loopback(on_chunk, routing_handle=self._sc_routing)
+            self._sc = sysaudio.make_process_loopback(
+                on_system_chunk, routing_handle=self._sc_routing)
             self._sc.start()
-            self._sc_timer = threading.Timer(60.0, self.soundcheck_stop)
-            self._sc_timer.daemon = True
-            self._sc_timer.start()
-            return {"ok": True}
+            system_ok = True
         except Exception:
-            _log.exception("soundcheck: could not start loopback probe")
+            _log.exception("soundcheck: could not start system loopback probe")
+            if self._sc is not None:
+                try:
+                    self._sc.stop()
+                except Exception:
+                    pass
             if self._sc_routing is not None:
                 try:
                     sysaudio.teardown_capture_routing(self._sc_routing)
@@ -2655,10 +2697,38 @@ class Bridge:
                     pass
                 self._sc_routing = None
             self._sc = None
-            return {"ok": False}
+
+        def on_mic_chunk(pcm):
+            try:
+                peak = float(max(pcm.max(), -pcm.min(), 0.0)) if pcm.size else 0.0
+            except Exception:
+                return
+            self._sc_mic_level = max(peak, self._sc_mic_level * 0.85)
+
+        try:
+            mic_name = self.cfg.get("devices", {}).get("microphone", DEFAULT_DEVICE)
+            mic_device = find_device(mic_name, "input")
+            self._sc_mic = Capture(mic_device, on_mic_chunk)
+            self._sc_mic.start()
+            mic_ok = True
+        except Exception:
+            _log.exception("soundcheck: could not start microphone probe")
+            if self._sc_mic is not None:
+                try:
+                    self._sc_mic.stop()
+                except Exception:
+                    pass
+            self._sc_mic = None
+
+        if system_ok or mic_ok:
+            self._sc_timer = threading.Timer(60.0, self.soundcheck_stop)
+            self._sc_timer.daemon = True
+            self._sc_timer.start()
+        return {"ok": system_ok or mic_ok, "system_ok": system_ok, "mic_ok": mic_ok}
 
     def soundcheck_stop(self):
         sc, self._sc = self._sc, None
+        mic, self._sc_mic = self._sc_mic, None
         timer, self._sc_timer = self._sc_timer, None
         if timer is not None:
             try:
@@ -2670,6 +2740,11 @@ class Bridge:
                 sc.stop()
             except Exception:
                 pass
+        if mic is not None:
+            try:
+                mic.stop()
+            except Exception:
+                pass
         routing, self._sc_routing = self._sc_routing, None
         if routing is not None:
             try:
@@ -2677,7 +2752,20 @@ class Bridge:
             except Exception:
                 pass
         self._sc_level = 0.0
+        self._sc_mic_level = 0.0
         return True
+
+    def soundcheck_play_tone(self):
+        """Play a safe diagnostic tone through the selected translation output."""
+        try:
+            output_name = self.cfg.get("devices", {}).get(
+                "headphones_output", DEFAULT_DEVICE)
+            output_device = find_device(output_name, "output")
+            play_test_tone(output_device)
+            return {"ok": True}
+        except Exception as exc:
+            _log.exception("soundcheck: could not play output test tone")
+            return {"ok": False, "error": str(exc)}
 
     # ---------- poll (UI invokes every 150 ms) ----------
     def poll(self):
@@ -2715,6 +2803,8 @@ class Bridge:
             "maximized": bool(self._maximized),
             # Sound-check meter level (0..1); only meaningful while the probe runs.
             "sc": round(self._sc_level, 3) if self._sc is not None else None,
+            "sc_mic": (round(self._sc_mic_level, 3)
+                       if self._sc_mic is not None else None),
         }
 
     # ---------- helpers ----------
