@@ -811,6 +811,26 @@ class Bridge:
             self._maybe_restart()
         return self._save_cfg()
 
+    def swap_languages(self):
+        """Atomically exchange the two translation targets.
+
+        The center arrow looks like one action, so persist and restart only once;
+        two concurrent ``set_cfg`` calls would race config writes and could
+        rebuild a live Meeting session twice.
+        """
+        incoming = self.cfg.get("target_language_incoming", "")
+        outgoing = self.cfg.get("target_language_outgoing", "")
+        self.cfg["target_language_incoming"] = outgoing
+        self.cfg["target_language_outgoing"] = incoming
+        ok = self._save_cfg()
+        if not ok:
+            self.cfg["target_language_incoming"] = incoming
+            self.cfg["target_language_outgoing"] = outgoing
+            return {"ok": False, "incoming": incoming, "outgoing": outgoing}
+        self._prefetch_session_key()
+        self._maybe_restart()
+        return {"ok": True, "incoming": outgoing, "outgoing": incoming}
+
     # ---------- attribution badge gating ----------
     def _is_paid(self) -> bool:
         """True only for an official build with an active PAID license. Free

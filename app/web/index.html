@@ -515,6 +515,12 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .stagebar{display:flex;align-items:center;gap:18px;padding:12px var(--s4);flex-wrap:wrap}
 .langgroup{display:flex;align-items:center;gap:14px;padding:8px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--r-card)}
 .langgroup .arrow{color:var(--accent)}
+.langswap{width:30px;height:30px;flex:none;display:grid;place-items:center;padding:0;border:0;
+  border-radius:var(--r-ctl);background:transparent;cursor:pointer;transition:background var(--dfast),color var(--dfast)}
+.langswap:hover{background:var(--accent-soft)}
+.langswap:active{transform:scale(.94)}
+.langswap:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.langswap:disabled{opacity:.4;cursor:default;transform:none}
 .langitem{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
 .langitem .lbl{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3)}
 /* Outgoing language is a Meeting-mode control: dimmed + locked during a
@@ -1123,9 +1129,9 @@ body.resizing,body.resizing *{user-select:none!important}
       <div class="selectwrap"><select id="out"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
       <div class="fieldlabel" data-i18n="mic">Mikrofon</div>
       <div class="selectwrap"><select id="mic"></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div class="meter" id="vad" role="status" aria-live="polite" aria-label="Giriş sinyali bekleniyor">
+      <div class="meter" id="vad" role="status" aria-live="polite" aria-label="Sinyali kontrol etmek için çeviriyi başlatın" data-i18n-aria="waiting_signal">
         <span class="rods" id="rods" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-        <span class="metertext" id="vadtxt" data-i18n="waiting_signal">Giriş sinyali bekleniyor</span>
+        <span class="metertext" id="vadtxt" data-i18n="waiting_signal">Sinyali kontrol etmek için çeviriyi başlatın</span>
         <span class="ms" id="meterdb">−∞ dB</span>
       </div>
       <button class="btn btn-ghost" id="soundcheckbtn" style="margin-top:10px" aria-haspopup="dialog">
@@ -1156,12 +1162,12 @@ body.resizing,body.resizing *{user-select:none!important}
   <section class="stage">
     <div class="card stagebar">
       <div class="langgroup">
-        <div class="langitem"><span class="lbl" data-i18n="hear">Şu dile çevir</span>
+        <div class="langitem"><span class="lbl" data-i18n="hear">Ben duyuyorum</span>
           <div class="selectwrap"><select id="hear"></select><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
           <span class="fieldhint" id="hear-novoice" data-i18n="no_voice_free" style="display:none">—</span>
         </div>
-        <svg class="arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg>
-        <div class="langitem" id="send-item" title="Yalnızca Toplantı modunda kullanılır" data-i18n-title="to_other_hint"><span class="lbl" data-i18n="to_other">Karşıya</span>
+        <button class="arrow langswap" id="langswap" type="button" title="Dilleri değiştir" data-i18n-title="swap_languages" aria-label="Dilleri değiştir" data-i18n-aria="swap_languages"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg></button>
+        <div class="langitem" id="send-item" title="Yalnızca Toplantı modunda kullanılır" data-i18n-title="to_other_hint"><span class="lbl" data-i18n="to_other">Karşı taraf duyuyor</span>
           <div class="selectwrap"><select id="send"></select><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
         </div>
       </div>
@@ -1238,13 +1244,13 @@ body.resizing,body.resizing *{user-select:none!important}
           <div class="fieldlabel"><span data-i18n="gemini_key">Gemini API anahtarı</span> <span id="byok-badge" data-i18n="byok_active" style="display:none;font-size:10px;font-weight:600;color:var(--green);background:var(--green-soft);padding:2px 7px;border-radius:99px;margin-left:6px">BYOK aktif</span></div>
           <input type="password" id="gemkey" placeholder="AIza…" data-i18n-ph="ph_gemkey">
           <div class="fieldhint"><span data-i18n="byok_hint">Bu derlemede çalıştırmak için kendi Gemini API anahtarınız gereklidir. </span><a href="#" id="showgem" data-i18n="show">Göster</a> · <a href="#" id="clearbtn" data-i18n="clear" style="color:var(--red)">Temizle</a></div>
-          <!-- DEV-ONLY free-tier preview toggle: lives inside #byok-section so the
-               official build hides it with the rest; raw text on purpose (never
-               shipped to end users, exempt from the i18n dicts). -->
-          <div class="fieldlabel" style="margin-top:12px">Ücretsiz katman önizleme</div>
+          <!-- DEV-ONLY free-tier preview toggle: it lives inside #byok-section so
+               the official build hides it with the rest. OSS users still see it,
+               therefore its label and explanation must follow the UI language. -->
+          <div class="fieldlabel" style="margin-top:12px" data-i18n="cascade_preview_label">Ücretsiz mod testi</div>
           <label class="fieldhint" style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="cascadeprev" style="width:auto;margin:0">
-            <span>Kaskad motoru kullan: bulut metin + yerel robot ses (sonraki oturum başlatışında etkin)</span>
+            <span data-i18n="cascade_preview_hint">Kaskad motorunu kullan: bulut metin çevirisi ve yerel sentetik ses. Sonraki oturumda etkinleşir.</span>
           </label>
         </div>
         <div class="dsection">
@@ -1667,7 +1673,7 @@ body.resizing,body.resizing *{user-select:none!important}
   <div class="mbody">
     <div class="histsearchwrap"><input type="search" id="history-search" placeholder="Geçmişte ara…" data-i18n-ph="history_search_ph" aria-label="Geçmişte ara" data-i18n-aria="history_search_ph"></div>
     <div class="histpanes">
-      <div class="histlist" id="history-list" role="listbox" aria-label="Oturumlar"></div>
+      <div class="histlist" id="history-list" role="listbox" aria-label="Çeviri geçmişi" data-i18n-aria="history_title"></div>
       <div class="histview" id="history-view">
         <div class="histempty" id="history-empty" data-i18n="history_pick">Görüntülemek için bir oturum seç.</div>
         <div class="histturns" id="history-turns" hidden></div>
@@ -5848,6 +5854,97 @@ const I18N_SOUND_CHECK_OUTPUT = {
 Object.keys(I18N_SOUND_CHECK_OUTPUT).forEach(function(l){
   if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_SOUND_CHECK_OUTPUT[l]);
 });
+/* These selectors are two translation TARGETS, not source/target. Gemini
+   detects the source language automatically: the left side is what the user
+   hears, the right side is what the other person hears in Meeting mode. */
+const I18N_DIRECTION_LABELS = {
+  tr:{hear:"Ben duyuyorum",to_other:"Karşı taraf duyuyor",swap_languages:"Dilleri değiştir"},
+  en:{hear:"I hear",to_other:"Other person hears",swap_languages:"Swap languages"},
+  cs:{hear:"Já slyším",to_other:"Druhá strana slyší",swap_languages:"Prohodit jazyky"},
+  de:{hear:"Ich höre",to_other:"Gesprächspartner hört",swap_languages:"Sprachen tauschen"},
+  fr:{hear:"J’entends",to_other:"L’autre personne entend",swap_languages:"Inverser les langues"},
+  es:{hear:"Yo oigo",to_other:"La otra persona oye",swap_languages:"Intercambiar idiomas"},
+  pt:{hear:"Eu ouço",to_other:"A outra pessoa ouve",swap_languages:"Trocar idiomas"},
+  ja:{hear:"自分が聞く",to_other:"相手が聞く",swap_languages:"言語を入れ替える"},
+  ko:{hear:"내가 듣는 언어",to_other:"상대방이 듣는 언어",swap_languages:"언어 바꾸기"},
+  ru:{hear:"Я слышу",to_other:"Собеседник слышит",swap_languages:"Поменять языки местами"},
+  zh:{hear:"我听到",to_other:"对方听到",swap_languages:"交换语言"},
+  pl:{hear:"Ja słyszę",to_other:"Rozmówca słyszy",swap_languages:"Zamień języki"},
+  it:{hear:"Io sento",to_other:"L’altra persona sente",swap_languages:"Scambia lingue"},
+  id:{hear:"Saya mendengar",to_other:"Lawan bicara mendengar",swap_languages:"Tukar bahasa"},
+  nl:{hear:"Ik hoor",to_other:"De ander hoort",swap_languages:"Talen wisselen"},
+  vi:{hear:"Tôi nghe",to_other:"Người kia nghe",swap_languages:"Đổi ngôn ngữ"},
+  th:{hear:"ฉันได้ยิน",to_other:"อีกฝ่ายได้ยิน",swap_languages:"สลับภาษา"},
+  ro:{hear:"Eu aud",to_other:"Cealaltă persoană aude",swap_languages:"Inversează limbile"},
+  hi:{hear:"मैं सुनता हूँ",to_other:"दूसरा व्यक्ति सुनता है",swap_languages:"भाषाएँ बदलें"},
+  hu:{hear:"Én hallom",to_other:"A másik fél hallja",swap_languages:"Nyelvek felcserélése"},
+  sv:{hear:"Jag hör",to_other:"Den andra personen hör",swap_languages:"Byt språk"},
+  sr:{hear:"Ja čujem",to_other:"Sagovornik čuje",swap_languages:"Zameni jezike"},
+  "zh-Hant":{hear:"我聽到",to_other:"對方聽到",swap_languages:"交換語言"}
+};
+Object.keys(I18N_DIRECTION_LABELS).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_DIRECTION_LABELS[l]);
+});
+/* The developer-only cascade switch is hidden in official builds, but is part
+   of the visible Settings UI in OSS builds and must not stay hardcoded Turkish. */
+const I18N_CASCADE_PREVIEW = {
+  tr:{cascade_preview_label:"Ücretsiz mod testi",cascade_preview_hint:"Kaskad motorunu kullan: bulut metin çevirisi ve yerel sentetik ses. Sonraki oturumda etkinleşir."},
+  en:{cascade_preview_label:"Free-mode preview",cascade_preview_hint:"Use the cascade engine: cloud text translation and a local synthetic voice. Takes effect in the next session."},
+  cs:{cascade_preview_label:"Náhled bezplatného režimu",cascade_preview_hint:"Použít kaskádový modul: cloudový překlad textu a místní syntetický hlas. Projeví se od příští relace."},
+  de:{cascade_preview_label:"Vorschau des kostenlosen Modus",cascade_preview_hint:"Kaskaden-Engine verwenden: Cloud-Textübersetzung und lokale synthetische Stimme. Wird ab der nächsten Sitzung aktiv."},
+  fr:{cascade_preview_label:"Aperçu du mode gratuit",cascade_preview_hint:"Utiliser le moteur en cascade : traduction de texte dans le cloud et voix de synthèse locale. Actif à la prochaine session."},
+  es:{cascade_preview_label:"Vista previa del modo gratuito",cascade_preview_hint:"Usar el motor en cascada: traducción de texto en la nube y voz sintética local. Se aplicará en la próxima sesión."},
+  pt:{cascade_preview_label:"Prévia do modo gratuito",cascade_preview_hint:"Usar o mecanismo em cascata: tradução de texto na nuvem e voz sintética local. Entra em vigor na próxima sessão."},
+  ja:{cascade_preview_label:"無料モードのプレビュー",cascade_preview_hint:"カスケードエンジンを使用：クラウドでのテキスト翻訳とローカルの合成音声。次のセッションから有効になります。"},
+  ko:{cascade_preview_label:"무료 모드 미리보기",cascade_preview_hint:"캐스케이드 엔진 사용: 클라우드 텍스트 번역과 로컬 합성 음성. 다음 세션부터 적용됩니다."},
+  ru:{cascade_preview_label:"Тест бесплатного режима",cascade_preview_hint:"Использовать каскадный режим: облачный перевод текста и локальный синтезированный голос. Применится со следующего сеанса."},
+  zh:{cascade_preview_label:"免费模式预览",cascade_preview_hint:"使用级联引擎：云端文本翻译和本地合成语音。将在下次会话中生效。"},
+  pl:{cascade_preview_label:"Podgląd trybu bezpłatnego",cascade_preview_hint:"Użyj silnika kaskadowego: tłumaczenie tekstu w chmurze i lokalny głos syntetyczny. Zacznie działać w następnej sesji."},
+  it:{cascade_preview_label:"Anteprima modalità gratuita",cascade_preview_hint:"Usa il motore a cascata: traduzione del testo nel cloud e voce sintetica locale. Sarà attivo dalla prossima sessione."},
+  id:{cascade_preview_label:"Pratinjau mode gratis",cascade_preview_hint:"Gunakan mesin kaskade: terjemahan teks cloud dan suara sintetis lokal. Berlaku mulai sesi berikutnya."},
+  nl:{cascade_preview_label:"Voorbeeld gratis modus",cascade_preview_hint:"Gebruik de cascade-engine: tekstvertaling in de cloud en een lokale synthetische stem. Wordt actief in de volgende sessie."},
+  vi:{cascade_preview_label:"Xem trước chế độ miễn phí",cascade_preview_hint:"Dùng công cụ nối tầng: dịch văn bản trên đám mây và giọng nói tổng hợp cục bộ. Có hiệu lực từ phiên tiếp theo."},
+  th:{cascade_preview_label:"ทดลองโหมดฟรี",cascade_preview_hint:"ใช้เอนจินแบบลำดับขั้น: แปลข้อความบนคลาวด์และเสียงสังเคราะห์ในเครื่อง จะมีผลในเซสชันถัดไป"},
+  ro:{cascade_preview_label:"Previzualizare mod gratuit",cascade_preview_hint:"Folosește motorul în cascadă: traducere de text în cloud și voce sintetică locală. Se aplică din sesiunea următoare."},
+  hi:{cascade_preview_label:"मुफ़्त मोड का पूर्वावलोकन",cascade_preview_hint:"कैस्केड इंजन का उपयोग करें: क्लाउड में टेक्स्ट अनुवाद और स्थानीय सिंथेटिक आवाज़। अगला सत्र शुरू होने पर लागू होगा।"},
+  hu:{cascade_preview_label:"Ingyenes mód előnézete",cascade_preview_hint:"A kaszkádmotor használata: felhőalapú szövegfordítás és helyi szintetikus hang. A következő munkamenetben lép életbe."},
+  sv:{cascade_preview_label:"Förhandsvisning av gratisläget",cascade_preview_hint:"Använd kaskadmotorn: textöversättning i molnet och lokal syntetisk röst. Börjar gälla i nästa session."},
+  sr:{cascade_preview_label:"Pregled besplatnog režima",cascade_preview_hint:"Koristi kaskadni motor: prevod teksta u oblaku i lokalni sintetički glas. Aktivira se u sledećoj sesiji."},
+  "zh-Hant":{cascade_preview_label:"免費模式預覽",cascade_preview_hint:"使用級聯引擎：雲端文字翻譯和本機合成語音。將於下次工作階段生效。"}
+};
+Object.keys(I18N_CASCADE_PREVIEW).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_CASCADE_PREVIEW[l]);
+});
+/* The main meter reads active translation pipelines only. At idle, say that a
+   session must be started instead of implying that capture is already running. */
+const I18N_IDLE_METER = {
+  tr:"Sinyali kontrol etmek için çeviriyi başlatın",
+  en:"Start translation to check the signal",
+  cs:"Spusťte překlad pro kontrolu signálu",
+  de:"Übersetzung starten, um das Signal zu prüfen",
+  fr:"Lancez la traduction pour vérifier le signal",
+  es:"Inicia la traducción para comprobar la señal",
+  pt:"Inicie a tradução para verificar o sinal",
+  ja:"信号を確認するには翻訳を開始してください",
+  ko:"신호를 확인하려면 번역을 시작하세요",
+  ru:"Запустите перевод для проверки сигнала",
+  zh:"开始翻译以检查信号",
+  pl:"Uruchom tłumaczenie, aby sprawdzić sygnał",
+  it:"Avvia la traduzione per controllare il segnale",
+  id:"Mulai terjemahan untuk memeriksa sinyal",
+  nl:"Start de vertaling om het signaal te controleren",
+  vi:"Bắt đầu dịch để kiểm tra tín hiệu",
+  th:"เริ่มการแปลเพื่อตรวจสอบสัญญาณ",
+  ro:"Pornește traducerea pentru a verifica semnalul",
+  hi:"सिग्नल जाँचने के लिए अनुवाद शुरू करें",
+  hu:"Indítsd el a fordítást a jel ellenőrzéséhez",
+  sv:"Starta översättningen för att kontrollera signalen",
+  sr:"Pokreni prevod da proveriš signal",
+  "zh-Hant":"開始翻譯以檢查訊號"
+};
+Object.keys(I18N_IDLE_METER).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; I18N[l].waiting_signal=I18N_IDLE_METER[l];
+});
 /* Bilingual-export toggle label (History footer). Fill-if-undefined so a locale
    that never defined it falls back cleanly. */
 const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "cs":"Dvojjazyčné", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา", "ro":"Bilingv", "hi":"द्विभाषी", "hu":"Kétnyelvű", "sv":"Tvåspråkig", "sr":"Dvojezično", "zh-Hant":"雙語" };
@@ -6245,6 +6342,20 @@ $('#hear').onchange   = e=>{
   return api().set_cfg('target_language_incoming', e.target.value);
 };
 $('#send').onchange   = e=>api().set_cfg('target_language_outgoing', e.target.value);
+$('#langswap').onclick = async()=>{
+  const b=$('#langswap'); b.disabled=true;
+  try{
+    const r=await api().swap_languages();
+    if(r && r.ok!==false){
+      $('#hear').value=r.incoming; $('#send').value=r.outgoing;
+      if(STATE.cfg){
+        STATE.cfg.target_language_incoming=r.incoming;
+        STATE.cfg.target_language_outgoing=r.outgoing;
+      }
+      renderVoiceHint();
+    }
+  }finally{ b.disabled=false; }
+};
 $('#profile').onchange= e=>api().set_profile(e.target.value).then(refreshFromCfg);
 $('#out').onchange    = e=>api().set_device('output', e.target.value);
 $('#mic').onchange    = e=>api().set_device('mic', e.target.value);
