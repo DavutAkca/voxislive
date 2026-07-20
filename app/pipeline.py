@@ -14,6 +14,13 @@ import uuid
 
 import numpy as np
 
+from .audio_io import Capture, Player, find_device, resolve_name, _make_resampler
+from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN,
+                     gate_params, stream_gated)
+from .engines import make_translator
+from .i18n import t
+from .playback_sync import AdaptivePlaybackStager
+
 from . import audio_io
 from . import sysaudio
 from . import voxis_client
@@ -26,12 +33,6 @@ try:
     import premium as _premium  # type: ignore[import-not-found]
 except ImportError:
     _premium = None
-from .audio_io import Capture, Player, find_device, resolve_name, _make_resampler
-from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN,
-                     gate_params, stream_gated)
-from .engines import make_translator
-from .i18n import t
-from .playback_sync import AdaptivePlaybackStager
 # LiveTranslator (google.genai) and SpeechGate (onnxruntime) are imported lazily
 # inside the pipeline constructors so the heavy runtimes don't load until a
 # session actually starts — shaving ~1-2 s off cold app startup.
@@ -187,6 +188,7 @@ class _GatedSource:
     def __init__(self, in_rate: int, gate, send_fn, suppress_when=None,
                  always_send=False, smart=False, send_rate=16000,
                  speech_tap=None):
+        self._in_rate = int(in_rate)
         self._resample = _make_resampler(in_rate, 16000)
         self._gate = gate
         self._send = send_fn
@@ -208,16 +210,42 @@ class _GatedSource:
         # a short history and emit the time-aligned full-band frames matching the
         # gate's send decision (incl. its preroll). send_rate==16000 -> the classic
         # single-stream path (Gemini), byte-for-byte unchanged.
-        self._send_rate = send_rate
-        if send_rate != 16000:
-            self._resample_send = _make_resampler(in_rate, send_rate)
-            self._send_frame = _FRAME * send_rate // 16000
+        self._configure_send_rate(int(send_rate))
+
+    def _configure_send_rate(self, send_rate: int) -> None:
+        """Replace the engine-facing resampler and its rate-specific buffers.
+
+        The VAD side always stays at 16 kHz. Only the parallel full-band path is
+        rebuilt, so a live OpenAI (24 kHz) -> Gemini (16 kHz) failover can keep
+        the already-open capture device without mislabelling 24 kHz PCM as 16 kHz.
+        Caller holds ``_lock`` after construction.
+        """
+        self._send_rate = int(send_rate)
+        if self._send_rate != 16000:
+            self._resample_send = _make_resampler(self._in_rate, self._send_rate)
+            self._send_frame = _FRAME * self._send_rate // 16000
             self._acc_send = _Accum(8 * self._send_frame)
             self._hist_max = 64
-            self._hist_send: collections.deque = collections.deque(maxlen=self._hist_max)
-            self._silence_send = _f32_to_pcm16(np.zeros(self._send_frame, dtype=np.float32))
+            self._hist_send: collections.deque = collections.deque(
+                maxlen=self._hist_max)
+            self._silence_send = _f32_to_pcm16(
+                np.zeros(self._send_frame, dtype=np.float32))
         else:
             self._resample_send = None
+            self._send_frame = _FRAME
+            self._acc_send = None
+            self._hist_send = collections.deque()
+            self._silence_send = self._silence
+
+    def set_send_rate(self, send_rate: int) -> None:
+        """Atomically retarget future PCM frames to a replacement engine."""
+        send_rate = int(send_rate)
+        if send_rate not in (16000, 24000):
+            raise ValueError(f"unsupported translator input rate: {send_rate}")
+        with self._lock:
+            if send_rate == self._send_rate:
+                return
+            self._configure_send_rate(send_rate)
 
     def feed(self, chunk: np.ndarray):
         if self.closed:
@@ -298,18 +326,11 @@ class IncomingPipeline:
         self.capture = None
         self._source = None
         self._recorder = None
+        self.player = None
+        self.translator = None
+        self._stager = None
         self._mode = mode
-        # Optional speaker-change tracker (incoming direction only: the system /
-        # meeting-partner side is where several people can talk). Best-effort by
-        # contract — any init failure just means unlabeled captions, and the
-        # model loads on the tracker's own thread so start is never delayed.
         self._spk_tracker = None
-        if on_speaker is not None and cfg.get("speaker_labels", True):
-            try:
-                from .speaker_id import SpeakerTracker  # noqa: PLC0415
-                self._spk_tracker = SpeakerTracker(on_change=on_speaker)
-            except Exception:
-                _log.exception("speaker tracker init failed — labels disabled")
         # Per-session output folder (transcript + WAVs share it); None → the
         # recorder falls back to the flat transcripts root.
         self._session_dir = session_dir
@@ -343,9 +364,23 @@ class IncomingPipeline:
         self.input_level = 0.0
         self._prev_active = False
 
+        # Optional speaker-change tracker (incoming direction only). Construct it
+        # after Player succeeds so an earlier device-resolution failure cannot
+        # orphan the tracker's worker thread.
+        if on_speaker is not None and cfg.get("speaker_labels", True):
+            try:
+                from .speaker_id import SpeakerTracker  # noqa: PLC0415
+                self._spk_tracker = SpeakerTracker(on_change=on_speaker)
+            except Exception:
+                _log.exception("speaker tracker init failed — labels disabled")
+
         # Resolve engine + key + model for this target ONCE (locally for BYOK,
         # server-side for SaaS) so the capture send-rate matches the engine.
-        self._engine, _key, _model = resolve(cfg["target_language_incoming"])
+        try:
+            self._engine, _key, _model = resolve(cfg["target_language_incoming"])
+        except Exception:
+            self._teardown_resources()
+            raise
         # Kept for the mid-session engine substitution below.
         self.cfg = cfg
         self._resolve = resolve
@@ -358,10 +393,13 @@ class IncomingPipeline:
         # WSOLA stager so an accumulating playback tail catches up to the live
         # captions without raising the voice's pitch. OpenAI self-times its
         # output; cascade controls speed while synthesizing locally.
-        self._stager = None
         if self._engine in (ENGINE_GEMINI, ENGINE_QWEN):
-            self._stager = AdaptivePlaybackStager(
-                self.player, on_status=on_status, input_rate=24000)
+            try:
+                self._stager = AdaptivePlaybackStager(
+                    self.player, on_status=on_status, input_rate=24000)
+            except Exception:
+                self._teardown_resources()
+                raise
 
         # While the free-voice preview speaks, the paid voice stands down: two
         # voices over one another would demo nothing. Captions keep flowing and
@@ -395,18 +433,23 @@ class IncomingPipeline:
             else:
                 self.player.feed_tts_pcm16(data)
         self._tts_sink = _tts_sink
-        self.translator = make_translator(
-            cfg, cfg["target_language_incoming"], engine=self._engine, key=_key, model=_model,
-            on_audio=_tts_sink, on_text=on_text, on_status=on_status,
-            name=t("name_in"), on_fatal=self._failover_to_gemini,
-            # SaaS resolvers hang the Gemini key fountain off the resolve fn so
-            # a single-use ephemeral key can be refreshed on every rotation
-            # (dev/BYOK resolvers carry none — raw keys need no refetch).
-            key_provider=getattr(resolve, "gemini_key_provider", None),
-            # Qwen voice-cloning only when this is a real beta session (webui
-            # sets it on the beta resolver); off on the standard Qwen route.
-            beta_active=getattr(resolve, "beta_active", False),
-        )
+        try:
+            self.translator = make_translator(
+                cfg, cfg["target_language_incoming"], engine=self._engine, key=_key,
+                model=_model, on_audio=_tts_sink, on_text=on_text,
+                on_status=on_status, name=t("name_in"),
+                on_fatal=self._failover_to_gemini,
+                # SaaS resolvers hang the Gemini key fountain off the resolve fn so
+                # a single-use ephemeral key can be refreshed on every rotation
+                # (dev/BYOK resolvers carry none — raw keys need no refetch).
+                key_provider=getattr(resolve, "gemini_key_provider", None),
+                # Qwen voice-cloning only when this is a real beta session (webui
+                # sets it on the beta resolver); off on the standard Qwen route.
+                beta_active=getattr(resolve, "beta_active", False),
+            )
+        except Exception:
+            self._teardown_resources()
+            raise
         # Bound through self, not to the translator instance, so a mid-session
         # engine swap redirects the capture without rebuilding the gate/capture.
         def send_fn(pcm: bytes):
@@ -524,7 +567,8 @@ class IncomingPipeline:
                 on_status(t("st_classic_capture_warning", e=pe_err))
                 self.capture = sysaudio.make_loopback_capture(
                     on_loop, prefer_name=out_name, on_status=on_status)
-                suppress = lambda: self.player.tts_active
+                def suppress():
+                    return self.player.tts_active
             self._source = _GatedSource(
                 self.capture.rate, SpeechGate(**vad_cfg), send_fn,
                 suppress_when=suppress, smart=not self._stream_is_gated(cfg),
@@ -686,6 +730,9 @@ class IncomingPipeline:
         paid voice muted, so the unmute is also attempted on stop()."""
         self._preview_mute = True
         try:
+            stager = getattr(self, "_stager", None)
+            if stager is not None:
+                stager.clear()            # drop paid audio not yet handed to Player
             self.player.clear_tts()      # drop paid audio already queued
             self.player.feed_tts_pcm16(pcm)
         except Exception:
@@ -709,7 +756,8 @@ class IncomingPipeline:
     def start_io(self):
         # Warm the Live socket BEFORE capturing audio so the first utterance
         # does not stack the cold WS/TLS/setup handshake on top of translation.
-        self.translator.wait_ready(timeout=6)
+        if not self.translator.wait_ready(timeout=6):
+            raise RuntimeError(t("st_server_unreachable"))
         self.player.start()
         self.capture.start()
 
@@ -777,6 +825,22 @@ def _swap_to_gemini(pipe, target_key, name, exc):
         _log.exception("failover: could not build the Gemini translator")
         return False
 
+    # Gemini labels its input as 16 kHz. OpenAI captures at 24 kHz, so swapping
+    # only the translator would make Gemini play the source 1.5x slow. Retarget
+    # the gate before publishing the replacement translator. Qwen is already
+    # 16 kHz and this is therefore a no-op on the common failover path.
+    source = getattr(pipe, "_source", None)
+    if source is not None:
+        try:
+            source.set_send_rate(16000)
+        except Exception:
+            try:
+                new.stop()
+            except Exception:
+                pass
+            _log.exception("failover: could not switch capture to Gemini input rate")
+            return False
+
     # Both Qwen and Gemini use the incoming adaptive playback stager. Clear its
     # provider-side pending audio at the boundary, but keep the worker alive so
     # the replacement Gemini stream gets the same catch-up behavior. Outgoing
@@ -826,7 +890,6 @@ def _swap_to_gemini(pipe, target_key, name, exc):
 
 class OutgoingPipeline:
     def __init__(self, cfg: dict, resolve, on_text, on_status):
-        from .translator import LiveTranslator  # noqa: PLC0415
         from .vad import SpeechGate  # noqa: PLC0415
         vad_cfg = gate_params(cfg)
         mic_dev = find_device(cfg["devices"]["microphone"], "input")
@@ -842,49 +905,66 @@ class OutgoingPipeline:
         # source drags an already-open capture stream exactly like Faz 3's
         # sink-side finding, so it must never be touched).
         self.monitor_player = None
-        self._mic_handle = sysaudio.make_virtual_mic()
-        before_streams = sysaudio.snapshot_own_audio_streams()
-        if self._mic_handle is not None:
-            self.player = Player(
-                None, channels=1,
-                tts_enhance=(_premium.enhance_tts if _premium is not None else None),
-            )
-            moved = sysaudio.pin_newest_own_stream_to_mic(before_streams, self._mic_handle)
-            if moved is None:
-                # Without the pin, the outgoing TTS would keep playing on real
-                # hardware instead of the virtual mic -- silently wrong, not a
-                # message worth showing and continuing past. Raise so the
-                # existing _build("meeting") try/except degrades to the
-                # already-localized listen-only status, matching the
-                # documented "sanal mic yoksa listen-only" behavior exactly.
-                raise RuntimeError(
-                    "could not pin the outgoing TTS stream onto the virtual mic")
-        else:
-            cable_out = find_device(cfg["devices"]["meeting_mic_playback"], "output")
-            self.player = Player(
-                cable_out, channels=1,
-                tts_enhance=(_premium.enhance_tts if _premium is not None else None),
-            )
+        self.player = None
+        self.translator = None
+        self.capture = None
+        self._source = None
+        try:
+            self._mic_handle = sysaudio.make_virtual_mic()
+            before_streams = sysaudio.snapshot_own_audio_streams()
+            if self._mic_handle is not None:
+                self.player = Player(
+                    None, channels=1,
+                    tts_enhance=(_premium.enhance_tts
+                                 if _premium is not None else None),
+                )
+                moved = sysaudio.pin_newest_own_stream_to_mic(
+                    before_streams, self._mic_handle)
+                if moved is None:
+                    raise RuntimeError(
+                        "could not pin the outgoing TTS stream onto the virtual mic")
+            else:
+                cable_out = find_device(
+                    cfg["devices"]["meeting_mic_playback"], "output")
+                self.player = Player(
+                    cable_out, channels=1,
+                    tts_enhance=(_premium.enhance_tts
+                                 if _premium is not None else None),
+                )
+        except Exception:
+            self._teardown_resources()
+            raise
         # Optional confidence monitor: the primary Player remains pinned to the
         # virtual microphone while a second Player renders the identical PCM to
         # the user's selected headphones. Construct it only after the Linux pin
         # above, otherwise the monitor could be mistaken for the new virtual-mic
         # stream. Failure is soft: the call still receives the translation.
         if cfg.get("monitor_outgoing_translation"):
+            monitor = None
             try:
                 monitor_out = find_device(
                     cfg["devices"].get("headphones_output", ""), "output",
                     on_status=on_status, fallback_default=True)
-                self.monitor_player = Player(
+                monitor = Player(
                     monitor_out,
                     tts_enhance=(_premium.enhance_tts
                                  if _premium is not None else None),
                 )
-                self.monitor_player.tts_gain = float(cfg.get("tts_volume", 1.0))
+                monitor.tts_gain = float(cfg.get("tts_volume", 1.0))
+                self.monitor_player = monitor
             except Exception:
+                if monitor is not None:
+                    try:
+                        monitor.stop()
+                    except Exception:
+                        pass
                 self.monitor_player = None
                 _log.exception("outgoing confidence monitor unavailable")
-        self._engine, _key, _model = resolve(cfg["target_language_outgoing"])
+        try:
+            self._engine, _key, _model = resolve(cfg["target_language_outgoing"])
+        except Exception:
+            self._teardown_resources()
+            raise
         self.cfg = cfg
         self._resolve = resolve
         self._on_text = on_text
@@ -892,17 +972,19 @@ class OutgoingPipeline:
         self._failover_done = False
         # Outgoing feeds the virtual mic directly — no SyncStager on this leg.
         self._tts_sink = self._feed_translated_audio
-        self.translator = make_translator(
-            cfg, cfg["target_language_outgoing"], engine=self._engine, key=_key, model=_model,
-            on_audio=self._tts_sink, on_text=on_text, on_status=on_status,
-            name=t("name_out"), noise_reduction="near_field",
-            on_fatal=self._failover_to_gemini,
-            key_provider=getattr(resolve, "gemini_key_provider", None),
-            beta_active=getattr(resolve, "beta_active", False),
-        )
+        try:
+            self.translator = make_translator(
+                cfg, cfg["target_language_outgoing"], engine=self._engine, key=_key,
+                model=_model, on_audio=self._tts_sink, on_text=on_text,
+                on_status=on_status, name=t("name_out"),
+                noise_reduction="near_field", on_fatal=self._failover_to_gemini,
+                key_provider=getattr(resolve, "gemini_key_provider", None),
+                beta_active=getattr(resolve, "beta_active", False),
+            )
+        except Exception:
+            self._teardown_resources()
+            raise
         self.input_level = 0.0
-        self.capture = None
-        self._source = None
         send_rate = 24000 if self._engine == ENGINE_OPENAI else 16000
         # Capture opens the mic InputStream at construction. Guard the capture +
         # gate acquisition so a mid-init failure releases the mic stream and the
@@ -956,7 +1038,8 @@ class OutgoingPipeline:
         self.translator.start()
 
     def start_io(self):
-        self.translator.wait_ready(timeout=6)
+        if not self.translator.wait_ready(timeout=6):
+            raise RuntimeError(t("st_server_unreachable"))
         self.player.start()
         if self.monitor_player is not None:
             try:
@@ -1346,7 +1429,7 @@ class ModeController:
         # this is a no-op there.
         if not sysaudio.is_supported():
             self.on_status(t("st_no_audio_backend"))
-            return
+            return False
         # Per-session output folder decided by the caller (webui) so the recorder's
         # WAVs land beside the transcript JSON in one self-contained folder.
         self._session_dir_out = session_dir
@@ -1426,7 +1509,7 @@ class ModeController:
                     "backend": self.cfg.get("capture_backend", "driverless"),
                     "engine": self.current_engine() or "",
                 })
-                return
+                return True
             except Exception as e:
                 for p in pipes:
                     try:

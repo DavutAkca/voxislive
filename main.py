@@ -24,12 +24,19 @@ _WEBVIEW2_DOWNLOAD = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
 _INSTANCE_MUTEX = None
 
 
-def _acquire_single_instance() -> bool:
-    """Session-local single-instance guard. Two concurrent Voxis processes mean
-    two loopback captures, dueling default-endpoint switches, config.json races
-    and doubled usage heartbeats — so the second launch focuses the existing
-    window and exits instead. Fail-open: any unexpected error allows startup
-    (a working install must never be blocked by the guard itself)."""
+def _acquire_single_instance(allow_multiple: bool = False) -> bool:
+    """Session-local instance guard, optionally relaxed by the user.
+
+    Two concurrent Voxis processes mean two loopback captures, dueling default-
+    endpoint switches, config.json races and doubled usage heartbeats, so the
+    safe default focuses the existing window and exits. When the explicit
+    ``allow_multiple`` setting is on, each process still keeps a handle to the
+    shared mutex: turning the setting back off then blocks future launches as
+    long as any Voxis process remains alive.
+
+    Fail-open: any unexpected error allows startup (a working install must never
+    be blocked by the guard itself).
+    """
     global _INSTANCE_MUTEX
     if sys.platform != "win32":
         return True
@@ -40,8 +47,11 @@ def _acquire_single_instance() -> bool:
         already = ctypes.get_last_error() == 183  # ERROR_ALREADY_EXISTS
         if not handle:
             return True
-        if not already:
+        if not already or allow_multiple:
             _INSTANCE_MUTEX = handle  # hold for process lifetime
+            if already:
+                logging.getLogger("voxis").info(
+                    "additional instance allowed by user setting")
             return True
         k32.CloseHandle(handle)
         # Bring the running instance to the front (best-effort). If the mutex is
@@ -172,9 +182,11 @@ def main():
     cfg = load_config()
     i18n.set_language(cfg.get("ui_language", "tr"))
 
-    # Single-instance: a second copy would double captures/heartbeats and fight
-    # over default endpoints — focus the running window and exit instead.
-    if not _acquire_single_instance():
+    # Single-instance is the safe default. Advanced users may explicitly allow
+    # more processes; the preference is read before the UI starts and therefore
+    # takes effect on the next launch.
+    if not _acquire_single_instance(
+            bool(cfg.get("allow_multiple_instances", False))):
         return
 
     # Pre-flight: pywebview needs the Edge WebView2 runtime; without it the window

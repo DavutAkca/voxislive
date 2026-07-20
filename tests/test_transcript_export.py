@@ -1,4 +1,6 @@
 """transcript_store: bilingual vs translated-only export rendering."""
+from concurrent.futures import ThreadPoolExecutor
+
 import app.transcript_store as ts
 
 
@@ -49,3 +51,46 @@ def test_export_unknown_format_raises():
     import pytest
     with pytest.raises(ValueError):
         ts.export(_rec(), "pdf")
+
+
+def test_source_only_turn_survives_record_and_bilingual_exports():
+    rec = ts.build_record(1.0, [
+        {"t": 0, "dir": "out", "src": "Source survived", "text": ""},
+    ])
+    assert rec["turns"] == [
+        {"t": 0.0, "dir": "out", "src": "Source survived", "text": ""},
+    ]
+    assert ts.render_txt(rec, bilingual=True) == "Source survived\n"
+    assert "Source survived" in ts.render_srt(rec, bilingual=True)
+    assert ts.render_txt(rec, bilingual=False) == ""
+
+
+def test_concurrent_saves_always_leave_valid_json(tmp_path):
+    records = [ts.build_record(1.0, [
+        {"t": 0, "src": f"source-{i}", "text": f"translation-{i}"},
+    ]) for i in range(24)]
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        paths = list(pool.map(
+            lambda rec: ts.save_record(str(tmp_path), rec, subdir="voxis_same"),
+            records))
+    assert len(set(paths)) == 1
+    saved = ts.load_record(paths[0])
+    assert saved in records
+    assert not list((tmp_path / "voxis_same").glob("*.tmp"))
+
+
+def test_failed_save_preserves_the_previous_good_record(tmp_path, monkeypatch):
+    good = ts.build_record(1.0, [{"t": 0, "src": "one", "text": "good"}])
+    path = ts.save_record(str(tmp_path), good, subdir="voxis_atomic")
+
+    def broken_dump(record, f, **kwargs):
+        f.write('{"partial":')
+        raise OSError("disk interrupted")
+
+    monkeypatch.setattr(ts.json, "dump", broken_dump)
+    import pytest
+    with pytest.raises(OSError, match="disk interrupted"):
+        ts.save_record(
+            str(tmp_path), {"version": 1, "turns": []}, subdir="voxis_atomic")
+    assert ts.load_record(path) == good
+    assert not list((tmp_path / "voxis_atomic").glob("*.tmp"))

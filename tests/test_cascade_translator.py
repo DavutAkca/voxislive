@@ -14,6 +14,7 @@ import pytest
 from app.cascade_translator import (CLAUSE_FLUSH_CHARS, MAX_BUF,
                                     CascadeTranslator, SentenceAssembler,
                                     _resample_to_out, pick_speed)
+from app.i18n import t
 
 
 # ---------------------------------------------------------------- pick_speed
@@ -210,7 +211,7 @@ def test_tts_failure_degrades_to_captions_only():
         inner.on_text("out", "Ahoj svete. ")
         time.sleep(0.2)
         assert events["text"], "captions must survive a dead voice"
-        assert any("captions only" in s for s in events["status"])
+        assert t("st_no_voice_warning") in events["status"]
     finally:
         tr.stop()
         tr.join(timeout=2)

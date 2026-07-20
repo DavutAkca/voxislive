@@ -123,3 +123,12 @@ def test_a_failing_player_does_not_strand_the_mute():
     with pytest.raises(RuntimeError):
         IncomingPipeline.play_free_preview(pipe, b"\x00\x00", 0.05)
     assert pipe._preview_mute is False  # a dead device must not silence the session
+
+
+def test_preview_discards_audio_still_waiting_in_the_paid_stager():
+    pipe = _fake_pipe()
+    pipe._stager = types.SimpleNamespace(cleared=0)
+    pipe._stager.clear = lambda: setattr(
+        pipe._stager, "cleared", pipe._stager.cleared + 1)
+    IncomingPipeline.play_free_preview(pipe, b"\x00\x00", 0.05)
+    assert pipe._stager.cleared == 1

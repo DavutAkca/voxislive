@@ -1,7 +1,5 @@
 """Meeting confidence monitor mirrors outgoing translation without replacing it."""
 
-from types import SimpleNamespace
-
 from app.pipeline import OutgoingPipeline
 
 

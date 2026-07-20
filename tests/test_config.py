@@ -65,10 +65,16 @@ def tmp_config(tmp_path, monkeypatch):
 def test_save_load_roundtrip(tmp_config):
     cfg = dict(config.DEFAULTS)
     cfg["target_language_incoming"] = "de"
+    cfg["allow_multiple_instances"] = True
     config.save_config(cfg)
     loaded = config.load_config()
     assert loaded["target_language_incoming"] == "de"
+    assert loaded["allow_multiple_instances"] is True
     assert loaded["config_version"] == config.CONFIG_VERSION
+
+
+def test_multiple_instances_are_opt_in():
+    assert config.DEFAULTS["allow_multiple_instances"] is False
 
 
 def test_corrupt_config_falls_back_to_defaults(tmp_config):

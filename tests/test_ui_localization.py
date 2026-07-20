@@ -45,3 +45,25 @@ def test_outgoing_translation_monitor_is_explicit_and_localized():
     assert 'data-i18n="monitor_outgoing"' in HTML
     assert 'data-i18n-title="monitor_outgoing_hint"' in HTML
     assert 'monitor_outgoing:"Слушать мой перевод"' in HTML
+
+
+def test_multiple_instance_preference_is_visible_localized_and_persisted():
+    assert 'id="allow-multiple-instances"' in HTML
+    assert 'data-i18n="allow_multiple_instances"' in HTML
+    assert 'data-i18n="allow_multiple_instances_hint"' in HTML
+    assert 'allow_multiple_instances:"Разрешить несколько экземпляров приложения"' in HTML
+    assert "mi.checked = !!cfg.allow_multiple_instances" in HTML
+    assert "set_cfg('allow_multiple_instances', e.target.checked)" in HTML
+    assert 'settings_live_note:"Most changes apply immediately"' in HTML
+    assert 'settings_live_note:"Большинство изменений применяется сразу"' in HTML
+
+
+def test_czech_copy_has_no_accidental_literal_wrapper_quotes():
+    for bad in (
+        'auth_no_account:"\\"Nemáte účet?',
+        'auth_sub:"\\" · Pro zobrazení',
+        'behind_suffix:"\\" s zpoždění',
+        'byok_hint:"\\"Pro používání',
+        'byok_openai_hint:"\\"Volitelné',
+    ):
+        assert bad not in HTML

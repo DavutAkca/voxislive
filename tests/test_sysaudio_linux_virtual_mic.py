@@ -26,7 +26,8 @@ class _FakePactl:
         args = list(args)
         self.calls.append(args)
         if args[:2] == ["load-module", "module-null-sink"]:
-            mid = str(self._next_module_id); self._next_module_id += 1
+            mid = str(self._next_module_id)
+            self._next_module_id += 1
             return mid
         if args == ["list", "sink-inputs"]:
             return self.sink_inputs

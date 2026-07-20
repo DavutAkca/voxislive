@@ -1304,6 +1304,8 @@ body.resizing,body.resizing *{user-select:none!important}
             <div class="fieldhint" style="margin-top:6px" data-i18n="record_audio_hint">Her oturumun kaynak sesini ve çevrilmiş sesini iki ayrı WAV dosyası olarak transkript klasörüne kaydeder. Kaynak parça gerçek insan sesi içerdiğinden varsayılan olarak kapalıdır. Yalnızca Video/Oyun modunda çalışır — Toplantı modunda otomatik olarak kapanır, böylece karşı tarafın canlı sesi asla kaydedilmez.</div>
             <label class="switch" style="margin-top:12px"><input type="checkbox" id="spk-labels"><span class="track"></span><span data-i18n="spk_labels">Konuşmacı etiketleri (S1/S2)</span></label>
             <div class="fieldhint" style="margin-top:6px" data-i18n="spk_labels_hint">Farklı kişiler ard arda konuştuğunda ses değişimini cihazında algılar ve altyazı satırlarını S1/S2 olarak etiketler. Tamamen yerel çalışır — ek bulut çağrısı yoktur. Etiketler ancak ikinci bir ses duyulduğunda görünür; kaydedilen transkriptlere de yazılır. Sesli çeviri yine tek sesle konuşur.</div>
+            <label class="switch" style="margin-top:12px"><input type="checkbox" id="allow-multiple-instances"><span class="track"></span><span data-i18n="allow_multiple_instances">Birden fazla uygulama örneğine izin ver</span></label>
+            <div class="fieldhint" style="margin-top:6px" data-i18n="allow_multiple_instances_hint">Bir sonraki başlatmada etkinleşir. Eşzamanlı oturumlar ses cihazları ve sistem yönlendirmesi için çakışabilir.</div>
           </div>
         </div>
       </section>
@@ -1352,7 +1354,7 @@ body.resizing,body.resizing *{user-select:none!important}
   </div>
   <footer>
     <button class="btn btn-primary" id="savesettings" style="flex:1" data-i18n="save">Kaydet</button>
-    <span class="ver" style="color:var(--text-3)" data-i18n="settings_live_note">Değişiklikler anında uygulanır</span>
+    <span class="ver" style="color:var(--text-3)" data-i18n="settings_live_note">Çoğu değişiklik anında uygulanır</span>
     <span class="ver" id="ver">Voxis · voxislive.com</span>
   </footer>
 </div>
@@ -1806,7 +1808,7 @@ const I18N = {
     auth_sub:" · Lisans bilgisi için giriş gerekli.",
     scenario:"Senaryo", video_t1:"Video & Oyun", video_t2:"Sistem sesini canlı çevir",
     meeting_t1:"Toplantı", stop:"Durdur", start_cue:"Başlat", to_other_hint:"Yalnızca Toplantı modunda kullanılır",
-    session_summary:"Oturum bitti · {m} dk", settings_live_note:"Değişiklikler anında uygulanır",
+    session_summary:"Oturum bitti · {m} dk", settings_live_note:"Çoğu değişiklik anında uygulanır",
     sound_check:"Ses testi", sound_check_hint:"Bir video ya da müzik çal — Voxis'in duyduğu sinyal aşağıdaki çubukta oynamalı.",
     sound_check_ok:"Sinyal algılandı ✓", sound_check_wait:"Sinyal bekleniyor…", sound_check_fail:"Ses yakalama başlatılamadı.",
     audio:"Ses", out_device:"Çıkış cihazı", mic:"Mikrofon",
@@ -1924,7 +1926,7 @@ const I18N = {
     auth_sub:" · Sign in for license details.",
     scenario:"Scenario", video_t1:"Video & Game", video_t2:"Translate system audio live",
     meeting_t1:"Meeting", stop:"Stop", start_cue:"Start", to_other_hint:"Used in Meeting mode only",
-    session_summary:"Session ended · {m} min", settings_live_note:"Changes apply immediately",
+    session_summary:"Session ended · {m} min", settings_live_note:"Most changes apply immediately",
     sound_check:"Sound check", sound_check_hint:"Play a video or some music — the signal Voxis hears should move the bar below.",
     sound_check_ok:"Signal detected ✓", sound_check_wait:"Waiting for signal…", sound_check_fail:"Could not start audio capture.",
     audio:"Audio", out_device:"Output device", mic:"Microphone",
@@ -2004,7 +2006,7 @@ const I18N = {
     start_cue:"Spustit",
     to_other_hint:"Používá se pouze v režimu schůzky",
     session_summary:"Relace ukončena · {m} min",
-    settings_live_note:"Změny se projeví okamžitě",
+    settings_live_note:"Většina změn se projeví okamžitě",
     sound_check:"Test zvuku",
     sound_check_hint:"Přehrajte video nebo hudbu — signál, který Voxis slyší, by měl rozhýbat lištu níže.",
     sound_check_ok:"Signál zachycen ✓",
@@ -2022,19 +2024,19 @@ const I18N = {
     auth_create:"Vytvořit účet",
     auth_forgot:"Zapomenuté heslo?",
     auth_google:"Pokračovat přes Google",
-    auth_no_account:"\"Nemáte účet? \"",
+    auth_no_account:"Nemáte účet?",
     auth_offline:"Server je nedostupný. Zkontrolujte internetové připojení.",
     auth_or:"nebo",
     auth_retry:"Zkusit znovu",
-    auth_sub:"\" · Pro zobrazení informací o tarifu se přihlaste.\"",
+    auth_sub:" · Pro zobrazení informací o tarifu se přihlaste.",
     badge_upgrade:"Přejít na vyšší tarif →",
-    behind_suffix:"\" s zpoždění\"",
+    behind_suffix:" s zpoždění",
     brand_badge:"Zobrazit odznak „Powered by Voxis“",
     brand_badge_locked:"Vyžadováno předplatné",
     browse:"Procházet…",
     byok_active:"BYOK aktivní",
-    byok_hint:"\"Pro používání této verze je vyžadován vlastní API klíč Gemini. \"",
-    byok_openai_hint:"\"Volitelné — potřebné pouze pro překlad pomocí OpenAI. \"",
+    byok_hint:"Pro používání této verze je vyžadován vlastní API klíč Gemini.",
+    byok_openai_hint:"Volitelné — potřebné pouze pro překlad pomocí OpenAI.",
     cable_cancel:"Zrušit",
     cable_install:"Nainstalovat VB-CABLE",
     cable_lead:"Režim schůzky může odesílat váš přeložený hlas zpět do hovoru, takže vás druhá osoba slyší ve svém jazyce. K tomu je potřeba bezplatný virtuální mikrofon VB-CABLE. Je volitelný — bez něj schůzka stále funguje v režimu poslechu (druhou stranu slyšíte přeloženě).",
@@ -2307,7 +2309,7 @@ const I18N = {
     auth_sub:" · Anmelden für Lizenzdetails.",
     scenario:"Szenario", video_t1:"Video & Spiel", video_t2:"Systemton live übersetzen",
     meeting_t1:"Meeting", stop:"Stopp", start_cue:"Starten", to_other_hint:"Wird nur im Meeting-Modus verwendet",
-    session_summary:"Sitzung beendet · {m} Min.", settings_live_note:"Änderungen gelten sofort",
+    session_summary:"Sitzung beendet · {m} Min.", settings_live_note:"Die meisten Änderungen gelten sofort",
     sound_check:"Soundtest", sound_check_hint:"Spiele ein Video oder Musik ab — das Signal, das Voxis hört, sollte den Balken unten bewegen.",
     sound_check_ok:"Signal erkannt ✓", sound_check_wait:"Warte auf Signal…", sound_check_fail:"Audioaufnahme konnte nicht gestartet werden.",
     audio:"Audio", out_device:"Ausgabegerät", mic:"Mikrofon",
@@ -2422,7 +2424,7 @@ const I18N = {
     auth_sub:" · Connectez-vous pour les détails de licence.",
     scenario:"Scénario", video_t1:"Vidéo & Jeu", video_t2:"Traduire l'audio système en direct",
     meeting_t1:"Réunion", stop:"Arrêter", start_cue:"Démarrer", to_other_hint:"Utilisé uniquement en mode Réunion",
-    session_summary:"Session terminée · {m} min", settings_live_note:"Les modifications s'appliquent immédiatement",
+    session_summary:"Session terminée · {m} min", settings_live_note:"La plupart des modifications s’appliquent immédiatement",
     sound_check:"Test audio", sound_check_hint:"Lancez une vidéo ou de la musique — le signal entendu par Voxis doit faire bouger la barre ci-dessous.",
     sound_check_ok:"Signal détecté ✓", sound_check_wait:"En attente de signal…", sound_check_fail:"Impossible de démarrer la capture audio.",
     audio:"Audio", out_device:"Périphérique de sortie", mic:"Microphone",
@@ -2537,7 +2539,7 @@ const I18N = {
     auth_sub:" · Inicia sesión para ver los detalles de la licencia.",
     scenario:"Escenario", video_t1:"Vídeo y juego", video_t2:"Traducir audio del sistema en directo",
     meeting_t1:"Reunión", stop:"Detener", start_cue:"Iniciar", to_other_hint:"Solo se usa en modo Reunión",
-    session_summary:"Sesión finalizada · {m} min", settings_live_note:"Los cambios se aplican al instante",
+    session_summary:"Sesión finalizada · {m} min", settings_live_note:"La mayoría de los cambios se aplican al instante",
     sound_check:"Prueba de sonido", sound_check_hint:"Reproduce un video o música — la señal que Voxis oye debería mover la barra de abajo.",
     sound_check_ok:"Señal detectada ✓", sound_check_wait:"Esperando señal…", sound_check_fail:"No se pudo iniciar la captura de audio.",
     audio:"Audio", out_device:"Dispositivo de salida", mic:"Micrófono",
@@ -2652,7 +2654,7 @@ const I18N = {
     auth_sub:" · Entre para ver os detalhes da licença.",
     scenario:"Cenário", video_t1:"Vídeo & Jogo", video_t2:"Traduzir áudio do sistema ao vivo",
     meeting_t1:"Reunião", stop:"Parar", start_cue:"Iniciar", to_other_hint:"Usado apenas no modo Reunião",
-    session_summary:"Sessão encerrada · {m} min", settings_live_note:"As alterações são aplicadas imediatamente",
+    session_summary:"Sessão encerrada · {m} min", settings_live_note:"A maioria das alterações é aplicada imediatamente",
     sound_check:"Teste de som", sound_check_hint:"Reproduza um vídeo ou música — o sinal que o Voxis ouve deve mover a barra abaixo.",
     sound_check_ok:"Sinal detectado ✓", sound_check_wait:"Aguardando sinal…", sound_check_fail:"Não foi possível iniciar a captura de áudio.",
     audio:"Áudio", out_device:"Dispositivo de saída", mic:"Microfone",
@@ -2767,7 +2769,7 @@ const I18N = {
     auth_sub:" · ライセンス詳細はサインインしてください。",
     scenario:"シナリオ", video_t1:"動画・ゲーム", video_t2:"システム音声をリアルタイム翻訳",
     meeting_t1:"ミーティング", stop:"停止", start_cue:"開始", to_other_hint:"ミーティングモードでのみ使用されます",
-    session_summary:"セッション終了 · {m}分", settings_live_note:"変更は即座に適用されます",
+    session_summary:"セッション終了 · {m}分", settings_live_note:"ほとんどの変更はすぐに適用されます",
     sound_check:"サウンドチェック", sound_check_hint:"動画や音楽を再生してください — Voxisが聞いている信号で下のバーが動くはずです。",
     sound_check_ok:"信号を検出しました ✓", sound_check_wait:"信号を待っています…", sound_check_fail:"音声キャプチャを開始できませんでした。",
     audio:"オーディオ", out_device:"出力デバイス", mic:"マイク",
@@ -2862,7 +2864,7 @@ const I18N = {
     privacy_step_capture:"시스템 오디오",
     privacy_step_gemini:"AI 번역",
     privacy_step_playback:"번역된 오디오",
-    privacy_byok_detail:"오픈소스(BYOK) 빌드에서는 사용자 본인의 API 키로 번역이 실행됩니다. Voxis는 자사 서버와 통신하지 않으며 녹음이나 telemetry를 추가하지 않습니다.",
+    privacy_byok_detail:"오픈소스(BYOK) 빌드에서는 사용자 본인의 API 키로 번역이 실행됩니다. Voxis는 자사 서버와 통신하지 않으며 녹음이나 원격 측정 기능을 추가하지 않습니다.",
     privacy_saas_detail:"Voxis는 번역을 위해서만 오디오를 AI 번역 제공업체로 전송합니다. Voxis 자체는 오디오를 녹음하거나 별도의 추적 장치를 추가하지 않으며, 청구를 위해 사용한 시간(분)만 보고합니다.",
     privacy_note:"번역을 위해 오디오가 AI 번역 제공업체로 전송되므로, 오디오가 전적으로 기기 안에만 머무는 것은 아닙니다. 통화 참여자 전원에 대한 현지 동의 규정을 따르세요.",
     privacy_close:"확인",
@@ -2882,7 +2884,7 @@ const I18N = {
     auth_sub:" · 라이선스 세부 정보를 보려면 로그인하세요.",
     scenario:"시나리오", video_t1:"비디오 & 게임", video_t2:"시스템 오디오 실시간 번역",
     meeting_t1:"미팅", stop:"중지", start_cue:"시작", to_other_hint:"미팅 모드에서만 사용됩니다",
-    session_summary:"세션 종료 · {m}분", settings_live_note:"변경 사항은 즉시 적용됩니다",
+    session_summary:"세션 종료 · {m}분", settings_live_note:"대부분의 변경 사항은 즉시 적용됩니다",
     sound_check:"사운드 체크", sound_check_hint:"동영상이나 음악을 재생하세요 — Voxis가 듣는 신호로 아래 막대가 움직여야 합니다.",
     sound_check_ok:"신호 감지됨 ✓", sound_check_wait:"신호 대기 중…", sound_check_fail:"오디오 캡처를 시작할 수 없습니다.",
     audio:"오디오", out_device:"출력 장치", mic:"마이크",
@@ -2997,7 +2999,7 @@ const I18N = {
     auth_sub:" · Войдите для просмотра сведений о лицензии.",
     scenario:"Сценарий", video_t1:"Видео и игры", video_t2:"Перевод системного звука в реальном времени",
     meeting_t1:"Встреча", stop:"Стоп", start_cue:"Старт", to_other_hint:"Используется только в режиме встречи",
-    session_summary:"Сессия завершена · {m} мин", settings_live_note:"Изменения применяются сразу",
+    session_summary:"Сессия завершена · {m} мин", settings_live_note:"Большинство изменений применяется сразу",
     sound_check:"Проверка звука", sound_check_hint:"Включите видео или музыку — сигнал, который слышит Voxis, должен двигать полосу ниже.",
     sound_check_ok:"Сигнал обнаружен ✓", sound_check_wait:"Ожидание сигнала…", sound_check_fail:"Не удалось запустить захват звука.",
     audio:"Аудио", out_device:"Устройство вывода", mic:"Микрофон",
@@ -3112,7 +3114,7 @@ const I18N = {
     auth_sub:" · 登录以查看许可证详情。",
     scenario:"场景", video_t1:"视频与游戏", video_t2:"实时翻译系统音频",
     meeting_t1:"会议", stop:"停止", start_cue:"开始", to_other_hint:"仅在会议模式下使用",
-    session_summary:"会话已结束 · {m} 分钟", settings_live_note:"更改立即生效",
+    session_summary:"会话已结束 · {m} 分钟", settings_live_note:"大多数更改立即生效",
     sound_check:"声音测试", sound_check_hint:"播放视频或音乐 — Voxis 听到的信号应使下方的进度条跳动。",
     sound_check_ok:"已检测到信号 ✓", sound_check_wait:"等待信号…", sound_check_fail:"无法启动音频捕获。",
     audio:"音频", out_device:"输出设备", mic:"麦克风",
@@ -3227,7 +3229,7 @@ const I18N = {
     auth_sub:" · Zaloguj się, aby zobaczyć szczegóły licencji.",
     scenario:"Scenariusz", video_t1:"Wideo i gry", video_t2:"Tłumacz dźwięk systemowy na żywo",
     meeting_t1:"Spotkanie", stop:"Zatrzymaj", start_cue:"Start", to_other_hint:"Używane tylko w trybie spotkania",
-    session_summary:"Sesja zakończona · {m} min", settings_live_note:"Zmiany obowiązują od razu",
+    session_summary:"Sesja zakończona · {m} min", settings_live_note:"Większość zmian obowiązuje od razu",
     sound_check:"Test dźwięku", sound_check_hint:"Odtwórz wideo lub muzykę — sygnał słyszany przez Voxis powinien poruszać paskiem poniżej.",
     sound_check_ok:"Wykryto sygnał ✓", sound_check_wait:"Oczekiwanie na sygnał…", sound_check_fail:"Nie udało się uruchomić przechwytywania dźwięku.",
     audio:"Dźwięk", out_device:"Urządzenie wyjściowe", mic:"Mikrofon",
@@ -3342,7 +3344,7 @@ const I18N = {
     auth_sub:" · Accedi per i dettagli della licenza.",
     scenario:"Scenario", video_t1:"Video e giochi", video_t2:"Traduci l'audio di sistema in tempo reale",
     meeting_t1:"Riunione", stop:"Ferma", start_cue:"Avvia", to_other_hint:"Usato solo in modalità Riunione",
-    session_summary:"Sessione terminata · {m} min", settings_live_note:"Le modifiche si applicano subito",
+    session_summary:"Sessione terminata · {m} min", settings_live_note:"La maggior parte delle modifiche si applica subito",
     sound_check:"Test audio", sound_check_hint:"Riproduci un video o della musica — il segnale che Voxis sente dovrebbe muovere la barra qui sotto.",
     sound_check_ok:"Segnale rilevato ✓", sound_check_wait:"In attesa del segnale…", sound_check_fail:"Impossibile avviare l'acquisizione audio.",
     audio:"Audio", out_device:"Dispositivo di uscita", mic:"Microfono",
@@ -3457,7 +3459,7 @@ const I18N = {
     auth_sub:" · Masuk untuk detail lisensi.",
     scenario:"Skenario", video_t1:"Video & Game", video_t2:"Terjemahkan audio sistem secara langsung",
     meeting_t1:"Rapat", stop:"Berhenti", start_cue:"Mulai", to_other_hint:"Hanya digunakan dalam mode Rapat",
-    session_summary:"Sesi berakhir · {m} mnt", settings_live_note:"Perubahan langsung diterapkan",
+    session_summary:"Sesi berakhir · {m} mnt", settings_live_note:"Sebagian besar perubahan langsung diterapkan",
     sound_check:"Tes suara", sound_check_hint:"Putar video atau musik — sinyal yang didengar Voxis akan menggerakkan bilah di bawah.",
     sound_check_ok:"Sinyal terdeteksi ✓", sound_check_wait:"Menunggu sinyal…", sound_check_fail:"Tidak dapat memulai penangkapan audio.",
     audio:"Audio", out_device:"Perangkat keluaran", mic:"Mikrofon",
@@ -3572,7 +3574,7 @@ const I18N = {
     auth_sub:" · Log in voor licentiegegevens.",
     scenario:"Scenario", video_t1:"Video & Game", video_t2:"Systeemaudio live vertalen",
     meeting_t1:"Vergadering", stop:"Stop", start_cue:"Starten", to_other_hint:"Alleen gebruikt in vergadermodus",
-    session_summary:"Sessie beëindigd · {m} min", settings_live_note:"Wijzigingen gelden direct",
+    session_summary:"Sessie beëindigd · {m} min", settings_live_note:"De meeste wijzigingen gelden direct",
     sound_check:"Geluidstest", sound_check_hint:"Speel een video of muziek af — het signaal dat Voxis hoort moet de balk hieronder bewegen.",
     sound_check_ok:"Signaal gedetecteerd ✓", sound_check_wait:"Wachten op signaal…", sound_check_fail:"Audio-opname kon niet worden gestart.",
     audio:"Audio", out_device:"Uitvoerapparaat", mic:"Microfoon",
@@ -3667,7 +3669,7 @@ const I18N = {
     privacy_step_capture:"Âm thanh hệ thống",
     privacy_step_gemini:"Dịch bằng AI",
     privacy_step_playback:"Âm thanh đã dịch",
-    privacy_byok_detail:"Ở bản mã nguồn mở (BYOK), việc dịch chạy bằng khóa API của chính bạn. Voxis không bao giờ liên lạc với máy chủ của mình và không thêm bất kỳ ghi âm hay telemetry nào.",
+    privacy_byok_detail:"Ở bản mã nguồn mở (BYOK), việc dịch chạy bằng khóa API của chính bạn. Voxis không bao giờ liên lạc với máy chủ của mình và không thêm bất kỳ bản ghi hay dữ liệu đo từ xa nào.",
     privacy_saas_detail:"Voxis chỉ truyền âm thanh của bạn tới nhà cung cấp dịch AI, thuần túy để dịch. Bản thân Voxis không ghi âm và không thêm trình theo dõi riêng — chỉ số phút đã dùng được báo về để tính phí.",
     privacy_note:"Vì âm thanh được gửi tới nhà cung cấp dịch AI, nó không hoàn toàn nằm lại trên thiết bị của bạn. Hãy tuân thủ quy định địa phương về sự đồng ý của mọi người trong cuộc gọi.",
     privacy_close:"Đã hiểu",
@@ -3687,7 +3689,7 @@ const I18N = {
     auth_sub:" · Đăng nhập để xem chi tiết giấy phép.",
     scenario:"Kịch bản", video_t1:"Video & Game", video_t2:"Dịch âm thanh hệ thống trực tiếp",
     meeting_t1:"Cuộc họp", stop:"Dừng", start_cue:"Bắt đầu", to_other_hint:"Chỉ dùng trong chế độ Cuộc họp",
-    session_summary:"Phiên kết thúc · {m} phút", settings_live_note:"Thay đổi được áp dụng ngay",
+    session_summary:"Phiên kết thúc · {m} phút", settings_live_note:"Hầu hết thay đổi được áp dụng ngay",
     sound_check:"Kiểm tra âm thanh", sound_check_hint:"Phát video hoặc nhạc — tín hiệu Voxis nghe được sẽ làm thanh bên dưới chuyển động.",
     sound_check_ok:"Đã phát hiện tín hiệu ✓", sound_check_wait:"Đang chờ tín hiệu…", sound_check_fail:"Không thể bắt đầu thu âm thanh.",
     audio:"Âm thanh", out_device:"Thiết bị đầu ra", mic:"Micrô",
@@ -3782,7 +3784,7 @@ const I18N = {
     privacy_step_capture:"เสียงของระบบ",
     privacy_step_gemini:"การแปลด้วย AI",
     privacy_step_playback:"เสียงที่แปลแล้ว",
-    privacy_byok_detail:"ในเวอร์ชันโอเพนซอร์ส (BYOK) การแปลจะทำงานด้วยคีย์ API ของคุณเอง Voxis ไม่ติดต่อเซิร์ฟเวอร์ของตัวเอง และไม่เพิ่มการบันทึกเสียงหรือ telemetry ใด ๆ",
+    privacy_byok_detail:"ในเวอร์ชันโอเพนซอร์ส (BYOK) การแปลจะทำงานด้วยคีย์ API ของคุณเอง Voxis ไม่ติดต่อเซิร์ฟเวอร์ของตัวเอง และไม่เพิ่มการบันทึกเสียงหรือการส่งข้อมูลทางไกลใด ๆ",
     privacy_saas_detail:"Voxis ส่งเสียงของคุณไปยังผู้ให้บริการแปลด้วย AI เพื่อการแปลเท่านั้น ตัว Voxis เองไม่บันทึกเสียงและไม่เพิ่มตัวติดตามแยกต่างหาก — รายงานเฉพาะจำนวนนาทีที่ใช้เพื่อการเรียกเก็บเงิน",
     privacy_note:"เนื่องจากเสียงถูกส่งไปยังผู้ให้บริการแปลด้วย AI เสียงจึงไม่ได้อยู่ในเครื่องของคุณทั้งหมด โปรดปฏิบัติตามกฎเรื่องการขอความยินยอมของทุกคนในสายตามกฎหมายท้องถิ่น",
     privacy_close:"เข้าใจแล้ว",
@@ -3802,7 +3804,7 @@ const I18N = {
     auth_sub:" · เข้าสู่ระบบเพื่อดูรายละเอียดใบอนุญาต",
     scenario:"สถานการณ์", video_t1:"วิดีโอและเกม", video_t2:"แปลเสียงระบบสดๆ",
     meeting_t1:"การประชุม", stop:"หยุด", start_cue:"เริ่ม", to_other_hint:"ใช้เฉพาะในโหมดประชุม",
-    session_summary:"จบเซสชัน · {m} นาที", settings_live_note:"การเปลี่ยนแปลงมีผลทันที",
+    session_summary:"จบเซสชัน · {m} นาที", settings_live_note:"การเปลี่ยนแปลงส่วนใหญ่มีผลทันที",
     sound_check:"ทดสอบเสียง", sound_check_hint:"เล่นวิดีโอหรือเพลง — สัญญาณที่ Voxis ได้ยินควรทำให้แถบด้านล่างขยับ",
     sound_check_ok:"ตรวจพบสัญญาณ ✓", sound_check_wait:"กำลังรอสัญญาณ…", sound_check_fail:"ไม่สามารถเริ่มจับเสียงได้",
     audio:"เสียง", out_device:"อุปกรณ์ส่งออก", mic:"ไมโครโฟน",
@@ -4050,7 +4052,7 @@ const I18N = {
     "session":"Sesiune",
     "session_summary":"Sesiune încheiată · {m} min",
     "settings":"Setări",
-    "settings_live_note":"Modificările se aplică imediat",
+    "settings_live_note":"Majoritatea modificărilor se aplică imediat",
     "shortcuts":"Comenzi rapide de la tastatură",
     "show":"Afișează",
     "show_tour":"Arată turul din nou",
@@ -4298,7 +4300,7 @@ const I18N = {
     "session":"सत्र",
     "session_summary":"सत्र समाप्त · {m} मिनट",
     "settings":"सेटिंग्स",
-    "settings_live_note":"बदलाव तुरंत लागू होते हैं",
+    "settings_live_note":"ज़्यादातर बदलाव तुरंत लागू होते हैं",
     "shortcuts":"कीबोर्ड शॉर्टकट",
     "show":"दिखाएँ",
     "show_tour":"परिचय फिर से दिखाएँ",
@@ -4546,7 +4548,7 @@ const I18N = {
     "session":"Munkamenet",
     "session_summary":"Munkamenet vége · {m} perc",
     "settings":"Beállítások",
-    "settings_live_note":"A módosítások azonnal életbe lépnek",
+    "settings_live_note":"A legtöbb módosítás azonnal életbe lép",
     "shortcuts":"Billentyűparancsok",
     "show":"Megjelenítés",
     "show_tour":"Bemutató újbóli megjelenítése",
@@ -4794,7 +4796,7 @@ const I18N = {
     "session":"Session",
     "session_summary":"Sessionen avslutades · {m} min",
     "settings":"Inställningar",
-    "settings_live_note":"Ändringar tillämpas direkt",
+    "settings_live_note":"De flesta ändringar tillämpas direkt",
     "shortcuts":"Kortkommandon",
     "show":"Visa",
     "show_tour":"Visa rundturen igen",
@@ -5042,7 +5044,7 @@ const I18N = {
     "session":"Sesija",
     "session_summary":"Sesija završena · {m} min",
     "settings":"Podešavanja",
-    "settings_live_note":"Promene se primenjuju odmah",
+    "settings_live_note":"Većina promena se primenjuje odmah",
     "shortcuts":"Prečice na tastaturi",
     "show":"Prikaži",
     "show_tour":"Prikaži vodič ponovo",
@@ -5290,7 +5292,7 @@ const I18N = {
     "session":"工作階段",
     "session_summary":"工作階段已結束 · {m} 分鐘",
     "settings":"設定",
-    "settings_live_note":"變更會立即生效",
+    "settings_live_note":"大多數變更會立即生效",
     "shortcuts":"鍵盤快速鍵",
     "show":"顯示",
     "show_tour":"再次顯示導覽",
@@ -6009,6 +6011,36 @@ const I18N_OUTGOING_MONITOR = {
 Object.keys(I18N_OUTGOING_MONITOR).forEach(function(l){
   if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_OUTGOING_MONITOR[l]);
 });
+/* Advanced startup preference. Single-instance stays the default because two
+   live sessions can compete for the same audio endpoints and routing state. */
+const I18N_MULTI_INSTANCE = {
+  tr:{allow_multiple_instances:"Birden fazla uygulama örneğine izin ver",allow_multiple_instances_hint:"Bir sonraki başlatmada etkinleşir. Eşzamanlı oturumlar ses cihazları ve sistem yönlendirmesi için çakışabilir."},
+  en:{allow_multiple_instances:"Allow multiple app instances",allow_multiple_instances_hint:"Takes effect on the next launch. Simultaneous sessions can compete for audio devices and system routing."},
+  cs:{allow_multiple_instances:"Povolit více instancí aplikace",allow_multiple_instances_hint:"Projeví se při příštím spuštění. Souběžné relace mohou soupeřit o zvuková zařízení a systémové směrování."},
+  de:{allow_multiple_instances:"Mehrere App-Instanzen zulassen",allow_multiple_instances_hint:"Wird beim nächsten Start wirksam. Gleichzeitige Sitzungen können um Audiogeräte und das System-Routing konkurrieren."},
+  fr:{allow_multiple_instances:"Autoriser plusieurs instances de l’application",allow_multiple_instances_hint:"Prend effet au prochain lancement. Des sessions simultanées peuvent entrer en conflit pour les périphériques audio et le routage système."},
+  es:{allow_multiple_instances:"Permitir varias instancias de la aplicación",allow_multiple_instances_hint:"Se aplica en el próximo inicio. Las sesiones simultáneas pueden competir por los dispositivos de audio y el enrutamiento del sistema."},
+  pt:{allow_multiple_instances:"Permitir várias instâncias do aplicativo",allow_multiple_instances_hint:"Entra em vigor na próxima inicialização. Sessões simultâneas podem disputar dispositivos de áudio e o roteamento do sistema."},
+  ja:{allow_multiple_instances:"アプリの複数起動を許可",allow_multiple_instances_hint:"次回の起動から有効になります。同時セッションがオーディオデバイスやシステムのルーティングを奪い合う場合があります。"},
+  ko:{allow_multiple_instances:"앱 여러 개 실행 허용",allow_multiple_instances_hint:"다음 실행부터 적용됩니다. 동시 세션이 오디오 장치와 시스템 라우팅을 두고 충돌할 수 있습니다."},
+  ru:{allow_multiple_instances:"Разрешить несколько экземпляров приложения",allow_multiple_instances_hint:"Применится при следующем запуске. Одновременные сеансы могут конфликтовать за аудиоустройства и системную маршрутизацию."},
+  zh:{allow_multiple_instances:"允许同时运行多个应用实例",allow_multiple_instances_hint:"下次启动时生效。同时运行的会话可能会争用音频设备和系统路由。"},
+  pl:{allow_multiple_instances:"Zezwalaj na wiele instancji aplikacji",allow_multiple_instances_hint:"Zacznie działać przy następnym uruchomieniu. Równoległe sesje mogą konkurować o urządzenia audio i routing systemowy."},
+  it:{allow_multiple_instances:"Consenti più istanze dell’app",allow_multiple_instances_hint:"Ha effetto al prossimo avvio. Le sessioni simultanee possono contendersi i dispositivi audio e il routing di sistema."},
+  id:{allow_multiple_instances:"Izinkan beberapa instans aplikasi",allow_multiple_instances_hint:"Berlaku saat peluncuran berikutnya. Sesi bersamaan dapat berebut perangkat audio dan perutean sistem."},
+  nl:{allow_multiple_instances:"Meerdere app-instanties toestaan",allow_multiple_instances_hint:"Wordt actief bij de volgende start. Gelijktijdige sessies kunnen botsen om audioapparaten en systeemroutering."},
+  vi:{allow_multiple_instances:"Cho phép nhiều phiên bản ứng dụng",allow_multiple_instances_hint:"Có hiệu lực ở lần khởi động tiếp theo. Các phiên đồng thời có thể tranh chấp thiết bị âm thanh và định tuyến hệ thống."},
+  th:{allow_multiple_instances:"อนุญาตให้เปิดแอปหลายอินสแตนซ์",allow_multiple_instances_hint:"มีผลในการเปิดครั้งถัดไป เซสชันที่ทำงานพร้อมกันอาจแย่งใช้อุปกรณ์เสียงและการกำหนดเส้นทางของระบบ"},
+  ro:{allow_multiple_instances:"Permite mai multe instanțe ale aplicației",allow_multiple_instances_hint:"Se aplică la următoarea pornire. Sesiunile simultane pot intra în conflict pentru dispozitivele audio și rutarea sistemului."},
+  hi:{allow_multiple_instances:"ऐप के कई इंस्टेंस की अनुमति दें",allow_multiple_instances_hint:"अगली बार शुरू करने पर लागू होगा। एक साथ चलने वाले सत्र ऑडियो डिवाइस और सिस्टम रूटिंग के लिए टकरा सकते हैं।"},
+  hu:{allow_multiple_instances:"Több alkalmazáspéldány engedélyezése",allow_multiple_instances_hint:"A következő indításkor lép életbe. Az egyidejű munkamenetek ütközhetnek a hangeszközökért és a rendszerirányításért."},
+  sv:{allow_multiple_instances:"Tillåt flera appinstanser",allow_multiple_instances_hint:"Börjar gälla vid nästa start. Samtidiga sessioner kan konkurrera om ljudenheter och systemdirigering."},
+  sr:{allow_multiple_instances:"Dozvoli više instanci aplikacije",allow_multiple_instances_hint:"Primenjuje se pri sledećem pokretanju. Istovremene sesije mogu da se sukobe oko audio uređaja i sistemskog usmeravanja."},
+  "zh-Hant":{allow_multiple_instances:"允許同時執行多個應用程式執行個體",allow_multiple_instances_hint:"下次啟動時生效。同時執行的工作階段可能會爭用音訊裝置和系統路由。"}
+};
+Object.keys(I18N_MULTI_INSTANCE).forEach(function(l){
+  if(!I18N[l]) I18N[l]={}; Object.assign(I18N[l],I18N_MULTI_INSTANCE[l]);
+});
 /* Bilingual-export toggle label (History footer). Fill-if-undefined so a locale
    that never defined it falls back cleanly. */
 const I18N_BILINGUAL = { "tr":"Çift dilli", "en":"Bilingual", "de":"Zweisprachig", "cs":"Dvojjazyčné", "fr":"Bilingue", "es":"Bilingüe", "pt":"Bilíngue", "ja":"対訳", "ko":"이중 언어", "ru":"Двуязычный", "zh":"双语", "pl":"Dwujęzyczny", "it":"Bilingue", "id":"Dwibahasa", "nl":"Tweetalig", "vi":"Song ngữ", "th":"สองภาษา", "ro":"Bilingv", "hi":"द्विभाषी", "hu":"Kétnyelvű", "sv":"Tvåspråkig", "sr":"Dvojezično", "zh-Hant":"雙語" };
@@ -6342,6 +6374,7 @@ async function init(){
   $('#obs').checked     = !!cfg.obs_subtitle_enabled;
   { const ra = $('#record-audio'); if(ra) ra.checked = !!cfg.record_audio; }
   { const sl = $('#spk-labels'); if(sl) sl.checked = cfg.speaker_labels !== false; }
+  { const mi = $('#allow-multiple-instances'); if(mi) mi.checked = !!cfg.allow_multiple_instances; }
   { const mo = $('#monitor-outgoing'); if(mo) mo.checked = !!cfg.monitor_outgoing_translation; }
   // Badge removal is a paid perk: only an official build with a paid subscription
   // may turn it off. Everyone else (free official + OSS) gets a locked, forced-on
@@ -6428,6 +6461,7 @@ $('#subs').onchange   = e=>api().set_cfg('show_subtitles', e.target.checked);
 $('#obs').onchange    = e=>api().set_cfg('obs_subtitle_enabled', e.target.checked);
 { const ra = $('#record-audio'); if(ra) ra.onchange = e=>api().set_cfg('record_audio', e.target.checked); }
 { const sl = $('#spk-labels'); if(sl) sl.onchange = e=>api().set_cfg('speaker_labels', e.target.checked); }
+{ const mi = $('#allow-multiple-instances'); if(mi) mi.onchange = e=>api().set_cfg('allow_multiple_instances', e.target.checked); }
 { const mo = $('#monitor-outgoing'); if(mo) mo.onchange = e=>api().set_cfg('monitor_outgoing_translation', e.target.checked); }
 $('#brandbadge').onchange = e=>api().set_cfg('branding_badge_enabled', e.target.checked);
 $('#overlay').onchange= e=>api().toggle_overlay(e.target.checked);

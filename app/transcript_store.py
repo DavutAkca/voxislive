@@ -35,6 +35,8 @@ clean.
 """
 import json
 import os
+import tempfile
+import threading
 import time
 
 SCHEMA_VERSION = 1
@@ -44,6 +46,7 @@ MIN_CUE_S = 1.6
 # Maximum cue duration so a long gap before the next turn doesn't leave a caption
 # frozen on screen for the whole pause.
 MAX_CUE_S = 7.0
+_SAVE_LOCK = threading.Lock()
 
 
 def session_dir_name(started: float) -> str:
@@ -83,7 +86,8 @@ def build_record(started, turns, *, app_version="", mode="",
                 **({"spk": int(turn["spk"])} if turn.get("spk") is not None else {}),
             }
             for turn in turns
-            if (turn.get("text") or "").strip()
+            if ((turn.get("src") or "").strip()
+                or (turn.get("text") or "").strip())
         ],
     }
 
@@ -105,8 +109,34 @@ def save_record(directory: str, record: dict, *, subdir: str | None = None) -> s
     session_dir = os.path.join(directory, name)
     os.makedirs(session_dir, exist_ok=True)
     path = os.path.join(session_dir, name + ".json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(record, f, ensure_ascii=False, indent=2)
+    # A stop-time autosave and a manual Save click can target the same session.
+    # Serialize them and publish a fully-fsynced temp file atomically so a crash
+    # or overlapping write can never truncate the last good transcript.
+    with _SAVE_LOCK:
+        fd, tmp = tempfile.mkstemp(
+            dir=session_dir, prefix=f".{name}.", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(record, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
+            # Best-effort directory sync makes the rename durable on POSIX.
+            if os.name != "nt":
+                try:
+                    dir_fd = os.open(session_dir, os.O_RDONLY)
+                    try:
+                        os.fsync(dir_fd)
+                    finally:
+                        os.close(dir_fd)
+                except OSError:
+                    pass
+        except Exception:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            raise
     return path
 
 
@@ -170,8 +200,10 @@ def list_records(directory: str) -> list[dict]:
             "target_in": rec.get("target_in", ""),
             "target_out": rec.get("target_out", ""),
             "turns": len(turns),
-            # Short preview from the first translated line.
-            "preview": (first.get("text", "") or "")[:80],
+            # Prefer translation, but source-only recovery records must remain
+            # visible and searchable in History too.
+            "preview": ((first.get("text", "") or "")
+                        or (first.get("src", "") or ""))[:80],
         })
     out.sort(key=lambda r: r.get("started", 0.0), reverse=True)
     return out
@@ -235,7 +267,7 @@ def _cue_text(turn, *, bilingual: bool, pre: str = "") -> str:
     text = turn.get("text", "").strip()
     src = turn.get("src", "").strip()
     if bilingual and src:
-        return f"{pre}{src}\n{pre}{text}"
+        return f"{pre}{src}" + (f"\n{pre}{text}" if text else "")
     # A bare prefix must not fabricate a cue for an empty turn.
     return f"{pre}{text}" if text else ""
 
@@ -254,11 +286,14 @@ def render_txt(record: dict, *, bilingual: bool = False) -> str:
     blocks = []
     for i, t in enumerate(turns):
         text = t.get("text", "").strip()
-        if not text:
+        src = t.get("src", "").strip()
+        if not text and not src:
             continue
         pre = pres[i]
-        src = t.get("src", "").strip()
-        blocks.append(f"{pre}{src}\n{pre}{text}" if src else pre + text)
+        if src and text:
+            blocks.append(f"{pre}{src}\n{pre}{text}")
+        else:
+            blocks.append(pre + (src or text))
     return "\n\n".join(blocks) + ("\n" if blocks else "")
 
 

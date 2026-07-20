@@ -20,9 +20,11 @@ Voxis is an open-source **BYOK (bring-your-own-key)** desktop app:
   (`CryptProtectData`, `CURRENT_USER` scope) plus a per-install entropy secret,
   under `profiles/byok/`. It is never written to a plaintext `.env` and never
   leaves your machine except to open the Gemini Live WebSocket your key authorizes.
-- The open-source build makes **no outbound calls of its own** — no telemetry,
-  no authentication, no usage reporting. The only network it touches is that
-  Gemini Live session.
+- The open-source build never contacts Voxis services — no telemetry,
+  authentication, or usage reporting. Translation uses the Gemini Live session
+  opened by the user's key. Optional speaker labeling and local TTS may download
+  hash-verified model assets from `k2-fsa/sherpa-onnx` GitHub releases on first
+  use; those downloads contain no session audio or transcript data.
 - The public repository is kept free of secrets and closed-core code by a
   release-hygiene gate (`scripts/check_release_hygiene.py`), enforced in CI and a
   local pre-push hook.

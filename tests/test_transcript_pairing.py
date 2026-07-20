@@ -155,3 +155,9 @@ def test_empty_session_saves_nothing():
     b = _bare_bridge()
     b._flush_turns()
     assert b._turns == []
+
+
+def test_opt_in_problem_report_keeps_source_only_recovery_text():
+    b = _bare_bridge()
+    b._turns = [{"src": "Recovered source", "text": ""}]
+    assert b._collect_transcript() == "Recovered source"

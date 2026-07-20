@@ -102,6 +102,7 @@ def test_declick_noop_while_fully_fed():
     rate = 48000
     sig = np.sin(np.linspace(0, 30, 4800, dtype=np.float32))
     plain, dk = _Ring(2.0, rate=rate), _Ring(2.0, rate=rate, declick=True)
-    plain.push(sig.copy()); dk.push(sig.copy())
+    plain.push(sig.copy())
+    dk.push(sig.copy())
     np.testing.assert_array_equal(plain.pull(4800), dk.pull(4800))
     assert dk.underruns == 0

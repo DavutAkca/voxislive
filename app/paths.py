@@ -12,8 +12,11 @@ Two distinct roots:
 """
 import os
 import sys
+import tempfile
+import threading
 
 APP_NAME = "Voxis"
+_INSTALL_SECRET_LOCK = threading.Lock()
 
 
 def is_frozen() -> bool:
@@ -228,32 +231,46 @@ def install_secret(name: str = "install.secret", nbytes: int = 32) -> bytes:
     another install. The file is created once with 0600-style perms; callers that
     need OS-level protection should still wrap their secrets with DPAPI."""
     path = user_path(name)
-    try:
-        with open(path, "rb") as f:
-            data = f.read()
-        if len(data) >= nbytes:
-            return data[:nbytes]
-    except OSError:
-        pass
-    data = os.urandom(nbytes)
-    # Atomic write: a crash mid-write must never leave a short file, which the
-    # read above would then discard and regenerate — minting a DIFFERENT secret
-    # that orphans every prior DPAPI-wrapped blob derived from it. Write to a temp
-    # and os.replace so the persisted secret is always whole.
-    tmp = path + ".tmp"
-    try:
-        # 0o600 is honored on POSIX; on Windows the ACL is tightened by callers
-        # that store sensitive material (e.g. app/byok_store).
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with _INSTALL_SECRET_LOCK:
         try:
-            os.write(fd, data)
-            os.fsync(fd)
-        finally:
-            os.close(fd)
-        os.replace(tmp, path)
-    except OSError:
-        try:
-            os.remove(tmp)
+            with open(path, "rb") as f:
+                data = f.read()
+            if len(data) >= nbytes:
+                return data[:nbytes]
         except OSError:
             pass
-    return data
+
+        data = os.urandom(nbytes)
+        directory = os.path.dirname(path) or "."
+        fd, tmp = tempfile.mkstemp(
+            dir=directory, prefix=f".{os.path.basename(path)}.", suffix=".tmp")
+        try:
+            if os.name != "nt":
+                os.chmod(tmp, 0o600)
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+                f.flush()
+                os.fsync(f.fileno())
+            fd = -1
+            os.replace(tmp, path)
+            # Return what actually won on disk. Within this process the lock makes
+            # it our value; re-reading also avoids returning an unpersisted secret
+            # if an external process replaced it at the same boundary.
+            with open(path, "rb") as f:
+                persisted = f.read()
+            if len(persisted) < nbytes:
+                raise OSError(f"persisted install secret is shorter than {nbytes} bytes")
+            return persisted[:nbytes]
+        except Exception:
+            if fd >= 0:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            # Never return a value that did not make it to disk: encrypting with
+            # it would create a BYOK slot that becomes unreadable on restart.
+            raise
