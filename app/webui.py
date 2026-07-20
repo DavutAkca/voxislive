@@ -688,6 +688,13 @@ class Bridge:
             "engines": engines,
             "engine": resolve_engine(self.cfg),
             "official_release": IS_OFFICIAL_RELEASE,
+            # Gates the JS custom-drag handler (index.html): Windows/WebView2
+            # drags the frameless titlebar natively via the CSS
+            # `-webkit-app-region: drag` region; WebKitGTK (Linux) doesn't, so
+            # JS drives it there via win_get_pos/win_move_to instead. Wiring
+            # the JS handler on Windows too would double-drag against the
+            # native path.
+            "is_linux": sys.platform.startswith("linux"),
             # Dev-only free-tier preview state (checkbox in the BYOK section;
             # the official build hides that whole section, and the setter below
             # refuses anyway, so this never leaks into production behavior).
@@ -1194,6 +1201,57 @@ class Bridge:
         except Exception:
             pass
         return False
+
+    def win_begin_drag(self, button=1, x_root=0, y_root=0, client_x=None, client_y=None) -> bool:
+        """Hand the frameless-window drag off to the X11 window manager's own
+        interactive move, triggered once on mousedown in index.html's
+        `.pywebview-drag-region` (topbar/auth-titlebar).
+
+        Two things were tried and rejected before this on Linux: (1)
+        pywebview's own GTK `easy_drag` binds button-press/motion to the
+        WHOLE webview with no concept of `-webkit-app-region: no-drag`, so it
+        fought every button, slider and the custom resize grips for the same
+        mouse events -- the window lurched instead of following the cursor.
+        (2) A JS-driven drag polling `gtk_window_move()` every frame (this
+        app's own `win_resize` pattern, reused for move) LOOKED right --
+        smooth, monotonic (x,y) targets reached this method every ~16ms -- but
+        the live window position diverged from every target sent, worst on
+        the X axis (GTK's own docs: window managers are free to ignore
+        gtk_window_move() on an already-mapped/shown window, or honor it only
+        partially -- exactly this). `begin_move_drag` hands the ENTIRE
+        gesture to Mutter's native `_NET_WM_MOVERESIZE`, which is the only
+        path that actually respects real screen/multi-monitor edges and
+        doesn't fight anything else. No-op while maximized, matching
+        win_resize. Runs on GTK's own main loop via GLib.idle_add -- pywebview
+        dispatches js_api calls off that thread, and GTK/GDK calls are only
+        safe from the main loop."""
+        if self._maximized:
+            return False
+        try:
+            from gi.repository import GLib as glib
+            from webview.platforms.gtk import BrowserView
+            uid = self._main_window.uid
+            log = logging.getLogger("voxis")
+            log.warning("DIAG win_begin_drag called: button=%r x_root=%r y_root=%r "
+                        "client_x=%r client_y=%r actual_win_pos=%r", button, x_root, y_root,
+                        client_x, client_y, (self._main_window.x, self._main_window.y))
+
+            def _begin():
+                inst = BrowserView.instances.get(uid)
+                if inst is None:
+                    log.warning("DIAG win_begin_drag: no BrowserView instance for uid")
+                    return
+                try:
+                    inst.window.begin_move_drag(int(button), int(x_root), int(y_root), 0)
+                    log.warning("DIAG win_begin_drag: begin_move_drag() called OK")
+                except Exception:
+                    log.exception("DIAG win_begin_drag: begin_move_drag() raised")
+
+            glib.idle_add(_begin)
+            return True
+        except Exception:
+            logging.getLogger("voxis").exception("DIAG win_begin_drag outer failed")
+            return False
 
     @staticmethod
     def _fixpoint(anchor):
@@ -3061,6 +3119,15 @@ def run(cfg):
             on_screen = True  # fail-open: trust the saved coords if probing fails
         if on_screen:
             geo_kwargs["x"], geo_kwargs["y"] = gx, gy
+    # `-webkit-app-region: drag` (index.html's .pywebview-drag-region) drives
+    # the titlebar drag natively on Windows/WebView2, so easy_drag stays off
+    # there. It does nothing on WebKitGTK (Linux), so Linux dragging is
+    # handled by a custom JS handler (index.html) scoped to that same CSS
+    # region, calling win_get_pos/win_move_to below -- pywebview's own GTK
+    # easy_drag was tried and rejected: it binds button-press/motion to the
+    # ENTIRE webview with no concept of `no-drag`, so it fought every button,
+    # slider and the custom resize grips for the same mouse events (window
+    # lurching erratically instead of following the cursor).
     window = webview.create_window(
         t("app_title"), os.path.join(WEB_DIR, "index.html"),
         js_api=bridge, width=win_w, height=win_h, min_size=(940, 600),

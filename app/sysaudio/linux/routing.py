@@ -226,6 +226,7 @@ class RoutingHandle:
         self._stream_class: dict[str, str] = {}      # idx -> "own"|"other"|"unknown"
         self._unknown_logged: set[str] = set()       # unknown-ownership warned once
         self._backswept_logged: set[str] = set()     # backsweep logged once per idx
+        self._sandbox_denied_logged = False           # sandboxed-mover denial, log once
 
     def _resolve_loopback_sink_input(self) -> str | None:
         if self._loopback_sink_input_idx is not None:
@@ -423,10 +424,23 @@ class RoutingHandle:
             try:
                 _pactl("move-sink-input", idx, CAPTURE_SINK_NAME)
                 moved = True
-            except subprocess.CalledProcessError:
+            except subprocess.CalledProcessError as e:
                 # ENOENT is ambiguous (stream vs. target sink) -- decide on the
                 # return code alone, never on localized stderr text, then try
                 # the native path before giving up.
+                if "Access denied" in (e.stderr or "") and not self._sandbox_denied_logged:
+                    # A sandboxed mover (Flatpak's WirePlumber access-control
+                    # withholds the M/metadata permission on other clients'
+                    # nodes by design -- see linux-real-desktop-no-audio
+                    # investigation, 2026-07-20) gets this on EVERY tick, so
+                    # this is a one-shot signal, not the per-idx retry
+                    # counter below -- that counter gets reset every tick by
+                    # _move_native's false-positive "success" and would never
+                    # fire here.
+                    _log.warning("linux routing: pactl move-sink-input denied "
+                                 "(sandboxed mover?) -- falling back to "
+                                 "pw-metadata, which may not persist either")
+                    self._sandbox_denied_logged = True
                 moved = self._move_native(idx)
             except Exception:
                 moved = False
@@ -453,7 +467,16 @@ class RoutingHandle:
 
     def _sweep_loop(self):
         while self._sweep_run:
-            self.sweep_other_apps()
+            try:
+                self.sweep_other_apps()
+            except Exception:
+                # An uncaught exception here would silently kill the sweep
+                # thread forever -- the capture sink stays up but nothing
+                # ever gets moved onto it again, indistinguishable from
+                # "no one is talking" (see linux-real-desktop-no-audio
+                # investigation, 2026-07-20). Log and keep ticking.
+                _log.exception("linux routing: sweep tick raised -- "
+                               "continuing")
             time.sleep(SWEEP_INTERVAL)
 
     def start_sweep(self) -> None:

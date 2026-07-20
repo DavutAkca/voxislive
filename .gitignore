@@ -1,5 +1,10 @@
 # --- Voxis Production Git Ignore ---
 
+# Shared cross-OS second-brain vault (host IP, financials, closed-core notes) —
+# lives on the shared D: drive so Windows + Linux Claude Code sessions read the
+# same files; never publish.
+.vault/
+
 # --- Runtime secrets & tokens ---
 .env
 .env.local

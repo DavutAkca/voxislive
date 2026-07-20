@@ -5,6 +5,7 @@ volume API to duck other apps at their source. The VB-CABLE path intercepts
 the audio before it reaches the speakers so the engine can apply real DSP.
 """
 import collections
+import logging
 import sys
 import threading
 
@@ -12,6 +13,8 @@ import numpy as np
 import sounddevice as sd
 
 from .mix_core import DelayLine, LookaheadLimiter, place_center
+
+_log = logging.getLogger("voxis")
 
 # Stream latency hint. PortAudio occasionally fails with WDM-KS -9999 when this
 # is set; ModeController retries with this dropped to None on repeated failure.
@@ -288,7 +291,53 @@ def resolve_name(index: int | None, kind: str) -> str:
 
 def device_rate(index: int | None, kind: str) -> int:
     info = sd.query_devices(index if index is not None else sd.default.device[0 if kind == "input" else 1])
-    return int(info["default_samplerate"])
+    rate = int(info["default_samplerate"])
+    if kind == "output" and sys.platform.startswith("linux"):
+        # PortAudio's ALSA "default"/"pipewire" pseudo-devices always report a
+        # generic 44100 Hz default_samplerate, regardless of the PipeWire
+        # graph's actual running rate (commonly 48000 Hz on real hardware).
+        # Opening the output stream at that wrong rate forces a continuous
+        # realtime resample against the graph, which under a mismatched
+        # quantum produces audible glitches on every new TTS chunk (confirmed
+        # via pw-top: hardware sink QUANT=256@48000 with xruns accumulating,
+        # vs Voxis's own stream at QUANT=882@44100 -- see linux-real-desktop
+        # choppy-tts investigation, 2026-07-20). Ask PipeWire directly for
+        # its real rate instead of trusting PortAudio's report; fall back to
+        # the PortAudio value if pactl is unavailable or the query fails.
+        real = _linux_real_sink_rate()
+        if real is not None:
+            if real != rate:
+                _log.warning("audio: linux output rate -- portaudio reported "
+                             "%d Hz, pipewire sink is actually %d Hz, using "
+                             "%d Hz", rate, real, real)
+            return real
+        _log.warning("audio: linux output rate -- pactl sink-rate query "
+                     "failed, falling back to portaudio's %d Hz (may be "
+                     "wrong)", rate)
+    return rate
+
+
+def _linux_real_sink_rate() -> int | None:
+    import os          # noqa: PLC0415 -- Linux-only path
+    import re          # noqa: PLC0415
+    import subprocess  # noqa: PLC0415
+    try:
+        env = {**os.environ, "LC_ALL": "C"}
+        default_name = subprocess.run(
+            ["pactl", "get-default-sink"], capture_output=True, text=True,
+            timeout=3, check=True, env=env).stdout.strip()
+        short = subprocess.run(
+            ["pactl", "list", "sinks", "short"], capture_output=True, text=True,
+            timeout=3, check=True, env=env).stdout
+        for line in short.splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 4 and parts[1] == default_name:
+                m = re.search(r"(\d+)Hz", parts[3])
+                if m:
+                    return int(m.group(1))
+    except Exception:
+        pass
+    return None
 
 
 def play_test_tone(device: int | None, duration: float = 0.45,
@@ -775,6 +824,24 @@ class Player:
         # (~4 MB) while bounding pile-up far below the old 120 s.
         self.tts = _Ring(45.0, self.rate, channels=1, drop_newest=True,
                          declick=True)
+        # Onset prefill (Linux only): every utterance starts from a
+        # fully-drained ring (the pause between turns empties it), and
+        # without a head start the callback races ahead of the first few
+        # feed_tts_pcm16 calls -- on real Linux hardware this measured as 5-6
+        # declicked underruns crammed into the first ~1s of EVERY utterance,
+        # which is inaudible as individual clicks but reads as stutter/"kesik
+        # kesik" across a whole session (see linux tts-onset-stutter
+        # investigation, 2026-07-20). Mirrors the ambient passthrough's
+        # `_pass_prefill` jitter buffer, but must re-arm per utterance
+        # (ambient plays continuously for the whole session so its prefill
+        # only ever needs to happen once). Windows has never shown this
+        # underrun pattern, so this stays Linux-gated rather than adding
+        # ~50ms of onset latency there for no benefit -- `_tts_priming` is
+        # only ever set True below when `_tts_prefill_enabled`, so the hold
+        # branch in `_cb` can never trigger off Linux.
+        self._tts_prefill_enabled = sys.platform.startswith("linux")
+        self._tts_prefill = max(1, int(self.rate * 0.05)) if self._tts_prefill_enabled else 0  # ~50 ms
+        self._tts_priming = self._tts_prefill_enabled
         self._tts_in_rate = tts_in_rate
         # Optional injected voice-enhancement callable (mono float @ tts_in_rate
         # -> mono float). Supplied by the caller on builds that have it; None
@@ -796,7 +863,22 @@ class Player:
             mid_gain = self.mid_gain
             width = self.width
             delay_target = self.delay_target_samples
-            tts_mono = self.tts.pull(frames).reshape(-1)
+            if self._tts_priming and self.tts.fill < self._tts_prefill:
+                # Not enough queued yet to survive this block without
+                # underrunning -- hold silence instead of draining a
+                # half-empty ring (that's the stutter this buffer exists to
+                # avoid). Do NOT pull: pulling here would itself count as an
+                # underrun and consume the little that has arrived so far.
+                tts_mono = np.zeros(frames, dtype=np.float32)
+            else:
+                self._tts_priming = False
+                tts_mono = self.tts.pull(frames).reshape(-1)
+                if self.tts.fill == 0:
+                    # Ring genuinely ran dry (utterance ended, or a rare
+                    # mid-utterance stall) -- re-arm so the NEXT utterance
+                    # gets the same head start rather than raced again.
+                    # (No-op off Linux: stays False, see _tts_prefill_enabled.)
+                    self._tts_priming = self._tts_prefill_enabled
             if route_ambient:
                 # Drain the ambient ring ONLY once routing is live. Pulling during
                 # the prefill window would empty the jitter buffer as fast as it
@@ -832,6 +914,34 @@ class Player:
             latency=LATENCY,
             callback=_cb,
         )
+        if sys.platform.startswith("linux"):
+            self._watch_ring_health()
+
+    def _watch_ring_health(self) -> None:
+        """Linux-only. `_Ring.underruns`/`overflows` are real-time-safe
+        counters with no observer anywhere (the ramp/declick logic mentions
+        the counters "make the condition observable" but nothing ever read
+        them) -- surfaced here via a slow polling thread instead of logging
+        from inside the audio callback itself, which would be a
+        realtime-safety violation. Logs only on a change, so a healthy stream
+        stays silent. Not wired on Windows: no underrun pattern has ever been
+        observed there and an always-on background thread + log spam would be
+        pure downside for zero benefit."""
+        last = {"under": 0, "over": 0}
+
+        def _poll():
+            while True:
+                threading.Event().wait(2.0)
+                u, o = self.tts.underruns, self.tts.overflows
+                if u != last["under"] or o != last["over"]:
+                    _log.warning(
+                        "audio: tts ring health delta -- underruns=%d (+%d) "
+                        "overflows=%d (+%d)", u, u - last["under"],
+                        o, o - last["over"])
+                    last["under"], last["over"] = u, o
+
+        threading.Thread(target=_poll, daemon=True,
+                         name="tts-ring-health").start()
 
     @property
     def tts_active(self) -> bool:
@@ -841,6 +951,9 @@ class Player:
         # Drop the queued audio and the half-sample carry together under the
         # same lock: a stranded odd byte surviving a clear would re-pair with the
         # next turn's first byte and shift the int16 stream into full-scale noise.
+        # Re-arm the onset prefill too -- whatever plays next is a fresh start,
+        # not a continuation of what was just discarded. (No-op off Linux.)
+        self._tts_priming = self._tts_prefill_enabled
         with self._tts_lock:
             self._tts_rem = b""
             self.tts.clear()

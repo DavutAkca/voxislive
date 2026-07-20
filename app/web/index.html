@@ -6208,6 +6208,37 @@ $('#limit-dismiss').onclick = e => { e.preventDefault(); closeLimitModal(); };
   });
 })();
 
+// Custom frameless drag for Linux (WebKitGTK never implements
+// `-webkit-app-region: drag` the way WebView2 on Windows does -- see
+// is_linux in get_init). Scoped to .pywebview-drag-region, explicitly
+// skipping the same controls that region's own no-drag CSS excludes, so
+// clicking a button/slider/resize-grip inside the topbar never starts a
+// window move. Only wired when STATE.is_linux (init()).
+//
+// This hands off to the WM on the FIRST mousedown pixel via win_begin_drag
+// (Gtk begin_move_drag / X11 _NET_WM_MOVERESIZE) and then gets out of the
+// way -- no mousemove tracking, no per-frame IPC. Two prior approaches both
+// failed on this desktop: pywebview's own `easy_drag` (binds to the whole
+// webview, ignores no-drag, fights every button/grip) and a JS drag that
+// polled gtk_window_move() every frame (looked right in isolation, but GTK's
+// own docs say a WM is free to ignore/partially-honor programmatic moves on
+// an already-mapped window -- it reliably dropped the X axis while Y kept
+// working). Handing the whole gesture to the WM is the only path that
+// actually tracks the cursor.
+function wireLinuxWindowDrag(){
+  var NO_DRAG = '.brand,.topcenter,.topactions,.windowctl,.iconbtn,.wbtn,button,select,input,.rsz';
+  document.querySelectorAll('.pywebview-drag-region').forEach(function(region){
+    // WebKitGTK acts on `-webkit-app-region: drag` natively and would
+    // otherwise consume the mousedown before this handler ever saw it.
+    region.style.webkitAppRegion = 'no-drag';
+    region.addEventListener('mousedown', function(e){
+      if(e.button !== 0 || e.target.closest(NO_DRAG)) return;
+      e.preventDefault();
+      try{ api().win_begin_drag(1, e.screenX, e.screenY, e.clientX, e.clientY); }catch(err){}
+    });
+  });
+}
+
 /* ── QUOTA BAR ──────────────────────────────────────────────────────────── */
 function renderQuotaBadge(quota){ renderQuotaBar(quota); renderTasteChip(quota); maybeShowLadder(quota); }
 function renderQuotaBar(quota){
@@ -6322,6 +6353,7 @@ function checkQuotaSoftWarn(q){
 /* ---------- init ---------- */
 async function init(){
   STATE = await api().get_init() || {};
+  if(STATE.is_linux) wireLinuxWindowDrag();
   // Defensive defaults: a partial bridge response must never throw mid-render.
   const cfg = STATE.cfg = STATE.cfg || {};
   cfg.devices = cfg.devices || {};
@@ -6356,8 +6388,6 @@ async function init(){
   $('#uilang').value    = cfg.ui_language || LANG;
   document.querySelectorAll('.k').forEach(k=>k.textContent=cfg.hotkeys[k.dataset.hk]||'—');
   updateTileTitles();
-  { const cp = $('#cascadeprev'); if(cp){ cp.checked = !!STATE.cascade_preview;
-      cp.onchange = ()=>{ try{ api().set_cascade_preview(cp.checked); }catch(_){} }; } }
   // Official-release builds always run on the SaaS key — hide the BYOK input
   // entirely so the end-user UI never exposes a key field. Open-source builds
   // continue to expose it for developers.
