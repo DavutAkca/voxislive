@@ -79,6 +79,52 @@ def test_large_gemini_delta_is_split_and_accelerated():
         stager.stop()
 
 
+def test_emit_crossfades_compressed_joins_without_click():
+    # WSOLA resets its overlap phase every block, so two consecutive compressed
+    # blocks can meet at a phase step — an audible click. _emit must crossfade
+    # that join (both blocks flagged compressed) into a continuous stream.
+    player = _Player()
+    stager = AdaptivePlaybackStager(player)
+    stager.stop()  # drive _emit synchronously; no worker racing us
+    player.fed.clear()
+
+    a = _tone(0.3)
+    b = np.roll(_tone(0.3), 37)  # same tone, ~244° phase step vs a's end → a click
+
+    # A raw splice of the two blocks genuinely clicks — proves the test bites.
+    raw = np.concatenate([a, b])
+    assert np.max(np.abs(np.diff(raw))) > 0.5
+
+    stager._emit(player, a, compressed=True)
+    stager._emit(player, b, compressed=True)
+    out = (np.frombuffer(b"".join(player.fed), dtype=np.int16)
+           .astype(np.float32) / 32768.0)
+    # The crossfade smears the phase step across ~12 ms: no sample-to-sample
+    # jump anywhere near a hard discontinuity survives.
+    assert np.max(np.abs(np.diff(out))) < 0.5
+
+
+def test_emit_contiguous_1x_is_not_blended():
+    # A purely contiguous 1.0x stream must be reassembled byte-exact (minus the
+    # held tail): blending audio that never had a discontinuity would add a comb
+    # artifact. Feeding two halves of one tone must reproduce it sample-for-sample.
+    player = _Player()
+    stager = AdaptivePlaybackStager(player)
+    stager.stop()
+    player.fed.clear()
+
+    tone = _tone(0.5)
+    half = len(tone) // 2
+    stager._emit(player, tone[:half], compressed=False)
+    stager._emit(player, tone[half:], compressed=False)
+    out = (np.frombuffer(b"".join(player.fed), dtype=np.int16)
+           .astype(np.float32) / 32768.0)
+    # Held-back tail (last _xfade samples of the 2nd block) is still pending, so
+    # compare against the tone minus that many samples.
+    n = len(out)
+    assert np.max(np.abs(out - tone[:n])) < 1.0 / 32767 * 2  # int16 round-trip only
+
+
 def test_stale_trim_keeps_newest_tail_of_one_large_delta():
     player = _Player()
     # Hold the worker outside its feed-ahead window so the pending accounting is

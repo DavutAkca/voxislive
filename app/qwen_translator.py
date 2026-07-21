@@ -110,8 +110,24 @@ class QwenTranslator(BaseTranslator):
         self._prev_audio = b""
         self._dup_audio_count = 0
         self._dup_audio_warned = False
+        # TEMPORARY DIAGNOSTIC: see _receive_loop's event-type logger below.
+        self._seen_event_types = set()
 
     # ---- session config ---------------------------------------------------
+    def _input_transcription_cfg(self) -> dict:
+        """fun-asr-realtime rejects the literal string "auto" as a language
+        code (confirmed live, 2026-07-20): 'InvalidParameter: Language code
+        auto is not recognized' — a HARD 400 on every single utterance, so
+        standard-routed Qwen sessions (source_lang defaults to "auto", no UI
+        exposes it) never produced a source caption at all. Voxis is a
+        universal translator with no source-language picker, so the field is
+        simply omitted when unset/"auto" and the model falls back to its own
+        detection instead of being sent a value it rejects outright."""
+        cfg = {"model": "fun-asr-realtime"}
+        if self.source_lang and self.source_lang != "auto":
+            cfg["language"] = self.source_lang
+        return cfg
+
     def _session_update(self) -> str:
         session = {
             "modalities": ["text", "audio"],
@@ -122,8 +138,7 @@ class QwenTranslator(BaseTranslator):
             # Alibaba's designated replacement for qwen3-asr-flash-realtime,
             # whose dated snapshots retire 2026-10-10 (A/B 2026-07-10: session
             # behavior identical between the two).
-            "input_audio_transcription": {"language": self.source_lang,
-                                          "model": "fun-asr-realtime"},
+            "input_audio_transcription": self._input_transcription_cfg(),
             "translation": {"language": self.target_lang},
         }
         if self.vad_silence_ms > 0:
@@ -229,6 +244,13 @@ class QwenTranslator(BaseTranslator):
             except (ValueError, TypeError):
                 continue
             et = ev.get("type", "")
+            # TEMPORARY DIAGNOSTIC (remove once source-caption investigation is
+            # closed): log every distinct event type DashScope actually sends,
+            # so a real session's log proves/disproves the input-transcription
+            # event names this parser matches against.
+            if et and et not in self._seen_event_types:
+                self._seen_event_types.add(et)
+                _log.info("qwen event type seen: %s | keys=%s", et, sorted(ev.keys()))
             if et == "response.audio.delta":
                 b64 = ev.get("delta") or ev.get("audio")
                 if b64:
@@ -259,6 +281,13 @@ class QwenTranslator(BaseTranslator):
                         self.on_text("out", inc)
                 self._out_acc = ""
                 self._mark_text_output()
+            elif et.endswith(".failed") and "input_audio_transcription" in et:
+                # TEMPORARY DIAGNOSTIC (remove once the missing-source-caption
+                # investigation is closed): DashScope's ASR rejected this
+                # utterance server-side — no transcript, no on_text("in", ...),
+                # and (before this line) no visibility at all into why.
+                _log.warning("qwen input transcription FAILED: %s",
+                             ev.get("error") or ev)
             elif ("input_audio_transcription" in et
                   or et.startswith("conversation.item.input")):
                 txt = (ev.get("transcript") or ev.get("text")
