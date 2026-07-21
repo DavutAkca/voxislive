@@ -630,9 +630,16 @@ class _Ring:
         # signal hard to zero (and jumps hard back to a non-zero sample when audio
         # resumes) — both are audible clicks/pops. With declick on, an underrun
         # tail ramps the last real sample down to silence and a resuming block
-        # ramps up from silence, over ~2 ms. No-op while the ring stays fed.
+        # ramps up from silence, over ~15 ms. No-op while the ring stays fed.
+        # Was ~2 ms: fine for an isolated underrun, but a turn-based engine
+        # (Qwen) whose response audio arrives in per-utterance bursts can
+        # starve this ring hundreds of times a minute under fast/dense speech
+        # (confirmed live, 2026-07-20: ~1100 underruns/min) — at that rate a
+        # 2 ms edge still reads as a rapid "pit pit" click. 15 ms masks the
+        # same edges far more effectively while staying short enough that an
+        # isolated underrun on a healthy stream is still inaudible as a fade.
         self.declick = declick
-        self._ramp = max(1, int(rate * 0.002))
+        self._ramp = max(1, int(rate * 0.015))
         self._starved = False  # last pull ended in underrun -> next block fades in
         self.underruns = 0     # declicked underruns (telemetry)
 
@@ -825,24 +832,27 @@ class Player:
         # (~4 MB) while bounding pile-up far below the old 120 s.
         self.tts = _Ring(45.0, self.rate, channels=1, drop_newest=True,
                          declick=True)
-        # Onset prefill (Linux only): every utterance starts from a
-        # fully-drained ring (the pause between turns empties it), and
-        # without a head start the callback races ahead of the first few
-        # feed_tts_pcm16 calls -- on real Linux hardware this measured as 5-6
-        # declicked underruns crammed into the first ~1s of EVERY utterance,
-        # which is inaudible as individual clicks but reads as stutter/"kesik
-        # kesik" across a whole session (see linux tts-onset-stutter
-        # investigation, 2026-07-20). Mirrors the ambient passthrough's
-        # `_pass_prefill` jitter buffer, but must re-arm per utterance
-        # (ambient plays continuously for the whole session so its prefill
-        # only ever needs to happen once). Windows has never shown this
-        # underrun pattern, so this stays Linux-gated rather than adding
-        # ~50ms of onset latency there for no benefit -- `_tts_priming` is
-        # only ever set True below when `_tts_prefill_enabled`, so the hold
-        # branch in `_cb` can never trigger off Linux.
-        self._tts_prefill_enabled = sys.platform.startswith("linux")
-        self._tts_prefill = max(1, int(self.rate * 0.05)) if self._tts_prefill_enabled else 0  # ~50 ms
-        self._tts_priming = self._tts_prefill_enabled
+        # Onset/jitter prefill cushion: hold playback until this many samples are
+        # queued, and re-arm after any full drain (see _cb). Every utterance
+        # starts from a drained ring, and a realtime-PACED engine keeps it pinned
+        # near-empty for the WHOLE utterance — its audio arrives just-in-time, so
+        # without a cushion every 20 ms callback finds the ring a few ms short,
+        # declicks, and the result is a continuous "pit pit" buzz rather than one
+        # clean onset. Field-measured on Windows + Qwen, 2026-07-21: ~300
+        # underruns per 6 s = literally every callback block. (Gemini delivers a
+        # turn's audio FASTER than realtime, so it primes once at onset then runs
+        # on a full buffer — which is why only the realtime engines buzzed.)
+        # First seen on Linux (onset stutter, 2026-07-20) and fixed there with a
+        # 50 ms cushion; the SAME mechanism now covers Windows, sized larger to
+        # absorb the realtime engine's per-chunk delivery jitter for the whole
+        # utterance, not just its onset. The added latency (≤180 ms, once per
+        # utterance) is imperceptible against the cloud interpreter's multi-second
+        # ear-voice lag. Mirrors the ambient passthrough's `_pass_prefill`, but
+        # re-arms per utterance (ambient plays continuously, so it primes once).
+        self._tts_prefill_enabled = True
+        prefill_s = 0.05 if sys.platform.startswith("linux") else 0.18
+        self._tts_prefill = max(1, int(self.rate * prefill_s))
+        self._tts_priming = True
         self._tts_in_rate = tts_in_rate
         # Optional injected voice-enhancement callable (mono float @ tts_in_rate
         # -> mono float). Supplied by the caller on builds that have it; None

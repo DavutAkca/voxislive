@@ -92,6 +92,19 @@ class AdaptivePlaybackStager:
         self.sped_s = 0.0
         self.feed_errors = 0
         self._feed_err_warned = False
+        # Equal-power crossfade at block joins that follow a DISCONTINUITY — a
+        # time-compressed block (WSOLA resets its overlap phase every block) or a
+        # post-trim splice (stale audio dropped). Without it, sustained catch-up
+        # compression clicks once per ~0.5 s output block and a trim clicks once,
+        # which is the residual "pit pit" during backlog after the underrun fix.
+        # Contiguous 1.0x joins are fed straight (no fade → no distortion). ~12 ms
+        # is long enough to mask a phase step, short enough to be inaudible as a
+        # blend. `_carry` holds the last _xfade samples of the previously emitted
+        # audio so the join is a true overlap-add, not a retroactive edit.
+        self._xfade = max(1, int(0.012 * self.input_rate))
+        self._carry: np.ndarray | None = None      # float32 tail held back for the next join
+        self._prev_compressed = False
+        self._force_xfade = False                  # set by feed() when it trims stale audio
         self._run = True
         self._thread = threading.Thread(
             target=self._loop, daemon=True, name="translation-playback-stager")
@@ -138,6 +151,9 @@ class AdaptivePlaybackStager:
                         excess = 0
         if trimmed:
             self.skipped_s += trimmed / (self.input_rate * 2)
+            # The next emitted block is spliced onto a discontinuity — force a
+            # crossfade even if it is played at 1.0x (contiguous fast path).
+            self._force_xfade = True
 
     def clear(self) -> None:
         """Discard pending provider audio while keeping the worker reusable."""
@@ -145,6 +161,12 @@ class AdaptivePlaybackStager:
             self._pending.clear()
             self._pending_bytes = 0
         self.speed = 1.0
+        # A new stream starts after clear() (e.g. engine swap): drop the held
+        # crossfade tail so the first block of the new stream is not blended
+        # onto stale audio.
+        self._carry = None
+        self._prev_compressed = False
+        self._force_xfade = False
 
     def _pop_block(self, block_bytes: int) -> bytes:
         buf = bytearray()
@@ -166,6 +188,46 @@ class AdaptivePlaybackStager:
                     self._pending_bytes -= need
         return bytes(buf)
 
+    def _emit(self, player, samples: np.ndarray, compressed: bool) -> None:
+        """Push one block to the player, crossfading the join onto the previous
+        block only when that join sits on a discontinuity.
+
+        A discontinuity exists when this block or the previous one was
+        time-compressed (WSOLA restarts its overlap phase per block) or when a
+        stale-audio trim just spliced the stream (`_force_xfade`). In those
+        cases the last `_xfade` samples of the previous block were held back in
+        `_carry`; here they are equal-power-blended with this block's head, so
+        the phase step is smeared over ~12 ms instead of clicking. A purely
+        contiguous 1.0x run feeds the held tail straight through — no blend, so
+        no comb/echo artifact on audio that never had a discontinuity."""
+        xf = self._xfade
+        need_xf = compressed or self._prev_compressed or self._force_xfade
+        self._force_xfade = False
+        self._prev_compressed = compressed
+        # Too short to hold a tail: flush any carry, feed straight, reset.
+        if samples.shape[0] <= 2 * xf:
+            if self._carry is not None:
+                samples = np.concatenate([self._carry, samples])
+            self._carry = None
+            self._push(player, samples)
+            return
+        head, body, tail = samples[:xf], samples[xf:-xf], samples[-xf:]
+        if self._carry is None:
+            out = np.concatenate([head, body])            # first block of a stream
+        elif need_xf:
+            n = min(xf, self._carry.shape[0])
+            fade_in = np.linspace(0.0, 1.0, n, dtype=np.float32)
+            joined = head[:n] * fade_in + self._carry[-n:] * (1.0 - fade_in)
+            out = np.concatenate([joined, head[n:], body])
+        else:
+            out = np.concatenate([self._carry, head, body])  # contiguous, no blend
+        self._carry = tail
+        self._push(player, out)
+
+    def _push(self, player, samples: np.ndarray) -> None:
+        pcm = (np.clip(samples, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
+        player.feed_tts_pcm16(pcm)
+
     def _loop(self) -> None:
         block_bytes = int(0.6 * self.input_rate) * 2
         while self._run:
@@ -182,16 +244,16 @@ class AdaptivePlaybackStager:
                             break
                         speed = self.speed_for_backlog(backlog)
                         self.speed = speed
-                        if speed > 1.0:
-                            samples = (np.frombuffer(data, dtype=np.int16)
-                                       .astype(np.float32) / 32768.0)
+                        samples = (np.frombuffer(data, dtype=np.int16)
+                                   .astype(np.float32) / 32768.0)
+                        compressed = speed > 1.0
+                        if compressed:
                             paced = time_compress_wsola(
                                 samples, speed, self.input_rate)
                             self.sped_s += max(
                                 0.0, (len(samples) - len(paced)) / self.input_rate)
-                            data = (np.clip(paced, -1.0, 1.0) * 32767.0
-                                    ).astype(np.int16).tobytes()
-                        player.feed_tts_pcm16(data)
+                            samples = paced
+                        self._emit(player, samples, compressed)
                 except Exception:
                     self.feed_errors += 1
                     if not self._feed_err_warned:
