@@ -213,6 +213,12 @@ Contributions are welcome — by opening a pull request you agree your contribut
 
 ---
 
+## Community & Technical Benchmarks
+
+For architecture deep-dives, latency benchmark comparisons, and system audio capture discussions, join our community:
+
+* **Subreddit:** [r/LiveTranslation](https://www.reddit.com/r/LiveTranslation/)
+* **Technical Wiki & Latency Matrix:** [r/LiveTranslation Wiki](https://www.reddit.com/r/LiveTranslation/wiki/index)
 ## Support
 
 - **Issues:** [GitHub Issues](https://github.com/DavutAkca/voxislive/issues)
