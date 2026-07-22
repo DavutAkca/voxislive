@@ -307,10 +307,28 @@ class Bridge:
         # to the user-facing default. Best-effort; never blocks startup.
         self._migrate_transcripts()
 
+    def push_event(self, ev):
+        """Push a real-time event to the webview window via evaluate_js.
+
+        Bypasses poll latency by delivering events (captions, status, VAD)
+        instantly into the frontend DOM. Fail-safe: errors (window closed, JS not ready)
+        are caught silently, and the poll queue remains as a backstop.
+        """
+        win = getattr(self, "_main_window", None)
+        if not win:
+            return
+        try:
+            import json  # noqa: PLC0415
+            js_code = f"if(window.onVoxisEvent) window.onVoxisEvent({json.dumps(ev)});"
+            win.evaluate_js(js_code)
+        except Exception:
+            pass
+
     # ---------- callbacks from audio threads ----------
     def _put_event(self, ev):
         """Enqueue a UI event, dropping the oldest on overflow (never blocks —
         callers are audio/heartbeat threads that must not stall)."""
+        self.push_event(ev)
         try:
             self._events.put_nowait(ev)
         except queue.Full:

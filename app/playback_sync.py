@@ -22,6 +22,17 @@ import numpy as np
 _log = logging.getLogger("voxis")
 
 
+_WIN_CACHE: dict[int, np.ndarray] = {}
+
+
+def _get_hanning_window(frame: int) -> np.ndarray:
+    w = _WIN_CACHE.get(frame)
+    if w is None:
+        w = np.hanning(frame).astype(np.float32)
+        _WIN_CACHE[frame] = w
+    return w
+
+
 def time_compress_wsola(x: np.ndarray, speed: float, rate: int) -> np.ndarray:
     """Pitch-preserving WSOLA time compression for mono float32 speech.
 
@@ -36,7 +47,7 @@ def time_compress_wsola(x: np.ndarray, speed: float, rate: int) -> np.ndarray:
     search = int(rate * 0.008)
     if speed <= 1.01 or len(x) < frame + hop_in + search + 1:
         return x
-    win = np.hanning(frame).astype(np.float32)
+    win = _get_hanning_window(frame)
     n_frames = (len(x) - frame - search) // hop_in
     if n_frames < 2:
         return x

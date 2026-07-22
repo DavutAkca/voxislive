@@ -435,7 +435,15 @@ class Capture:
     def failed(self) -> bool:
         """True once the consumer has faulted persistently — polled by the
         session liveness gate so a dead pipeline stops billing."""
-        return self._err is not None
+        return self._err is not None or not self.is_active
+
+    @property
+    def is_active(self) -> bool:
+        """True if the input stream is running and healthy."""
+        try:
+            return bool(getattr(self, "stream", None) and self.stream.active)
+        except Exception:
+            return False
 
     def _drain(self):
         # Same fault policy as ProcessExcludeLoopback._processor: a single bad
@@ -1030,6 +1038,14 @@ class Player:
             if self.tts_gain != 1.0:
                 x = x * self.tts_gain
             self.tts.push(self._tts_resample(x))
+
+    @property
+    def is_active(self) -> bool:
+        """True if the output stream is running and healthy."""
+        try:
+            return bool(getattr(self, "stream", None) and self.stream.active)
+        except Exception:
+            return False
 
     def start(self):
         self.stream.start()

@@ -49,6 +49,9 @@ _JWT_ENTROPY: bytes = b"voxis-jwt-v1"
 # requests.Session is thread-safe for our usage (no cookies; urllib3 pools are
 # locked internally) — heartbeat workers and UI threads may share it.
 _http = requests.Session()
+_http_adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10)
+_http.mount("https://", _http_adapter)
+_http.mount("http://", _http_adapter)
 
 # Proactive JWT refresh via PocketBase's auth-refresh (exposed behind Caddy's
 # /dashboard/* -> :8090 route; PB expects the RAW token in Authorization, no

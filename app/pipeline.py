@@ -305,9 +305,12 @@ class _GatedSource:
         else:
             # Startup transient before history is deep enough — upsample so no
             # audio is dropped (first few frames only).
-            for f in frames16:
-                xo = np.linspace(0.0, 1.0, num=len(f), endpoint=False)
+            xo = getattr(self, "_xo", None)
+            xn = getattr(self, "_xn", None)
+            if xo is None or xn is None:
+                xo = np.linspace(0.0, 1.0, num=_FRAME, endpoint=False)
                 xn = np.linspace(0.0, 1.0, num=self._send_frame, endpoint=False)
+            for f in frames16:
                 self._send(_f32_to_pcm16(np.interp(xn, xo, f).astype(np.float32)))
 
     def _emit_silence(self):

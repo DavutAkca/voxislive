@@ -7640,6 +7640,31 @@ function setPillState(p){
 // (not let) on purpose — the first poll() can run before a `let` here would
 // be initialized (TDZ) and the delay expression sits OUTSIDE poll's try.
 var pollFast=false;
+const handledEventKeys = new Set();
+function dispatchUIEvent(ev) {
+  if(!ev || !Array.isArray(ev)) return;
+  const key = ev[0] + ':' + JSON.stringify(ev.slice(1));
+  if(handledEventKeys.has(key)) return;
+  handledEventKeys.add(key);
+  if(handledEventKeys.size > 300) {
+    const first = handledEventKeys.values().next().value;
+    handledEventKeys.delete(first);
+  }
+  if(ev[0]==='status'){ addSys(ev[1], ev[2] && ev[2].level); }
+  else if(ev[0]==='trans'){ onTrans(ev[1], ev[2], ev[3]); }
+  else if(ev[0]==='src'){ onSrc(ev[1], ev[2]); }
+  else if(ev[0]==='hear_live'){ onHearLive(ev[1]); }
+  else if(ev[0]==='saved'){ addTranscriptActions(ev[1]); }
+  else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
+  else if(ev[0]==='quota_wall'){ showPaywallCard(); }
+  else if(ev[0]==='review'){ showReviewCard(); }
+  else if(ev[0]==='preview'){ onPreviewEvent(ev[1]); }
+  else if(ev[0]==='taste_wall'){ openTasteWall(ev[1] && ev[1].mode); }
+  else if(ev[0]==='daily_wall'){ openDailyWall(); }
+  else if(ev[0]==='device_blocked'){ openDeviceBlockWall(ev[1]); }
+}
+window.onVoxisEvent = function(ev) { dispatchUIEvent(ev); };
+
 async function poll(){
   try{
     const p = await api().poll();
@@ -7648,20 +7673,7 @@ async function poll(){
     if(typeof p.maximized==='boolean' && winMaxed!==p.maximized){
       winMaxed=p.maximized; applyWinMaxUI(); document.body.classList.toggle('win-maximized', winMaxed);
     }
-    p.events.forEach(ev=>{
-      if(ev[0]==='status'){ addSys(ev[1], ev[2] && ev[2].level); }
-      else if(ev[0]==='trans'){ onTrans(ev[1], ev[2], ev[3]); }
-      else if(ev[0]==='src'){ onSrc(ev[1], ev[2]); }
-      else if(ev[0]==='hear_live'){ onHearLive(ev[1]); }
-      else if(ev[0]==='saved'){ addTranscriptActions(ev[1]); }
-      else if(ev[0]==='quota_refresh'){ refreshQuotaAfterSession(); }
-      else if(ev[0]==='quota_wall'){ showPaywallCard(); }
-      else if(ev[0]==='review'){ showReviewCard(); }
-      else if(ev[0]==='preview'){ onPreviewEvent(ev[1]); }
-      else if(ev[0]==='taste_wall'){ openTasteWall(ev[1] && ev[1].mode); }
-      else if(ev[0]==='daily_wall'){ openDailyWall(); }
-      else if(ev[0]==='device_blocked'){ openDeviceBlockWall(ev[1]); }
-    });
+    p.events.forEach(dispatchUIEvent);
     if(scOpen) driveSoundcheck(p.sc, p.sc_mic);
     $('#badge').textContent = p.badge.text;
     setPillState(p);
