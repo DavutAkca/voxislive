@@ -435,18 +435,18 @@ class IncomingPipeline:
                     except Exception:
                         pass
                     self._flush_timer = None
-            for txt, nl, spk_tag in items:
-                on_text(txt, nl, spk_tag)
+            for args, kwargs in items:
+                try:
+                    on_text(*args, **kwargs)
+                except Exception:
+                    pass
 
-        def _synced_on_text(text, newline=False, spk=None):
-            if newline:
-                with self._text_lock:
-                    self._audio_started = False
+        def _synced_on_text(*args, **kwargs):
             with self._text_lock:
                 if self._audio_started:
-                    on_text(text, newline, spk)
+                    on_text(*args, **kwargs)
                     return
-                self._text_buffer.append((text, newline, spk))
+                self._text_buffer.append((args, kwargs))
                 if not self._flush_timer:
                     self._flush_timer = threading.Timer(0.22, _flush_text_buffer)
                     self._flush_timer.daemon = True
