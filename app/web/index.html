@@ -7647,8 +7647,12 @@ function dispatchUIEvent(ev) {
   if(handledEventKeys.has(key)) return;
   handledEventKeys.add(key);
   if(handledEventKeys.size > 300) {
-    const first = handledEventKeys.values().next().value;
-    handledEventKeys.delete(first);
+    const iter = handledEventKeys.values();
+    for(let i = 0; i < 50; i++) {
+      const v = iter.next().value;
+      if(v === undefined) break;
+      handledEventKeys.delete(v);
+    }
   }
   if(ev[0]==='status'){ addSys(ev[1], ev[2] && ev[2].level); }
   else if(ev[0]==='trans'){ onTrans(ev[1], ev[2], ev[3]); }

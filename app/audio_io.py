@@ -421,15 +421,27 @@ class Capture:
             self._queue.append(data)
             self._has_data.set()
 
-        self.stream = sd.InputStream(
-            device=device,
-            samplerate=self.rate,
-            channels=channels,
-            dtype="float32",
-            blocksize=blocksize,
-            latency=LATENCY,
-            callback=_cb,
-        )
+        try:
+            self.stream = sd.InputStream(
+                device=device,
+                samplerate=self.rate,
+                channels=channels,
+                dtype="float32",
+                blocksize=blocksize,
+                latency=LATENCY,
+                callback=_cb,
+            )
+        except sd.PortAudioError:
+            # Hot-unplug / stale device index: fallback to system default device (None)
+            self.stream = sd.InputStream(
+                device=None,
+                samplerate=self.rate,
+                channels=channels,
+                dtype="float32",
+                blocksize=blocksize,
+                latency=LATENCY,
+                callback=_cb,
+            )
 
     @property
     def failed(self) -> bool:
@@ -924,15 +936,27 @@ class Player:
             y = np.nan_to_num(y, nan=0.0, posinf=0.0, neginf=0.0)
             outdata[:] = y if self.channels == 2 else y.mean(axis=1, keepdims=True)
 
-        self.stream = sd.OutputStream(
-            device=device,
-            samplerate=self.rate,
-            channels=channels,
-            dtype="float32",
-            blocksize=blocksize,
-            latency=LATENCY,
-            callback=_cb,
-        )
+        try:
+            self.stream = sd.OutputStream(
+                device=device,
+                samplerate=self.rate,
+                channels=channels,
+                dtype="float32",
+                blocksize=blocksize,
+                latency=LATENCY,
+                callback=_cb,
+            )
+        except sd.PortAudioError:
+            # Hot-unplug / stale device index: fallback to system default device (None)
+            self.stream = sd.OutputStream(
+                device=None,
+                samplerate=self.rate,
+                channels=channels,
+                dtype="float32",
+                blocksize=blocksize,
+                latency=LATENCY,
+                callback=_cb,
+            )
         if sys.platform.startswith("linux"):
             self._watch_ring_health()
 

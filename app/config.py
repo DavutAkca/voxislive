@@ -576,7 +576,16 @@ def save_config(cfg: dict):
             json.dump(cfg, f, ensure_ascii=False, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp, CONFIG_PATH)
+        # Retry os.replace up to 3 times on Windows OSError (WinError 32 / Errno 13)
+        # to gracefully pass momentary file locks from OneDrive sync or AV scanners.
+        for attempt in range(3):
+            try:
+                os.replace(tmp, CONFIG_PATH)
+                break
+            except OSError:
+                if attempt == 2:
+                    raise
+                time.sleep(0.015)
     except BaseException:
         # Don't leave the unique temp behind if the write/replace failed.
         try:

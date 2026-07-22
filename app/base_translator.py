@@ -33,6 +33,7 @@ its own via class attrs. They are NOT tuning knobs to revisit here.
 """
 import asyncio
 import contextlib
+import random
 import threading
 import time
 import traceback
@@ -401,7 +402,8 @@ class BaseTranslator(threading.Thread):
                         break
                     self.on_status(t("st_conn_err", name=self.name, s=self._backoff,
                                      e=t("st_server_closed")))
-                    await asyncio.sleep(self._backoff)
+                    jitter = random.uniform(0.85, 1.15)
+                    await asyncio.sleep(self._backoff * jitter)
                     self._backoff = min(self._backoff * 1.6, 6)
             except _Rotate:
                 # Defensive: a _Rotate must not be treated as a transient error.
@@ -428,14 +430,15 @@ class BaseTranslator(threading.Thread):
                 if transient_failures >= self.MAX_TRANSIENT_FAILURES:
                     self._give_up(e)
                     break
-                self.on_status(t("st_conn_err", name=self.name, s=self._backoff, e=e))
+                self.on_status(t("st_conn_err", name=self.name, s=int(self._backoff), e=e))
                 # Suppress repeated identical tracebacks: a flapping link would
                 # otherwise flood stderr with the same stack on every retry.
                 err_text = repr(e)
                 if err_text != self._last_error_text:
                     traceback.print_exc()
                     self._last_error_text = err_text
-                await asyncio.sleep(self._backoff)
+                jitter = random.uniform(0.85, 1.15)
+                await asyncio.sleep(self._backoff * jitter)
                 # Cap reconnect backoff at 6 s to recover quickly from drops.
                 self._backoff = min(self._backoff * 1.6, 6)
 
