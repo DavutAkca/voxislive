@@ -344,3 +344,55 @@ def export(record: dict, fmt: str, *, bilingual: bool = True) -> tuple[str, str]
     if fmt not in _RENDERERS:
         raise ValueError(f"unknown export format: {fmt!r}")
     return _RENDERERS[fmt](record, bilingual=bilingual), fmt
+
+
+def prune_transcripts(directory: str, max_age_days: int = 90, max_files: int = 500) -> int:
+    """Housekeeping pass: cleans up transcripts older than `max_age_days` or exceeding
+    `max_files` limit (keeps disk usage bounded). Fully guarded; returns pruned count."""
+    if not directory or not os.path.exists(directory):
+        return 0
+    now = time.time()
+    max_age_sec = max_age_days * 86400.0
+    pruned = 0
+    try:
+        entries = []
+        for name in os.listdir(directory):
+            p = os.path.join(directory, name)
+            if name.startswith("voxis_") and (os.path.isdir(p) or name.endswith(".json")):
+                try:
+                    mtime = os.path.getmtime(p)
+                    entries.append((mtime, p))
+                except OSError:
+                    pass
+        entries.sort(key=lambda x: x[0])
+        remaining = []
+        for mtime, p in entries:
+            if now - mtime > max_age_sec:
+                try:
+                    if os.path.isdir(p):
+                        import shutil
+                        shutil.rmtree(p, ignore_errors=True)
+                    else:
+                        os.remove(p)
+                    pruned += 1
+                except Exception:
+                    remaining.append((mtime, p))
+            else:
+                remaining.append((mtime, p))
+
+        if len(remaining) > max_files:
+            to_remove = remaining[: len(remaining) - max_files]
+            for _, p in to_remove:
+                try:
+                    if os.path.isdir(p):
+                        import shutil
+                        shutil.rmtree(p, ignore_errors=True)
+                    else:
+                        os.remove(p)
+                    pruned += 1
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return pruned
+

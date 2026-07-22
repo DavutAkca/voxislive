@@ -2283,6 +2283,8 @@ class Bridge:
         self._session_file = path
         if not silent:
             self._emit_status(t("saved_to", path=path))
+        # Background disk housekeeping: prune old/orphaned transcript folders (>90 days / >500 count)
+        threading.Thread(target=transcript_store.prune_transcripts, args=(primary,), daemon=True).start()
         return {"ok": True, "path": path, "file": os.path.basename(path)}
 
     # ---------- transcript directory + reveal ----------
