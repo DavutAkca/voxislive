@@ -567,10 +567,10 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .turn .tr{
   max-width:86%;background:transparent;border-left:2px solid var(--border-strong);
   padding:3px 4px 3px 14px;font-size:15.5px;line-height:1.55;font-weight:500;color:var(--text);
-  border-radius:0;
+  border-radius:0;white-space:pre-wrap;
 }
-.turn .tr .w{display:inline-block;animation:word .22s var(--ease-out) both}
-@keyframes word{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.turn .tr .w{display:inline-block;white-space:pre;animation:word .18s var(--ease-out) both}
+@keyframes word{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 .turn .tr.active{border-left-color:var(--amber)}
 .turn .tr.active::after{content:'';display:inline-block;width:7px;height:1em;margin-left:3px;vertical-align:-2px;
   background:var(--amber);border-radius:1px;animation:caret 1s steps(1) infinite}
