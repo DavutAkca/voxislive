@@ -7502,14 +7502,42 @@ function newTurn(spk){
   curTurn=turn; curBubble=bubble; trimScroll();
   setSpkTag(bubble, spk);
 }
+let wordQueue = [];
+let pacingTimer = null;
+
+function processWordQueue(){
+  if(wordQueue.length === 0){
+    pacingTimer = null;
+    return;
+  }
+  const item = wordQueue.shift();
+  if(item && item.el){
+    if(item.type === 'whitespace'){
+      item.el.appendChild(document.createTextNode(item.text));
+    } else if(item.type === 'word'){
+      const s = document.createElement('span');
+      s.className = 'w';
+      s.textContent = item.text;
+      item.el.appendChild(s);
+    }
+    scrollEnd();
+  }
+  const delay = wordQueue.length > 8 ? 70 : (wordQueue.length > 4 ? 110 : 160);
+  pacingTimer = setTimeout(processWordQueue, delay);
+}
+
 function appendWords(el, text){
-  // Words get an animated inline-block span; whitespace stays a plain text node
-  // (a whitespace-only inline-block collapses to zero width and eats the space).
-  text.split(/(\s+)/).forEach(p=>{
+  text.split(/(\s+)/).forEach(p => {
     if(!p) return;
-    if(/^\s+$/.test(p)){ el.appendChild(document.createTextNode(p)); return; }
-    const s=document.createElement('span'); s.className='w'; s.textContent=p; el.appendChild(s);
+    if(/^\s+$/.test(p)){
+      wordQueue.push({ el: el, type: 'whitespace', text: p });
+    } else {
+      wordQueue.push({ el: el, type: 'word', text: p });
+    }
   });
+  if(!pacingTimer){
+    processWordQueue();
+  }
 }
 let latencyNoteShown=false;
 function onTrans(text, newline, spk){
