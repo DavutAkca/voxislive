@@ -160,10 +160,12 @@ class QwenTranslator(BaseTranslator):
         url = URL_TEMPLATE.format(ws=self.workspace, model=self.model)
         try:
             return await websockets.connect(url, additional_headers=headers,
-                                            max_size=None, compression=None)
+                                            max_size=None, compression=None,
+                                            ping_interval=20, ping_timeout=10)
         except TypeError:
             return await websockets.connect(url, extra_headers=headers,
-                                            max_size=None, compression=None)
+                                            max_size=None, compression=None,
+                                            ping_interval=20, ping_timeout=10)
 
     async def _open_session(self, conn):
         await conn.send(self._session_update())

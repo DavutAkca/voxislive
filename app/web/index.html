@@ -7522,7 +7522,8 @@ function processWordQueue(){
     }
     scrollEnd();
   }
-  const delay = wordQueue.length > 8 ? 70 : (wordQueue.length > 4 ? 110 : 160);
+  // Smooth continuous lerp: eliminates sudden step jumps in acceleration!
+  const delay = Math.max(95, 165 - (wordQueue.length * 6));
   pacingTimer = setTimeout(processWordQueue, delay);
 }
 
