@@ -86,8 +86,8 @@ class AdaptivePlaybackStager:
     live conversation, so the oldest pending audio is trimmed as a last resort.
     """
 
-    FEED_AHEAD_S = 2.5
-    SPEED_STEPS = ((6.0, 1.25), (3.0, 1.12))
+    FEED_AHEAD_S = 3.0
+    SPEED_STEPS = ((6.0, 1.25), (3.0, 1.12), (2.0, 1.06))
     PENDING_MAX_S = 12.0
     PENDING_KEEP_S = 4.0
 
@@ -279,7 +279,7 @@ class AdaptivePlaybackStager:
                                     "voice may be silent")
                             except Exception:
                                 pass
-            time.sleep(0.02)
+            time.sleep(0.012)
 
     def stop(self) -> None:
         self._run = False

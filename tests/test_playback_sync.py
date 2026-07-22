@@ -38,7 +38,9 @@ def _frequency(samples, rate):
 def test_speed_steps_follow_backlog():
     pick = AdaptivePlaybackStager.speed_for_backlog
     assert pick(0.0) == 1.0
-    assert pick(2.99) == 1.0
+    assert pick(1.99) == 1.0
+    assert pick(2.0) == 1.06
+    assert pick(2.99) == 1.06
     assert pick(3.0) == 1.12
     assert pick(5.99) == 1.12
     assert pick(6.0) == 1.25

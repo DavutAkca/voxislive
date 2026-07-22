@@ -416,49 +416,11 @@ class IncomingPipeline:
         self._pro_ring: collections.deque = collections.deque()
         self._pro_ring_bytes = 0
 
-        # Audio-caption synchronization: buffer text tokens until the first audible
-        # TTS chunk of a turn arrives so caption text and audio pop up in perfect sync,
-        # eliminating perceived voice-lag.
-        self._text_buffer = []
-        self._text_lock = threading.Lock()
-        self._audio_started = False
-        self._flush_timer = None
-
-        def _flush_text_buffer():
-            with self._text_lock:
-                items = list(self._text_buffer)
-                self._text_buffer.clear()
-                self._audio_started = True
-                if self._flush_timer:
-                    try:
-                        self._flush_timer.cancel()
-                    except Exception:
-                        pass
-                    self._flush_timer = None
-            for args, kwargs in items:
-                try:
-                    on_text(*args, **kwargs)
-                except Exception:
-                    pass
-
-        def _synced_on_text(*args, **kwargs):
-            with self._text_lock:
-                if self._audio_started:
-                    on_text(*args, **kwargs)
-                    return
-                self._text_buffer.append((args, kwargs))
-                if not self._flush_timer:
-                    self._flush_timer = threading.Timer(0.22, _flush_text_buffer)
-                    self._flush_timer.daemon = True
-                    self._flush_timer.start()
-
         def _tts_sink(data: bytes):
             # Gate the first-audio metric on AUDIBLE output: an initial near-silent
             # / padding chunk (OpenAI pads its stream) would understate latency.
             a = np.frombuffer(data, dtype=np.int16)
             audible = a.size > 0 and int(np.abs(a).max()) > 512
-            if audible:
-                _flush_text_buffer()
             self._rtt.mark_tts(audible=audible)
             if self._recorder is not None:
                 self._recorder.feed_translated(data)
@@ -477,7 +439,7 @@ class IncomingPipeline:
         try:
             self.translator = make_translator(
                 cfg, cfg["target_language_incoming"], engine=self._engine, key=_key,
-                model=_model, on_audio=_tts_sink, on_text=_synced_on_text,
+                model=_model, on_audio=_tts_sink, on_text=on_text,
                 on_status=on_status, name=t("name_in"),
                 on_fatal=self._failover_to_gemini,
                 # SaaS resolvers hang the Gemini key fountain off the resolve fn so
