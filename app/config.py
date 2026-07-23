@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 
 from .paths import bundled_default_config, is_frozen, official_marker, user_path
 
