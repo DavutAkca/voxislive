@@ -11,11 +11,11 @@ factory so cold app startup is not slowed by an engine that won't be used.
 """
 from __future__ import annotations
 
-from .config import ENGINE_CASCADE, ENGINE_OPENAI, ENGINE_QWEN, resolve_model
+from .config import ENGINE_CASCADE, ENGINE_QWEN, resolve_model
 
 
 def make_translator(cfg, target_lang, *, engine, key, model=None,
-                    on_audio, on_text, on_status, name, noise_reduction=None,
+                    on_audio, on_text, on_status, name,
                     on_fatal=None, key_provider=None, beta_active=False):
     """Build the translator thread for an ALREADY-RESOLVED engine + key + model.
     The caller resolves per target (locally for BYOK, server-side for SaaS) so the
@@ -78,20 +78,6 @@ def make_translator(cfg, target_lang, *, engine, key, model=None,
             # workspace id) — a key from a different Model Studio account needs
             # its own workspace here, or the handshake 401s.
             workspace=cfg.get("qwen_workspace") or QWEN_WORKSPACE)
-        tr.engine = engine
-        tr.on_fatal = on_fatal
-        return tr
-
-    if engine == ENGINE_OPENAI:
-        from .openai_translator import OpenAITranslator  # lazy: keep websockets off cold start
-        tr = OpenAITranslator(
-            key, target_lang,
-            on_audio=on_audio, on_text=on_text, on_status=on_status,
-            # OpenAI realtime caps at ~60 min, so rotate near 55 (its own default)
-            # instead of Gemini's 13-min cadence — 4x less reconnect churn. Separate
-            # key so the Gemini interval stays independent.
-            rotate_minutes=cfg.get("openai_rotate_minutes", 55), name=name,
-            model=model, noise_reduction=noise_reduction)
         tr.engine = engine
         tr.on_fatal = on_fatal
         return tr

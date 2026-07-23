@@ -1,4 +1,4 @@
-"""Characterization tests for the three translation-engine session machines.
+"""Characterization tests for the translation-engine session machines.
 
 These lock the *external contract* that must survive the BaseTranslator
 consolidation (P0 #6): the drop-oldest queue, carryover ordering across a
@@ -13,11 +13,10 @@ import time
 import pytest
 
 import app.translator as gem
-import app.openai_translator as oai
 import app.qwen_translator as qwen
 
-ALL_MODULES = (gem, oai, qwen)
-ALL_CLASSES = (gem.LiveTranslator, oai.OpenAITranslator, qwen.QwenTranslator)
+ALL_MODULES = (gem, qwen)
+ALL_CLASSES = (gem.LiveTranslator, qwen.QwenTranslator)
 
 
 def _noop(*a, **k):
@@ -72,12 +71,6 @@ def test_terminal_error_classification_gemini():
     assert not gem._is_terminal_error(RuntimeError("429 rate limit"))  # transient
 
 
-def test_terminal_error_classification_openai():
-    assert oai._is_terminal_error(RuntimeError("account_deactivated"))
-    assert oai._is_terminal_error(RuntimeError("insufficient_quota"))
-    assert not oai._is_terminal_error(RuntimeError("temporarily unavailable"))
-
-
 def test_terminal_error_classification_qwen():
     assert qwen._is_terminal_error(RuntimeError("Arrearage: account in debt"))
     assert qwen._is_terminal_error(RuntimeError("AccessDenied"))
@@ -86,8 +79,7 @@ def test_terminal_error_classification_qwen():
 
 @pytest.mark.parametrize("cls", ALL_CLASSES)
 def test_terminal_error_prefers_structured_code(cls):
-    mod = {gem.LiveTranslator: gem, oai.OpenAITranslator: oai,
-           qwen.QwenTranslator: qwen}[cls]
+    mod = {gem.LiveTranslator: gem, qwen.QwenTranslator: qwen}[cls]
 
     class _E(Exception):
         def __init__(self, code):
@@ -151,7 +143,7 @@ def test_qwen_constructor_normalizes_target_and_clamps_knobs():
     assert tr.vad_silence_ms == 250
 
 
-# --- driven _main loop: OpenAI / Qwen websocket family ----------------------
+# --- driven _main loop: Qwen websocket family -------------------------------
 
 class _FakeWS:
     """Minimal async websocket: yields seeded messages then blocks until the
@@ -191,19 +183,15 @@ def _run_ws_translator(cls, connect_impl, ready_msg=None):
     return tr, events
 
 
-@pytest.mark.parametrize("cls,updated_evt", [
-    (oai.OpenAITranslator, '{"type":"session.updated"}'),
-    (qwen.QwenTranslator, '{"type":"session.updated"}'),
-])
-def test_ws_main_sets_ready_only_after_session_event(cls, updated_evt):
-    # These engines connect, then set _ready only when the server confirms the
+def test_ws_main_sets_ready_only_after_session_event():
+    # Qwen connects, then sets _ready only when the server confirms the
     # session (session.created/updated) — NOT on the bare socket open.
-    ws = _FakeWS([updated_evt])
+    ws = _FakeWS(['{"type":"session.updated"}'])
 
     async def _connect():
         return ws
 
-    tr, events = _run_ws_translator(cls, _connect)
+    tr, events = _run_ws_translator(qwen.QwenTranslator, _connect)
     try:
         assert tr.wait_ready(5.0)
     finally:
@@ -213,8 +201,7 @@ def test_ws_main_sets_ready_only_after_session_event(cls, updated_evt):
     assert ws.closed
 
 
-@pytest.mark.parametrize("cls", [oai.OpenAITranslator, qwen.QwenTranslator])
-def test_ws_main_terminal_error_breaks_without_retry(cls):
+def test_ws_main_terminal_error_breaks_without_retry():
     connects = []
     ws = _FakeWS(['{"type":"error","error":"unauthorized"}'])
 
@@ -222,7 +209,7 @@ def test_ws_main_terminal_error_breaks_without_retry(cls):
         connects.append(1)
         return ws
 
-    tr, events = _run_ws_translator(cls, _connect)
+    tr, events = _run_ws_translator(qwen.QwenTranslator, _connect)
     tr.join(timeout=6.0)
     assert not tr.is_alive()
     assert len(connects) == 1  # terminal → no reconnect spin
@@ -268,8 +255,7 @@ def test_no_output_watchdog_self_heals_by_reconnecting():
     assert not tr.is_alive()
 
 
-@pytest.mark.parametrize("cls", [oai.OpenAITranslator, qwen.QwenTranslator])
-def test_ws_main_transient_error_retries_then_succeeds(cls):
+def test_ws_main_transient_error_retries_then_succeeds():
     calls = {"n": 0}
     ws = _FakeWS(['{"type":"session.updated"}'])
 
@@ -279,7 +265,7 @@ def test_ws_main_transient_error_retries_then_succeeds(cls):
             raise ConnectionError("temporary reset")
         return ws
 
-    tr, events = _run_ws_translator(cls, _connect)
+    tr, events = _run_ws_translator(qwen.QwenTranslator, _connect)
     try:
         assert tr.wait_ready(8.0)   # succeeds on the 2nd attempt after backoff
         assert calls["n"] == 2

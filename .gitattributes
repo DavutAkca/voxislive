@@ -1,0 +1,20 @@
+# Normalize line endings so the repo behaves the same when checked out from
+# Windows and Linux (added 2026-07-20 alongside the D:\translate cross-OS move).
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF (cmd.exe cares)
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets — never touch line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.onnx binary
+*.wav binary
+*.mp3 binary
+*.docx binary
+*.msix binary
+*.exe binary
+*.icns binary

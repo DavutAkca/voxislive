@@ -6,6 +6,30 @@ Notable changes to Voxis. Version bumps are tagged in commit messages
 ## Unreleased
 
 ### Fixed
+- Word drops at translated-caption turn boundaries; captions now stream
+  smoothly and stay in sync with the translated speech (superseded an
+  earlier client-side word-pacing engine that caused the drops).
+- Source-language captions are now paired to the correct translation turn
+  using the model's actual simultaneous-interpretation lag, instead of
+  drifting onto an earlier or later turn during continuous narration.
+- A `TypeError` in `IncomingPipeline`'s text-sync callback signature that
+  could interrupt a Meeting session.
+
+### Added
+- Settings > **Saving** tab: transcript folder, audio recording, and
+  automatic TXT/SRT/VTT export formats (generated alongside the JSON on
+  every save) are now grouped in one place; quick TXT/SRT/VTT export
+  buttons also appear right after saving a transcript, without opening
+  History.
+- Automatic background pruning of old transcript folders (keeps the newest
+  500 sessions / 90 days).
+
+### Removed
+- The OpenAI translation engine has been fully removed from the client (it
+  was already disabled server-side; this removes the remaining client-side
+  code path).
+
+### Fixed
 - Audio device diagnostics now reflect the device and signal actually being
   tested: output test tone, system-audio meter, and microphone meter are
   independent instead of conflated into one indicator. Raw audio activity is

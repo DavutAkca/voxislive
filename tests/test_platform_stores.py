@@ -43,9 +43,9 @@ def test_byok_fernet_slot_round_trip(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setattr(byok_store, "_STORE_DIR", str(tmp_path / "byok"))
     monkeypatch.setattr(byok_store, "install_secret", lambda *a, **k: b"\x07" * 32)
-    byok_store.save_byok("user-1", gemini="G-KEY", openai="O-KEY")
+    byok_store.save_byok("user-1", gemini="G-KEY")
     got = byok_store.load_byok("user-1")
-    assert got == {"gemini": "G-KEY", "openai": "O-KEY"}
+    assert got == {"gemini": "G-KEY"}
     assert byok_store.has_byok("user-1", "gemini")
 
 

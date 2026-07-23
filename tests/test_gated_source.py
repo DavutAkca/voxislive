@@ -90,7 +90,7 @@ def test_fullband_path_emits_send_rate_frames():
     assert all(len(s) == src._send_frame * 2 for s in sent)
 
 
-def test_send_rate_can_switch_from_openai_to_gemini_without_reopening_capture():
+def test_send_rate_can_switch_engines_without_reopening_capture():
     gate, sent = _ScriptedGate(), []
     src = _GatedSource(16000, gate, sent.append, send_rate=24000)
     frame = np.ones(_FRAME, dtype=np.float32)

@@ -43,23 +43,18 @@ IS_OFFICIAL_RELEASE: bool = _resolve_official_release()
 # var for an emergency ops override (see resolve_model).
 GEMINI_LIVE_MODEL = "gemini-3.5-live-translate-preview"
 
-# Second translation engine (OpenAI). Like the Gemini model, the OpenAI model
-# name is a config key so a retired preview can be swapped without a client
-# release. See PLAN/OPENAI_ENGINE_INTEGRATION.md.
-OPENAI_TRANSLATE_MODEL = "gpt-realtime-translate"
-# Third engine (Qwen3.5-LiveTranslate) — BETA, per-user server-gated. Same
-# swap-without-release pattern as the other two. The intl account requires the
+# Second engine (Qwen3.5-LiveTranslate) — BETA, per-user server-gated. Same
+# swap-without-release pattern as Gemini. The intl account requires the
 # workspace-scoped MAAS endpoint (see app/qwen_translator.py).
 QWEN_TRANSLATE_MODEL = "qwen3.5-livetranslate-flash-realtime"
 QWEN_WORKSPACE = "ws-o9euzpyp254xo4es"
 ENGINE_GEMINI = "gemini"
-ENGINE_OPENAI = "openai"
 ENGINE_QWEN = "qwen"
 # Free-tier half-cascade (cloud TEXT + local Piper voice). Deliberately NOT in
 # VALID_ENGINES: it is tier-driven (server) or dev-preview-driven (cfg flag),
 # never a user-selectable cfg["engine"] value.
 ENGINE_CASCADE = "cascade"
-VALID_ENGINES = (ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN)
+VALID_ENGINES = (ENGINE_GEMINI, ENGINE_QWEN)
 DEFAULT_ENGINE = ENGINE_GEMINI
 
 # A server-minted single-use Gemini Live token (Tier A5) is the v1alpha
@@ -75,15 +70,6 @@ def is_ephemeral_key(key) -> bool:
     (spent by ONE connect) rather than a raw multi-use API key."""
     return bool(key) and str(key).startswith(GEMINI_EPHEMERAL_KEY_PREFIX)
 
-# OpenAI gpt-realtime-translate validated OUTPUT (target) languages (13), per
-# OpenAI's current official docs. English is #1 of the supported set.
-OPENAI_OUTPUT_LANGS = ["en", "es", "pt", "fr", "de", "it", "ru", "ja", "ko", "zh", "hi", "id", "vi"]
-# Default per-language routing set = exactly OpenAI's documented 13. Server-/config-
-# overridable via cfg["openai_langs"]; anything NOT in this set routes to Gemini
-# (79-lang catch-all). (tr/ar/pl were previously added on an "A/B-confirmed" note
-# that OpenAI's official docs do not corroborate — removed pending real evidence.)
-DEFAULT_OPENAI_LANGS = list(OPENAI_OUTPUT_LANGS)
-
 # Qwen3.5-LiveTranslate synthesizes translated SPEECH for these 29 targets; its
 # other ~31 supported targets are TEXT-ONLY (captions, no voice) — routing one of
 # those to Qwen yields subtitles with no translated audio. Source: Alibaba Model
@@ -97,8 +83,6 @@ QWEN_AUDIO_LANGS = ["zh", "en", "ar", "de", "fr", "es", "pt", "id", "it", "ko",
 DEFAULTS = {
     "engine": DEFAULT_ENGINE,
     "model": GEMINI_LIVE_MODEL,
-    "openai_model": OPENAI_TRANSLATE_MODEL,
-    "openai_langs": DEFAULT_OPENAI_LANGS,
     "qwen_model": QWEN_TRANSLATE_MODEL,
     # Beta engine (Qwen) opt-in + its knobs. The Settings tab only renders when
     # the server marks the account beta-eligible; "enabled" is the user's own
@@ -162,6 +146,14 @@ DEFAULTS = {
     # separate WAV files beside the transcript. OFF by default — the source track
     # captures real human voice (a consent step up over a text transcript).
     "record_audio": False,
+    # Opt-in automatic caption exports (TXT/SRT/VTT) generated beside the JSON
+    # every time a session is saved (the "Kaydet" chip or session stop). The
+    # JSON is always saved regardless; these are additive convenience copies
+    # so a user doesn't have to reopen History to export the same formats
+    # after every session. All OFF by default (JSON-only, unchanged behavior).
+    "auto_export_txt": False,
+    "auto_export_srt": False,
+    "auto_export_vtt": False,
     # Local speaker-change detection (app/speaker_id): splits + tags caption
     # turns as S1/S2 when different voices alternate. ON by default — it is
     # fully local (no extra cloud calls), fails soft, and single-speaker
@@ -263,9 +255,6 @@ def resolve_model(cfg: dict, engine: str | None = None) -> str:
     default, so a retired preview can be swapped without shipping a new client.
     The Gemini branch is byte-for-byte the original logic (VOXIS_MODEL parity)."""
     engine = engine or resolve_engine(cfg)
-    if engine == ENGINE_OPENAI:
-        return (os.environ.get("VOXIS_OPENAI_MODEL", "").strip()
-                or cfg.get("openai_model") or OPENAI_TRANSLATE_MODEL)
     if engine == ENGINE_QWEN:
         return (os.environ.get("VOXIS_QWEN_MODEL", "").strip()
                 or cfg.get("qwen_model") or QWEN_TRANSLATE_MODEL)
@@ -289,21 +278,13 @@ def parse_hotwords(text: str) -> dict:
 
 
 def _norm_lang(code: str) -> str:
-    """Normalize a BCP-47 target to OpenAI's base code for routing: pt-BR/pt-PT ->
-    pt, zh-Hans -> zh. Traditional Chinese (zh-hant) is kept distinct so it can be
+    """Normalize a BCP-47 target to its base routing code: pt-BR/pt-PT -> pt,
+    zh-Hans -> zh. Traditional Chinese (zh-hant) is kept distinct so it can be
     pinned to Gemini."""
     if not code:
         return ""
     c = code.strip().lower()
     return "zh-hant" if c == "zh-hant" else c.split("-")[0]
-
-
-def openai_route_langs(cfg: dict) -> list:
-    """Target languages routed to OpenAI (lower-cased). Server-/config-overridable
-    via cfg['openai_langs']; defaults to the validated 13 + tr/ar/pl."""
-    v = cfg.get("openai_langs")
-    src = v if isinstance(v, list) and v else DEFAULT_OPENAI_LANGS
-    return [str(s).strip().lower() for s in src]
 
 
 def qwen_audio_langs(cfg: dict) -> list:
@@ -324,19 +305,15 @@ def qwen_can_voice(cfg: dict, target: str) -> bool:
 
 
 def route_engine(cfg: dict, target: str) -> str:
-    """Local engine guess for a TARGET language. NOTE: live SaaS routing is decided
-    SERVER-side (/auth/session-key) — the shipped policy is Qwen primary for its
-    voiced targets, Gemini the 79-language catch-all — and the server response
-    overrides this for actual engine selection. This local helper is the BYOK/OSS
-    router (always Gemini) and a telemetry/diagnostics hint on official builds,
-    where it still reflects the retired OpenAI-vs-Gemini split. VOXIS_ENGINE forces
-    one engine (ops/dev override)."""
+    """Local engine guess for a TARGET language, used only as an idle/diagnostics
+    label — live SaaS routing is decided SERVER-side (/auth/session-key), whose
+    shipped policy is Qwen primary for its voiced targets, Gemini the 79-language
+    catch-all. This local helper is BYOK/OSS-only and always resolves to Gemini.
+    VOXIS_ENGINE forces one engine (ops/dev override)."""
     forced = os.environ.get("VOXIS_ENGINE", "").strip().lower()
     if forced in VALID_ENGINES:
         return forced
-    if not IS_OFFICIAL_RELEASE:
-        return ENGINE_GEMINI
-    return ENGINE_OPENAI if _norm_lang(target) in openai_route_langs(cfg) else ENGINE_GEMINI
+    return ENGINE_GEMINI
 
 
 def apply_profile(cfg: dict, profile: str):
@@ -534,8 +511,6 @@ SEED_WHITELIST = (
     "ui_theme",
     "engine",
     "model",
-    "openai_model",
-    "openai_langs",
     "qwen_model",
     "max_ambient_delay_ms",
     "capture_backend",

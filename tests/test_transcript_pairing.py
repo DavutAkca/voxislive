@@ -11,7 +11,7 @@ cumulative ASR does not.
 import threading
 
 import app.webui as webui
-from app.webui import Bridge, LINE_GAP
+from app.webui import Bridge, LINE_GAP, SRC_LAG_S
 
 
 def _bare_bridge():
@@ -21,6 +21,7 @@ def _bare_bridge():
     b._text_lock = threading.RLock()
     b._src_buf = ""
     b._src_done = []
+    b._src_marks = []
     b._last_src_t = 0.0
     b._cur_line = ""
     b._last_t = 0.0
@@ -37,6 +38,8 @@ def _bare_bridge():
     b._pending_spk_break = False
     b._put_event = lambda *a, **k: None      # swallow UI events
     b._obs_write = lambda *a, **k: None       # swallow OBS file writes
+    # No live session/stager off this bare Bridge — backlog is always 0.
+    b.controller = type("C", (), {"current_playback_backlog": lambda self: 0.0})()
     return b
 
 
@@ -51,33 +54,45 @@ def _feed(b, direction, text, t):
         webui.time.time = orig
 
 
-def test_continuous_source_does_not_repeat_across_turns():
-    """Qwen streams source ASR continuously (no LINE_GAP pause). Each translation
-    turn must capture its OWN source, not re-emit the growing leading segment."""
+def test_continuous_source_does_not_leak_into_earlier_turn():
+    """Qwen streams source ASR continuously (no LINE_GAP pause) — the source
+    stream alone gives no per-turn boundary, and translation trails it by the
+    model's simultaneous-interpretation lag (SRC_LAG_S). Each translation
+    turn claims only the source heard by (now - SRC_LAG_S) at the moment it
+    finalizes, leaving anything heard more recently than that queued for a
+    LATER turn instead of leaking into this one. Words that arrive after a
+    turn's cutoff but before that turn is popped must NOT appear in that
+    turn's src (the bug this replaced: grabbing "everything buffered right
+    now" over-claimed into whichever turn finished first)."""
     b = _bare_bridge()
-    # Utterance 1: source then its translation.
-    _feed(b, "in", "First sentence.", 0.0)
-    _feed(b, "out", "Translation one.", 0.1)
-    # Utterance 2: source keeps flowing with NO >LINE_GAP gap between "in" deltas,
-    # then a new translation turn opens after a LINE_GAP silence in the OUT stream.
-    _feed(b, "in", " Second sentence.", 1.0)
-    _feed(b, "out", "Translation two.", 0.2 + LINE_GAP)
-    # Utterance 3.
-    _feed(b, "in", " Third sentence.", 1.0 + LINE_GAP)
-    _feed(b, "out", "Translation three.", 0.3 + 2 * LINE_GAP)
+    # Continuous source, one word every second, never pausing >LINE_GAP —
+    # nothing ever rolls into _src_done; it all stays live in _src_buf.
+    for i, w in enumerate(["Uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho"]):
+        _feed(b, "in", w + " ", float(i))
+    # Turn 1 opens (no pop yet — first output of the session).
+    _feed(b, "out", "T1.", 8.0)
+    # More source keeps arriving WHILE turn 1 is the current line — this must
+    # end up on a later turn, not turn 1, even though it's already in
+    # _src_buf by the time turn 1's pop runs.
+    _feed(b, "in", "nueve ", 9.0)
+    _feed(b, "in", "diez ", 10.0)
+    # Turn 1 finalizes (output pause) — cutoff = 10.6 - SRC_LAG_S.
+    _feed(b, "out", "T2.", 10.6)
+    assert 10.6 - SRC_LAG_S < 9.0, "test assumes cutoff lands before 'nueve'"
+    # Turn 2 finalizes, now well past the cutoff for the remaining words.
+    _feed(b, "out", "T3.", 10.6 + 0.1 + LINE_GAP)
     b._flush_turns()
 
-    srcs = [t["src"] for t in b._turns]
     texts = [t["text"] for t in b._turns]
-    assert texts == ["Translation one.", "Translation two.", "Translation three."]
-    # The regression the fix targets: _cur_src was never consumed, so it grew
-    # unbounded and EVERY turn's src contained the leading "First sentence."
-    # (srcs == ["First…", "First… Second…", "First… Second… Third…"]). After the
-    # fix each source segment is consumed once and appears in exactly one turn.
-    assert sum("First" in s for s in srcs) == 1
-    assert sum("Second" in s for s in srcs) == 1
-    assert sum("Third" in s for s in srcs) == 1
-    assert "First" in srcs[0]
+    srcs = [t["src"] for t in b._turns]
+    assert texts == ["T1.", "T2.", "T3."]
+    # Turn 1 claims only what had been heard well before it finalized —
+    # "nueve"/"diez" (heard after turn 1's cutoff) are NOT in it.
+    assert srcs[0] == "Uno dos tres cuatro cinco seis siete ocho"
+    assert "nueve" not in srcs[0] and "diez" not in srcs[0]
+    # They land on turn 2 instead — nothing dropped, nothing duplicated.
+    assert srcs[1] == "nueve diez"
+    assert srcs[2] is None
 
 
 def test_gemini_paused_source_still_pairs_per_turn():

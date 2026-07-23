@@ -15,7 +15,7 @@ import uuid
 import numpy as np
 
 from .audio_io import Capture, Player, find_device, resolve_name, _make_resampler
-from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN,
+from .config import (ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_QWEN,
                      gate_params, stream_gated)
 from .engines import make_translator
 from .i18n import t
@@ -97,8 +97,8 @@ class RTTEstimator:
             # to the FIRST AUDIBLE translated audio. Measured ONCE, before any
             # backlog exists, so it's comparable across engines — unlike a
             # per-utterance onset→next-chunk reading, which a continuously-playing
-            # engine (OpenAI plays the previous translation while you speak the
-            # next) drives to a meaningless ~0.0-0.2 s. Gating on audible output
+            # engine (still playing a previous translation when the next utterance
+            # starts) drives to a meaningless ~0.0-0.2 s. Gating on audible output
             # ignores an initial near-silent/padding chunk that would understate it.
             if audible and self._first_audio_s is None and self._t_first_onset is not None:
                 fa = now - self._t_first_onset
@@ -205,19 +205,22 @@ class _GatedSource:
         self._silent_run = 0
         self.speech_active = False
         self.closed = False
-        # Full-band send path. The VAD always runs at 16 kHz, but OpenAI ingests
-        # 24 kHz — so when send_rate != 16000 we keep a PARALLEL send-rate buffer +
-        # a short history and emit the time-aligned full-band frames matching the
-        # gate's send decision (incl. its preroll). send_rate==16000 -> the classic
-        # single-stream path (Gemini), byte-for-byte unchanged.
+        # Full-band send path. The VAD always runs at 16 kHz; when a future
+        # engine needs a different rate (send_rate != 16000) we keep a PARALLEL
+        # send-rate buffer + a short history and emit the time-aligned full-band
+        # frames matching the gate's send decision (incl. its preroll).
+        # send_rate==16000 -> the classic single-stream path, byte-for-byte
+        # unchanged — every current engine (Gemini, Qwen, cascade) uses it.
         self._configure_send_rate(int(send_rate))
 
     def _configure_send_rate(self, send_rate: int) -> None:
         """Replace the engine-facing resampler and its rate-specific buffers.
 
         The VAD side always stays at 16 kHz. Only the parallel full-band path is
-        rebuilt, so a live OpenAI (24 kHz) -> Gemini (16 kHz) failover can keep
-        the already-open capture device without mislabelling 24 kHz PCM as 16 kHz.
+        rebuilt, so a live failover to a different-rate engine can keep the
+        already-open capture device without mislabelling its PCM. Every current
+        engine sends at 16 kHz (the one 24 kHz consumer, OpenAI, was retired);
+        this stays in place as the capture-rate switch a future engine would need.
         Caller holds ``_lock`` after construction.
         """
         self._send_rate = int(send_rate)
@@ -394,8 +397,8 @@ class IncomingPipeline:
         # Gemini and Qwen can deliver a long translated turn faster than
         # realtime. Pace their already-generated audio through a client-side
         # WSOLA stager so an accumulating playback tail catches up to the live
-        # captions without raising the voice's pitch. OpenAI self-times its
-        # output; cascade controls speed while synthesizing locally.
+        # captions without raising the voice's pitch. Cascade controls speed
+        # while synthesizing locally, so it needs no stager.
         if self._engine in (ENGINE_GEMINI, ENGINE_QWEN):
             try:
                 self._stager = AdaptivePlaybackStager(
@@ -418,7 +421,7 @@ class IncomingPipeline:
 
         def _tts_sink(data: bytes):
             # Gate the first-audio metric on AUDIBLE output: an initial near-silent
-            # / padding chunk (OpenAI pads its stream) would understate latency.
+            # / padding chunk would otherwise understate latency.
             a = np.frombuffer(data, dtype=np.int16)
             audible = a.size > 0 and int(np.abs(a).max()) > 512
             self._rtt.mark_tts(audible=audible)
@@ -495,9 +498,8 @@ class IncomingPipeline:
 
     def _acquire_capture(self, cfg, vad_cfg, send_fn, out_name, on_status):
         from .vad import SpeechGate  # noqa: PLC0415
-        # OpenAI ingests 24 kHz; Gemini 16 kHz. Capture + the gate's send path run
-        # at this rate so OpenAI gets full-band audio; the VAD stays 16 kHz inside.
-        send_rate = 24000 if self._engine == ENGINE_OPENAI else 16000
+        # Every current engine ingests 16 kHz; the VAD stays 16 kHz inside too.
+        send_rate = 16000
         if self.driverless:
             # Driverless mode: system audio loopback; ducking is applied so the
             # user hears a real dubbing effect without any virtual-cable
@@ -828,10 +830,11 @@ def _swap_to_gemini(pipe, target_key, name, exc):
         _log.exception("failover: could not build the Gemini translator")
         return False
 
-    # Gemini labels its input as 16 kHz. OpenAI captures at 24 kHz, so swapping
-    # only the translator would make Gemini play the source 1.5x slow. Retarget
-    # the gate before publishing the replacement translator. Qwen is already
-    # 16 kHz and this is therefore a no-op on the common failover path.
+    # Gemini labels its input as 16 kHz. Retarget the gate before publishing the
+    # replacement translator in case the dying engine captured at a different
+    # rate; every current engine is already 16 kHz, so this is a no-op today
+    # (set_send_rate short-circuits when the rate is unchanged) but stays in
+    # place for a future engine that might need something else.
     source = getattr(pipe, "_source", None)
     if source is not None:
         try:
@@ -870,8 +873,9 @@ def _swap_to_gemini(pipe, target_key, name, exc):
     from_engine = pipe._engine
     pipe._engine = ENGINE_GEMINI
     if target_key == "target_language_incoming" and stager is None:
-        # An incoming OpenAI -> Gemini failover starts without a stager because
-        # OpenAI paces its own stream. Install one before Gemini can emit audio.
+        # An incoming pipeline can reach here with no stager (cascade paces its
+        # own local synthesis and never builds one). Install one before Gemini
+        # can emit audio.
         pipe._stager = AdaptivePlaybackStager(
             pipe.player, on_status=pipe._on_status, input_rate=24000)
     pipe.translator = new   # the send path indirects through pipe.translator
@@ -980,7 +984,7 @@ class OutgoingPipeline:
                 cfg, cfg["target_language_outgoing"], engine=self._engine, key=_key,
                 model=_model, on_audio=self._tts_sink, on_text=on_text,
                 on_status=on_status, name=t("name_out"),
-                noise_reduction="near_field", on_fatal=self._failover_to_gemini,
+                on_fatal=self._failover_to_gemini,
                 key_provider=getattr(resolve, "gemini_key_provider", None),
                 beta_active=getattr(resolve, "beta_active", False),
             )
@@ -988,7 +992,7 @@ class OutgoingPipeline:
             self._teardown_resources()
             raise
         self.input_level = 0.0
-        send_rate = 24000 if self._engine == ENGINE_OPENAI else 16000
+        send_rate = 16000
         # Capture opens the mic InputStream at construction. Guard the capture +
         # gate acquisition so a mid-init failure releases the mic stream and the
         # already-open Player/translator instead of leaking them when
@@ -1622,6 +1626,18 @@ class ModeController:
             if e:
                 return e
         return None
+
+    def current_playback_backlog(self) -> float:
+        """Seconds of translated audio queued but not yet audible, from the
+        incoming pipeline's adaptive stager. 0.0 when idle or engine has no
+        stager (cascade paces its own local synthesis and never builds one)."""
+        stager = getattr(self.incoming(), "_stager", None)
+        if stager is None:
+            return 0.0
+        try:
+            return round(float(stager.backlog_s), 2)
+        except Exception:
+            return 0.0
 
     def is_playing(self) -> bool:
         """True while translated TTS is actively playing back."""

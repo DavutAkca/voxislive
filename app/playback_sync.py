@@ -80,14 +80,16 @@ class AdaptivePlaybackStager:
     """Keep translated speech near the live captions without changing pitch.
 
     Audio is fed to the Player immediately, but only a short amount is staged in
-    its ring.  Total pending + player backlog selects the catch-up rate:
-    3 seconds -> 1.12x, 6 seconds -> 1.25x.  Once the backlog falls, playback
-    automatically returns to 1x.  A backlog beyond 12 seconds is stale in a
-    live conversation, so the oldest pending audio is trimmed as a last resort.
+    its ring.  Total pending + player backlog selects the catch-up rate in three
+    evenly-spaced 2-second steps -- 2s -> 1.06x, 4s -> 1.15x, 6s -> 1.25x -- so
+    the ramp accelerates smoothly instead of jumping straight to a heavier
+    compression.  Once the backlog falls, playback automatically returns to 1x.
+    A backlog beyond 12 seconds is stale in a live conversation, so the oldest
+    pending audio is trimmed as a last resort.
     """
 
     FEED_AHEAD_S = 3.0
-    SPEED_STEPS = ((6.0, 1.25), (3.0, 1.12), (2.0, 1.06))
+    SPEED_STEPS = ((6.0, 1.25), (4.0, 1.15), (2.0, 1.06))
     PENDING_MAX_S = 12.0
     PENDING_KEEP_S = 4.0
 

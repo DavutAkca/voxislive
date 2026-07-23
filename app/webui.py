@@ -74,6 +74,22 @@ LINE_GAP = 2.5
 # the next micro-pause this long — far below LINE_GAP, so back-to-back
 # speakers still land in separate, separately-labeled turns.
 SPK_GAP = 0.7
+# The model's simultaneous-interpretation "ear-voice span": how far behind the
+# source the translated output trails (see CLAUDE.md "Translation Latency" —
+# not client-tunable, documented as "a few seconds"; bench p50 ~4.0s). Used
+# to bound _pop_source's claim: a translation turn that just finished at time
+# `now` was produced from source heard up to roughly `now - SRC_LAG_S`, NOT
+# source heard by `now` itself. A CONTINUOUSLY-narrated source stream (no
+# genuine pause — Qwen's ASR) never gives its own boundary signal, so the
+# only usable cutoff is this lag-adjusted "now", not the turn's own start
+# time: a turn's start-to-finish span varies with how much it had to say,
+# while the model's lag behind the mic does not, so start-time is not a
+# reliable proxy for "how far the source has actually progressed". Kept
+# slightly below the documented average on purpose: under-claiming just
+# leaves a turn without its own caption (caught by a later turn instead);
+# over-claiming mispairs content into the wrong turn, which is the bug this
+# exists to prevent.
+SRC_LAG_S = 3.0
 FADE_MS = 6.0
 # Prefetched session-key freshness window (seconds). Short on purpose so a
 # stale entry falls back to the normal synchronous fetch. Only RAW keys are
@@ -198,21 +214,27 @@ class Bridge:
 
         self._lines, self._cur_line = [], ""
         self._last_t = 0.0
-        # Source-transcription stream, paired to translation turns best-effort.
-        # Source (input-transcription) pairing state. _src_buf accumulates the
-        # in-flight source utterance's deltas; a completed utterance (segmented by
-        # a >LINE_GAP pause in the source stream, as Gemini produces) is queued in
-        # _src_done until the translation turn it produced finalizes and pops it.
-        # A FIFO — not a single slot — so two source utterances completing before
-        # one translation turn finalizes cannot overwrite each other (the old
-        # two-slot _last_src/_cur_src scheme dropped the first, and its per-turn
-        # _cur_src clear wiped source belonging to a later turn, blanking the JSON
-        # `src` field localization/dubbing relies on — Ivo, 1.0.27). Qwen streams
-        # source continuously with no pause, so nothing ever queues and each turn
-        # simply consumes _src_buf — no repeated leading segment.
+        # Source-transcription stream, paired to translation turns by TIMESTAMP,
+        # not by matching pause patterns between the two independent streams.
+        # _src_buf accumulates the in-flight source utterance's deltas; a
+        # completed utterance (segmented by a >LINE_GAP pause in the source
+        # stream, as Gemini produces) is queued in _src_done until a translation
+        # turn whose own start-time is >= the utterance's last-heard time pops
+        # it. A FIFO — not a single slot — so two source utterances completing
+        # before one translation turn finalizes cannot overwrite each other (the
+        # old two-slot _last_src/_cur_src scheme dropped the first, and its
+        # per-turn _cur_src clear wiped source belonging to a later turn,
+        # blanking the JSON `src` field localization/dubbing relies on — Ivo,
+        # 1.0.27). Each entry is (speaker, text, last_heard_ts) — see _pop_source.
         self._src_buf = ""
-        self._src_done: list[tuple[int | None, str]] = []  # (speaker, text)
+        self._src_done: list[tuple[int | None, str, float]] = []
         self._last_src_t = 0.0
+        # Arrival checkpoints for the in-flight _src_buf: (timestamp, cumulative
+        # length in _src_buf at that point). Lets _pop_source(cutoff) return only
+        # the PREFIX of _src_buf that had arrived by cutoff — the rest (source
+        # heard after the finishing turn's own translation started) is left
+        # queued rather than handed to the wrong turn. See _pop_source.
+        self._src_marks: list[tuple[float, int]] = []
         # Speaker labeling (local tracker, incoming direction). _cur_spk is the
         # label the tracker believes is talking NOW; _src_spk is the label the
         # in-flight source buffer STARTED under (the buffer finalizes on the
@@ -367,8 +389,9 @@ class Bridge:
                 return  # first assignment — nothing to split yet
             buf = self._src_buf.strip()
             if buf:
-                self._src_done.append((self._src_spk, buf))
+                self._src_done.append((self._src_spk, buf, self._last_src_t))
                 self._src_buf = ""
+                self._src_marks = []
             self._pending_spk_break = True
 
     def _peek_spk(self) -> int | None:
@@ -395,12 +418,17 @@ class Bridge:
                 # model's ear-voice lag, so it is queued before that turn finalizes.
                 # Tagged with the label the buffer STARTED under: this finalize
                 # runs on the NEXT utterance's first token, by which time
-                # _cur_spk may already be the next voice.
-                self._src_done.append((self._src_spk, self._src_buf.strip()))
+                # _cur_spk may already be the next voice. Stamped with when this
+                # utterance was last actually heard (_last_src_t), not "now" (the
+                # moment the gap was merely detected) — that's what _pop_source
+                # compares against a turn's own start time.
+                self._src_done.append((self._src_spk, self._src_buf.strip(), self._last_src_t))
                 self._src_buf = ""
+                self._src_marks = []
             if not self._src_buf:
                 self._src_spk = self._cur_spk
             self._src_buf += text
+            self._src_marks.append((now, len(self._src_buf)))
             self._last_src_t = now
             # Live "heard now" feed: the accumulating source utterance streams to
             # the UI's ghost line as it is spoken (the definitive, paired source
@@ -424,15 +452,23 @@ class Bridge:
         if newline:
             finished = self._cur_line.strip()
             self._cur_line = ""
-            # The turn that just ended pairs with — and consumes — its source
-            # (correct by ordering despite the few-second lag).
-            spk, src = self._pop_source()
-            if src:
+            # The turn that just ended pairs with — and consumes — only the
+            # source heard up to roughly SRC_LAG_S ago, not whatever has
+            # piled up in the buffer by now. Translation trails source by the
+            # model's simultaneous-interpretation lag, so by the time this
+            # turn's OUTPUT finishes, the source stream has already moved on
+            # to content driving a LATER turn; grabbing "everything buffered
+            # right now" over-claims into whichever turn happens to finish
+            # first. See SRC_LAG_S for why this lag-adjusted "now" is used
+            # instead of this turn's own start time.
+            spk, src = self._pop_source(now - SRC_LAG_S)
+            own_src = src or None
+            if own_src:
                 # The label rides along only in a genuinely multi-speaker
                 # session (same ≥2 gate as _peek_spk), so a lone speaker is
                 # never tagged "S1" on screen. The JSON turn keeps the raw
                 # label either way — export renderers apply the same gate.
-                self._put_event(("src", src,
+                self._put_event(("src", own_src,
                                  spk if len(self._spk_seen) >= 2 else None))
             # Engine re-speak guard: after an internal reconnect Gemini can
             # re-emit the tail utterance, producing two identical consecutive
@@ -449,7 +485,7 @@ class Bridge:
                 turn = {
                     "t": max(0.0, self._turn_start - self._session_start),
                     "dir": "out",
-                    "src": src,
+                    "src": own_src,
                     "text": finished,
                 }
                 if spk is not None:
@@ -470,26 +506,60 @@ class Bridge:
         self._overlay_text = line
         self._overlay_until = now + FADE_MS
         self._obs_write(line)
-        self._put_event(("trans", text, newline, hint))
+        # Backlog only matters to the client when a NEW caption line is about
+        # to appear (see index.html onTrans) — skip the stager read otherwise.
+        backlog = self.controller.current_playback_backlog() if newline else 0.0
+        self._put_event(("trans", text, newline, hint, backlog))
 
-    def _pop_source(self) -> tuple[int | None, str]:
-        """(speaker, text) for the translation turn that just finalized: the
-        oldest completed source utterance if one is queued (Gemini's paused
-        stream), else whatever is still accumulating (Qwen's gapless stream) —
-        consumed so the next turn cannot re-emit it. Caller holds _text_lock."""
+    def _pop_source(self, cutoff: float | None = None) -> tuple[int | None, str]:
+        """(speaker, text) for the translation turn that just finalized.
+
+        `cutoff` is `now - SRC_LAG_S` (see that constant), captured by the
+        caller. Only source heard by `cutoff` is returned; source heard after
+        it is left queued for a LATER turn instead of being claimed by this
+        one. Consumed so it cannot be re-emitted. Caller holds _text_lock.
+
+        `cutoff=None` (session stop, in _flush_turns) takes everything
+        remaining unconditionally — there is no later turn to hand it off to.
+
+        Still approximate — SRC_LAG_S is a fixed estimate of a lag that
+        actually varies a little turn to turn, and the model gives no
+        word-level timestamps to do better — but a lag-adjusted "now" is a
+        far closer proxy to "how far the source has actually progressed" than
+        the previous cutoff-free version, which handed whatever the source
+        stream had reached by the time output happened to pause —
+        systematically over-claiming into the turn that finished first."""
         while self._src_done:
-            spk, src = self._src_done.pop(0)
+            spk, src, ts = self._src_done[0]
+            if cutoff is not None and ts > cutoff:
+                break  # not yet "reached" by this turn — leave queued
+            self._src_done.pop(0)
             src = src.strip()
             if src:
                 return spk, src
-        src = self._src_buf.strip()
-        self._src_buf = ""
-        return (self._src_spk if src else self._cur_spk), src
+        if cutoff is None:
+            src = self._src_buf.strip()
+            self._src_buf = ""
+            self._src_marks = []
+            return (self._src_spk if src else self._cur_spk), src
+        if not self._src_buf or not self._src_marks:
+            return self._src_spk, ""
+        split_len, idx = 0, 0
+        for i, (ts, ln) in enumerate(self._src_marks):
+            if ts > cutoff:
+                break
+            split_len, idx = ln, i + 1
+        if split_len <= 0:
+            return self._src_spk, ""
+        src = self._src_buf[:split_len].strip()
+        self._src_buf = self._src_buf[split_len:]
+        self._src_marks = [(ts, ln - split_len) for ts, ln in self._src_marks[idx:]]
+        return self._src_spk, src
 
     def _pending_source(self) -> str:
         """All source not yet paired to a turn (queue + in-flight buffer), for the
         stop-time flush of a source-only session. Caller holds _text_lock."""
-        parts = [s for _, s in self._src_done if s.strip()]
+        parts = [s for _, s, _ts in self._src_done if s.strip()]
         if self._src_buf.strip():
             parts.append(self._src_buf.strip())
         return " ".join(parts).strip()
@@ -688,7 +758,7 @@ class Bridge:
         from . import byok_store
         from .config import resolve_engine
         uid = self._ensure_user_id()
-        engines = self._engine_options()  # gemini-only on OSS; both on official
+        engines = self._engine_options()  # gemini-only
         byok_status = {e: (byok_store.has_byok(uid, e) if uid else False) for e in engines}
         byok_set = byok_status.get("gemini", False)  # back-compat: single bool
         from .paths import client_channel
@@ -746,15 +816,10 @@ class Bridge:
         return [[k, t(f"quality_{k}")] for k in QUALITY_PRESETS]
 
     def _engine_options(self):
-        """Engine choices for the selector. Keys only — the per-locale benefit
-        labels resolve from the JS I18N dict (app/i18n.py is TR/EN-only).
-        OpenAI is an official-build feature; the OSS/BYOK build is Gemini-only.
-        Qwen is EXCLUDED here on purpose: it is served by the SERVER's
-        per-target routing (primary engine for its voiced targets), never a
-        user-facing selector choice."""
-        from .config import VALID_ENGINES, ENGINE_GEMINI, ENGINE_QWEN
-        if IS_OFFICIAL_RELEASE:
-            return [e for e in VALID_ENGINES if e != ENGINE_QWEN]
+        """Engine choices for the selector. Gemini-only: Qwen is served by the
+        SERVER's per-target routing (primary engine for its voiced targets),
+        never a user-facing selector choice."""
+        from .config import ENGINE_GEMINI
         return [ENGINE_GEMINI]
 
     # ---------- store ----------
@@ -911,7 +976,7 @@ class Bridge:
         self._user_id = voxis_client.user_id_from_jwt()
         return self._user_id
 
-    def save_keys(self, gem, oai=""):
+    def save_keys(self, gem):
         # Official-release builds never expose BYOK entry; refuse silently as
         # a defense-in-depth check.
         if IS_OFFICIAL_RELEASE:
@@ -921,11 +986,9 @@ class Bridge:
             return False
         from . import byok_store
         current = byok_store.load_byok(uid)
-        # OSS/BYOK is Gemini-only (OpenAI is an official-build feature); the `oai`
-        # arg is kept for signature back-compat but ignored — only the Gemini key
-        # is written, preserving any previously stored value when blank.
+        # OSS/BYOK is Gemini-only; preserve the previously stored value when blank.
         new_gem = gem.strip() if gem and gem.strip() else current.get("gemini", "")
-        byok_store.save_byok(uid, new_gem, current.get("openai", ""))
+        byok_store.save_byok(uid, new_gem)
         return True
 
     def clear_byok(self, engine=None) -> bool:
@@ -1770,11 +1833,11 @@ class Bridge:
         from .config import ENGINE_GEMINI, resolve_model, qwen_can_voice
         # Beta engine opt-in (Qwen): only honored when the account is
         # beta-eligible (server flag; dev builds are always eligible) AND the
-        # user switched it on. Never touches the normal Gemini/OpenAI routing.
+        # user switched it on. Never touches the normal server-side routing.
         beta_qwen = (self._beta_allowed()
                      and bool((self.cfg.get("beta") or {}).get("enabled")))
         if not IS_OFFICIAL_RELEASE:
-            # OSS/BYOK is Gemini-only; OpenAI is an official-build feature.
+            # OSS/BYOK is Gemini-only.
             from . import byok_store
             from .config import ENGINE_GEMINI, ENGINE_QWEN
             uid = self._ensure_user_id()
@@ -2165,7 +2228,7 @@ class Bridge:
                 self._session_dirname = None
                 self._session_file = None
                 self._lines, self._cur_line = [], ""
-                self._src_buf, self._src_done = "", []
+                self._src_buf, self._src_done, self._src_marks = "", [], []
                 self._cur_spk, self._src_spk = None, None
                 self._spk_seen = set()
                 self._pending_spk_break = False
@@ -2211,11 +2274,15 @@ class Bridge:
             if not self._session_start:
                 self._session_start = time.time()
             start = self._turn_start or self._session_start
-            spk, src = self._pop_source()
+            # This is the session's LAST turn — take everything remaining
+            # unconditionally (cutoff=None); there is no later turn to hand
+            # off leftover source to.
+            spk, src = self._pop_source(None)
+            own_src = src or None
             turn = {
                 "t": max(0.0, start - self._session_start),
                 "dir": "out",
-                "src": src,
+                "src": own_src,
                 "text": tail,
             }
             if spk is not None:
@@ -2283,9 +2350,29 @@ class Bridge:
         self._session_file = path
         if not silent:
             self._emit_status(t("saved_to", path=path))
+        self._auto_export(record, path)
         # Background disk housekeeping: prune old/orphaned transcript folders (>90 days / >500 count)
         threading.Thread(target=transcript_store.prune_transcripts, args=(primary,), daemon=True).start()
         return {"ok": True, "path": path, "file": os.path.basename(path)}
+
+    def _auto_export(self, record: dict, json_path: str):
+        """Generate the user's configured caption formats (Settings > General
+        > "Otomatik kayıt formatları") beside the JSON, on every save — the
+        JSON alone required an extra trip through History to get a TXT/SRT/VTT
+        copy of the same session. Best-effort: never raises into the caller,
+        since a failed convenience export must not make save_txt() itself
+        look like it failed."""
+        fmts = [f for f in ("txt", "srt", "vtt") if self.cfg.get(f"auto_export_{f}")]
+        if not fmts or not json_path.endswith(".json"):
+            return
+        base = json_path[:-len(".json")]
+        for fmt in fmts:
+            try:
+                content, ext = transcript_store.export(record, fmt, bilingual=True)
+                with open(base + "_bilingual." + ext, "w", encoding="utf-8") as f:
+                    f.write(content)
+            except Exception:
+                _log.exception("auto-export %s failed", fmt)
 
     # ---------- transcript directory + reveal ----------
     def _transcript_dir(self) -> str:

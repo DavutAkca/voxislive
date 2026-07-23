@@ -10,8 +10,8 @@ The translate model is a native simultaneous interpreter: fed the continuous
 stream it translates as the speaker talks and self-balances quality vs sync, so
 the client sends NO realtime_input_config and lets the model own its endpointing.
 
-The reconnect/rotation/watchdog machine is shared with the OpenAI and Qwen
-engines in app/base_translator.py; only the Gemini SDK specifics — the
+The reconnect/rotation/watchdog machine is shared with the Qwen engine in
+app/base_translator.py; only the Gemini SDK specifics — the
 context-manager connection, the config, session resumption + GoAway handling —
 live here. This module also owns the process-wide usage accumulator that every
 engine funnels into (get_usage / _add_usage).
@@ -35,7 +35,7 @@ COST_IN_PER_MIN = 0.0053
 COST_OUT_PER_MIN = 0.0315
 
 # Process-cumulative usage accounting across all sessions/instances AND engines:
-# the OpenAI/Qwen translators funnel their seconds here too (via
+# the Qwen translator funnels its seconds here too (via
 # BaseTranslator._record_usage), so the cost estimate the UI surfaces via
 # get_usage() is a single lifetime total.
 _USAGE_LOCK = threading.Lock()

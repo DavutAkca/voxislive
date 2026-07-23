@@ -31,7 +31,7 @@ def test_unknown_preset_falls_back_to_balanced():
 def test_resolve_engine_rejects_unknown(monkeypatch):
     monkeypatch.delenv("VOXIS_ENGINE", raising=False)
     assert config.resolve_engine({"engine": "banana"}) == config.DEFAULT_ENGINE
-    assert config.resolve_engine({"engine": "openai"}) == "openai"
+    assert config.resolve_engine({"engine": "qwen"}) == "qwen"
 
 
 def test_resolve_model_env_override(monkeypatch):
@@ -47,12 +47,18 @@ def test_route_engine_oss_is_gemini_only(monkeypatch):
     assert config.route_engine({}, "en") == config.ENGINE_GEMINI
 
 
-def test_route_engine_official_routes_by_target(monkeypatch):
+def test_route_engine_official_still_resolves_gemini(monkeypatch):
+    # route_engine is a diagnostics-only label now; live SaaS routing is
+    # decided server-side, so this never varies by target.
     monkeypatch.delenv("VOXIS_ENGINE", raising=False)
     monkeypatch.setattr(config, "IS_OFFICIAL_RELEASE", True)
-    assert config.route_engine({}, "en") == config.ENGINE_OPENAI
-    assert config.route_engine({}, "sw") == config.ENGINE_GEMINI  # not in OpenAI set
-    assert config.route_engine({}, "zh-Hant") == config.ENGINE_GEMINI  # pinned
+    assert config.route_engine({}, "en") == config.ENGINE_GEMINI
+    assert config.route_engine({}, "zh-Hant") == config.ENGINE_GEMINI
+
+
+def test_route_engine_env_override_forces_engine(monkeypatch):
+    monkeypatch.setenv("VOXIS_ENGINE", "qwen")
+    assert config.route_engine({}, "en") == "qwen"
 
 
 @pytest.fixture
@@ -117,7 +123,6 @@ def test_sanitize_seed_config_strips_secrets_and_machine_state():
     # window geometry, recovery state, custom hotkeys, first-run flags.
     dirty = dict(config.DEFAULTS)
     dirty["qwen_key"] = "sk-EXAMPLE-not-a-real-dashscope-key"
-    dirty["openai_key"] = "sk-proj-EXAMPLE-not-a-real-openai-key"
     dirty["gemini_key"] = "AIza-EXAMPLE-not-a-real-gemini-key"
     dirty["devices"] = {"headphones_output": "Dev Speakers (USB)",
                         "microphone": "Dev Mic (Realtek)"}
@@ -129,12 +134,12 @@ def test_sanitize_seed_config_strips_secrets_and_machine_state():
     # Whitelisted product choices must survive.
     dirty["target_language_incoming"] = "de"
     dirty["quality_preset"] = "turbo"
-    dirty["engine"] = "openai"
+    dirty["engine"] = "qwen"
 
     seed = config.sanitize_seed_config(dirty)
 
     # Secrets and unknown keys are gone by construction.
-    for gone in ("qwen_key", "openai_key", "gemini_key", "window",
+    for gone in ("qwen_key", "gemini_key", "window",
                  "_pending_default_restore", "onboarding_done", "update_check_url"):
         assert gone not in seed
     # Machine-specific dicts fall back to the generic DEFAULTS (self-healing seed).
@@ -143,7 +148,7 @@ def test_sanitize_seed_config_strips_secrets_and_machine_state():
     # Deliberate product choices are preserved.
     assert seed["target_language_incoming"] == "de"
     assert seed["quality_preset"] == "turbo"
-    assert seed["engine"] == "openai"
+    assert seed["engine"] == "qwen"
     # No API-key-shaped value survives anywhere in the serialized seed.
     blob = json.dumps(seed)
     assert "sk-" not in blob and "AIza" not in blob

@@ -92,7 +92,7 @@ Voxis wird in zwei Varianten ausgeliefert, die zur Build-Zeit über `IS_OFFICIAL
 | | Offizielle SaaS-`.exe` (`True`) | Open Source / Entwickler (`False`) |
 | --- | --- | --- |
 | API-Schlüssel | Pro Sitzung vom Server abgerufen; keine Schlüssel-UI | Eigener Schlüssel (BYOK), in den Einstellungen eingegeben |
-| Übersetzungs-Engine | Serverseitig geroutetes Gemini Live / Qwen (OpenAI-Adapter unterstützt) | Nur Google Gemini Live |
+| Übersetzungs-Engine | Serverseitig geroutetes Gemini Live / Qwen | Nur Google Gemini Live |
 | Authentifizierung | Anmeldung (PocketBase) | Keine — lokal, offline |
 | Telemetrie / Abrechnung | Nutzungs-Heartbeat an den Server | Vollständig deaktiviert |
 | Übersetzungseinstellungen | Auf die besten Simultan-Standardwerte festgelegt | Alle Einstellungen zum Feinabstimmen verfügbar |

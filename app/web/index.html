@@ -188,7 +188,6 @@
   src: url(fonts/schibsted-grotesk-Jqz55SSPQuCQF3t8uOwiUL-taUTtap9Gayo.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-
 /* ============================================================
    VOXIS · GRAPHITE CONSOLE DESIGN SYSTEM
    broadcast-console graphite · semantic signal colors ·
@@ -204,7 +203,6 @@
   --ease-out:cubic-bezier(.22,1,.36,1);
   --spring:cubic-bezier(.34,1.56,.64,1);
   --dfast:120ms; --dur:170ms; --dslow:260ms;
-
   /* ---- DARK · GRAPHITE CONSOLE (default) ---- */
   --bg:#131518;
   --surface-1:#17191d;   /* panel */
@@ -240,7 +238,6 @@
   --shadow-float:0 2px 6px rgba(18,20,28,.08), 0 18px 50px rgba(18,20,28,.14);
   --grain:0;
 }
-
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden}
 body{
@@ -255,7 +252,6 @@ body::after{
   content:'';position:fixed;inset:0;z-index:1;pointer-events:none;opacity:var(--grain);mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:rgba(235,240,245,.14);border-radius:9px;border:2px solid transparent;background-clip:padding-box}
 ::-webkit-scrollbar-thumb:hover{background:rgba(235,240,245,.26);background-clip:padding-box}
@@ -264,10 +260,8 @@ body::after{
 svg{display:block;flex:none}
 button{font-family:var(--font)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-ctl)}
-
 .pywebview-drag-region{-webkit-app-region:drag}
 .brand,.topcenter,.topactions,.windowctl,.iconbtn,.wbtn,button,select,input{-webkit-app-region:no-drag}
-
 /* ============ TOP BAR ============ */
 .topbar{
   flex:0 0 56px; display:flex; align-items:center; gap:var(--s4); padding:0 var(--s5);
@@ -286,7 +280,6 @@ button{font-family:var(--font)}
 .livetag{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.16em;color:var(--text-3);
   border:1px solid var(--border-strong);border-radius:5px;padding:2px 7px}
 .topcenter{flex:1;display:flex;align-items:center;justify-content:center;gap:var(--s4);min-width:0;overflow:hidden}
-
 /* status readout — broadcast-console cell, not a pill */
 .statuspill{
   display:flex;align-items:center;gap:9px;padding:7px 14px;border-radius:var(--r-ctl);
@@ -310,7 +303,6 @@ button{font-family:var(--font)}
   animation:halo 1.8s var(--ease) infinite;
 }
 @keyframes halo{0%{transform:scale(1);opacity:.5}70%,100%{transform:scale(2.6);opacity:0}}
-
 .quota-bar-wrap{
   display:none;align-items:center;gap:9px;padding:7px 12px;border-radius:var(--r-ctl);
   border:1px solid var(--border);background:var(--surface-2);transition:all var(--dur);
@@ -322,7 +314,6 @@ button{font-family:var(--font)}
 .quota-bar-wrap.unlimited{border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
 .quota-bar-wrap.unlimited .quota-bar-label{color:var(--accent)}
 .quota-bar-wrap.exhausted .quota-bar-label{color:var(--red)}
-
 /* ============ FREE-TIER TASTE CHIP ============ */
 /* Reads as a possession, not a warning: the paid voice is something the user
    HAS right now. It turns amber only as it runs out. */
@@ -345,7 +336,6 @@ button{font-family:var(--font)}
 .taste-chip.free .taste-next{color:var(--accent)}
 .taste-chip.free:hover{border-color:var(--accent)}
 @media (max-width:1100px){ .taste-chip .taste-next{display:none} }
-
 .topactions{display:flex;align-items:center;gap:7px}
 /* Keycap at rest (mirrors .hkrow .k): the utility buttons read as pressable
    without hover — a bare ghost icon next to the window controls didn't. */
@@ -364,7 +354,6 @@ button{font-family:var(--font)}
 .reportchip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 .reportchip:active{transform:scale(.96)}
 .reportchip svg{flex:none}
-
 .windowctl{display:flex;align-items:center;margin-left:6px;margin-right:-24px}
 /* Hairline between app actions and the OS window controls: two different
    kinds of control, two visual groups (main topbar only — the auth screen
@@ -374,7 +363,6 @@ button{font-family:var(--font)}
   color:var(--text-2);cursor:pointer;transition:all var(--dfast) var(--ease)}
 .wbtn:hover{background:var(--surface-2);color:var(--text)}
 .wbtn.wclose:hover{background:#c42b1c;color:#fff}
-
 /* ============ QUOTA GATE BANNER ============ */
 .quota-gate{
   flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:9px 22px;
@@ -384,12 +372,10 @@ button{font-family:var(--font)}
 .quota-gate svg{flex:none;color:var(--amber)}
 .quota-gate .qg-msg{flex:1}
 .quota-gate a{color:var(--amber);font-weight:700;text-decoration:underline;text-underline-offset:2px;cursor:pointer;white-space:nowrap}
-
 /* ============ LAYOUT ============ */
 .layout{flex:1;display:grid;grid-template-columns:320px 1fr;gap:var(--s3);padding:var(--s3) var(--s4) var(--s2);min-height:0}
 .rail{display:flex;flex-direction:column;gap:var(--s3);overflow-y:auto;min-height:0;padding-right:3px}
 .stage{display:grid;grid-template-rows:auto 1fr;gap:var(--s3);min-height:0;min-width:0}
-
 .card{
   background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-card);
   transition:background var(--dur), border var(--dur);
@@ -401,7 +387,6 @@ button{font-family:var(--font)}
   color:var(--text-3);margin-bottom:var(--s4);display:flex;align-items:center;gap:9px;
 }
 .cardlabel::after{content:'';flex:1;height:1px;background:var(--border)}
-
 /* ============ CONTROLS ============ */
 .fieldlabel{font-size:12px;font-weight:500;color:var(--text-2);margin:var(--s3) 0 6px}
 .fieldlabel:first-of-type{margin-top:0}
@@ -415,7 +400,6 @@ select{
 }
 select:hover{border-color:var(--border-strong)}
 select:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
-
 .btn{
   display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
   padding:10px 14px;border-radius:var(--r-ctl);font-size:13px;font-weight:600;cursor:pointer;
@@ -434,7 +418,6 @@ select:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3p
 /* Stop is a transport control: it only exists while a session runs. A
    permanently visible disabled danger button is idle-state noise. */
 #stopbtn[disabled]{display:none}
-
 .scenario{
   position:relative;overflow:hidden;display:flex;align-items:center;gap:12px;width:100%;
   padding:12px 13px;margin-bottom:8px;border:1px solid var(--border);border-radius:var(--r-card);
@@ -467,7 +450,6 @@ select:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3p
 .scenario:hover:not(:disabled):not(.quota-blocked) .startcue,
 .scenario:focus-visible:not(.quota-blocked) .startcue{opacity:1;transform:none}
 .scenario.active .startcue,.scenario.quota-blocked .startcue{display:none}
-
 /* live audio-rod meter — console signal block */
 .meter{display:flex;align-items:center;gap:11px;margin-top:14px;padding:11px 13px;border-radius:var(--r-ctl);
   background:var(--surface-2);border:1px solid var(--border)}
@@ -478,7 +460,6 @@ select:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 3p
 .meter.signal .metertext{color:var(--green)}
 .meter .ms{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums}
 .meter.signal .ms{color:var(--text-2)}
-
 .sliderrow{margin-top:var(--s3)}
 .sliderrow .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
 .sliderrow .name{font-size:12px;font-weight:500;color:var(--text-2)}
@@ -494,7 +475,6 @@ input[type=range]::-webkit-slider-thumb{
   background:var(--text);border:0;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform var(--dfast) var(--ease);
 }
 input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
-
 .switch{display:inline-flex;align-items:center;gap:10px;font-size:12.5px;font-weight:500;color:var(--text-2);cursor:pointer;user-select:none}
 /* Hide the native checkbox visually but keep it focusable/operable by keyboard. */
 .switch input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
@@ -505,12 +485,10 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .switch input:checked+.track{background:var(--accent-strong);border-color:transparent}
 .switch input:checked+.track::after{transform:translateX(14px);background:var(--on-accent)}
 [data-theme="light"] .switch input:checked+.track::after{background:#fff}
-
 .sessionline{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text-2);margin-bottom:var(--s3);font-weight:500}
 .sessionline .sdot{width:6px;height:6px;border-radius:50%;background:var(--text-3);flex:none}
 .sessionline.on{color:var(--green)}
 .sessionline.on .sdot{background:var(--green);box-shadow:0 0 8px var(--green)}
-
 /* ============ STAGE ============ */
 .stagebar{display:flex;align-items:center;gap:18px;padding:12px var(--s4);flex-wrap:wrap}
 .langgroup{display:flex;align-items:center;gap:14px;padding:8px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--r-card)}
@@ -533,7 +511,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .langitem .selectwrap>svg{color:var(--text-3)}
 .stagebar .spacer{flex:1}
 .switches{display:flex;align-items:center;gap:18px}
-
 .stream{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .streamhead{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border)}
 .streamhead .title{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--text-2)}
@@ -543,16 +520,13 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .streamhead .spacer{flex:1}
 .streamhint{font-family:var(--mono);font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:7px;letter-spacing:.04em}
 .streamhint .lv{color:var(--amber)}
-
 .scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:15px;scroll-behavior:smooth;container-type:inline-size}
-
 /* Live "heard now" ghost line: the source utterance streaming in real time,
    always the last element of the scroll. Cleared when its translation turn
    finalizes (the paired 'src' event) or the session ends. */
 .hearline{display:flex;gap:8px;align-items:baseline;padding-left:16px;font-size:12px;color:var(--text-3)}
 .hearline .who{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;flex:none}
 .hearline .ht{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
 /* Dual-column captions on a wide stream: translation | source side by side
    (the stacked layout below stays the narrow fallback). */
 @container (min-width:720px){
@@ -561,7 +535,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
   .turn .src{grid-column:2;grid-row:1;margin-top:3px;padding-left:14px;border-left:1px solid var(--border)}
   /* .turnact stays absolutely positioned — unaffected by the grid */
 }
-
 .turn{animation:rise .34s var(--ease-out)}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .turn .tr{
@@ -583,7 +556,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
   margin-right:8px;vertical-align:2px;user-select:none}
 .line.sys{font-family:var(--mono);font-size:10.5px;color:var(--text-3);padding-left:4px;animation:rise .3s var(--ease-out)}
 .line.sys::before{content:'› ';opacity:.6}
-
 .empty{margin:auto;text-align:center;color:var(--text-3);padding:40px}
 /* The empty state is the largest surface on screen — make it the shortest
    path to the first translation instead of a passive hint. */
@@ -595,7 +567,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 @keyframes breathe{0%,100%{transform:scale(1);opacity:.2}50%{transform:scale(1.05);opacity:.7}}
 .empty .big{font-size:15px;font-weight:600;color:var(--text-2);margin-bottom:6px;letter-spacing:-.01em}
 .empty .small{font-size:12.5px;line-height:1.55}
-
 /* ============ FOOTER HUD ============ */
 .statusbar{
   flex:0 0 32px;display:flex;align-items:center;gap:0;padding:0 var(--s5);
@@ -609,7 +580,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
 .statusbar .hud.accent b{color:var(--green)}
 .statusbar #footstate{overflow:hidden;text-overflow:ellipsis;max-width:46ch}
 .statusbar .sp{flex:1;border-right:none}
-
 /* ============ DRAWER ============ */
 .scrim{position:fixed;inset:0;background:rgba(6,7,10,.55);opacity:0;pointer-events:none;transition:opacity var(--dslow);z-index:40}
 .scrim.open{opacity:1;pointer-events:auto}
@@ -680,7 +650,6 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
 .hkrow .k.recording{border-color:var(--amber);color:var(--amber)}
 .drawer footer{flex:0 0 auto;padding:16px 22px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px}
 .drawer footer .ver{font-family:var(--mono);font-size:10.5px;color:var(--text-3);white-space:nowrap}
-
 /* ============ AUTH OVERLAY ============ */
 .auth-overlay{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:opacity .2s}
 .auth-overlay.hidden{display:none}
@@ -713,7 +682,6 @@ input[type=password]:focus-visible,input[type=text]:focus-visible,input[type=ema
 .auth-card .gbtn:disabled{opacity:.6;cursor:not-allowed}
 .auth-card .auth-or{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--text-2);font-size:12px}
 .auth-card .auth-or::before,.auth-card .auth-or::after{content:"";flex:1;height:1px;background:var(--border)}
-
 /* ============ FRAMELESS RESIZE GRIPS ============ */
 /* pywebview 6.2.1 has no native frameless resize; these thin strips capture the
    mouse near the right/bottom edges + corner and drive win_resize via the bridge. */
@@ -730,7 +698,6 @@ body.resizing,body.resizing *{user-select:none!important}
 /* error/warn transcript status lines (level carried in the status event) */
 .line.sys.err{color:var(--red)}
 .line.sys.warn{color:var(--amber)}
-
 /* Boot/loading state: shown until check_auth resolves so returning users
    never see a flash of the login form. */
 .auth-boot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
@@ -738,11 +705,9 @@ body.resizing,body.resizing *{user-select:none!important}
 .auth-boot .spinner{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--border-strong);border-top-color:var(--accent);animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .auth-boot .boottxt{font-size:12.5px;color:var(--text-2);font-weight:500}
-
 /* sr-only: visually hidden but available to assistive tech and (for inputs)
    still focusable, replacing display:none which removes from the tab order. */
 .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-
 /* ============ TRANSCRIPT HISTORY MODAL ============ */
 /* .modal (defined below) shares specificity — compound the selector so the
    wider history layout survives source order. */
@@ -799,7 +764,6 @@ body.resizing,body.resizing *{user-select:none!important}
   color:var(--text);padding:9px 15px;border-radius:10px;font-size:12.5px;box-shadow:var(--shadow-float);
   display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px)}
 .quota-toast::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--amber);flex:none}
-
 /* ============ THREE-RUNG LADDER + INVERSE DEMO ============ */
 .ladder{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:9px}
 .rung{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;color:var(--text-2)}
@@ -811,7 +775,6 @@ body.resizing,body.resizing *{user-select:none!important}
   border-color:color-mix(in srgb,var(--accent) 34%,transparent)}
 .ladder-slogan{margin:0;padding-top:12px;border-top:1px solid var(--border);
   font-size:12.5px;line-height:1.55;color:var(--text-3)}
-
 /* Non-blocking on purpose: it must never interrupt what the user came to watch. */
 .contrast-card{position:fixed;right:22px;bottom:22px;z-index:59;width:330px;max-width:calc(100vw - 44px);
   display:flex;flex-direction:column;gap:9px;padding:14px 15px;border-radius:var(--r-card);
@@ -868,7 +831,6 @@ body.resizing,body.resizing *{user-select:none!important}
 .modal .mfoot .spacer{flex:1}
 .modal .dontshow{display:inline-flex;align-items:center;gap:9px;font-size:12px;color:var(--text-2);cursor:pointer;user-select:none;margin-right:auto}
 .modal .ostep{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums}
-
 /* ---- first-run spotlight tour: dims the app, cuts a lit hole around the
        target element, and floats a callout beside it ---- */
 #tour{position:fixed;inset:0;z-index:200}          /* captures clicks over the dim */
@@ -897,7 +859,6 @@ body.resizing,body.resizing *{user-select:none!important}
 #tour-pop .tour-foot .spacer{flex:1}
 #tour-pop .tour-step{font-family:var(--mono);font-size:10px;color:var(--text-3);font-variant-numeric:tabular-nums;font-weight:500;letter-spacing:.08em}
 @keyframes ostepin{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
-
 /* ============ SOUND CHECK MODAL ============ */
 .scgroup+.scgroup{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
 .sclabel{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
@@ -908,7 +869,6 @@ body.resizing,body.resizing *{user-select:none!important}
 .scstatus{font-size:12.5px;color:var(--text-3);min-height:1.4em}
 .scstatus.ok{color:var(--green);font-weight:600}
 .scstatus.err{color:var(--red)}
-
 /* ============ MEETING TILE CAVEAT (proactive, not post-failure) ============ */
 .tilecaveat{display:none;gap:8px;align-items:flex-start;margin:-2px 0 8px;padding:9px 11px;border-radius:var(--r-inner);
   background:var(--surface-2);border:1px solid var(--border);font-size:11.5px;line-height:1.5;color:var(--text-2)}
@@ -919,13 +879,11 @@ body.resizing,body.resizing *{user-select:none!important}
    way to that click was noise saying a thing we were about to say properly
    (owner report, 2026-07-13). */
 .tilecaveat.show{display:flex}
-
 /* ---- VB-CABLE explainer: numbered setup steps ---- */
 .cablesteps{list-style:none;margin:14px 0 4px;padding:0;display:flex;flex-direction:column;gap:11px}
 .cablesteps li{display:flex;gap:11px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--text-2)}
 .cablesteps .cn{flex:none;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:500;
   background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
-
 /* ============ QUOTA-BLOCKED SCENARIO TILES ============ */
 .quota-gate.flash{animation:gateflash 1.1s var(--ease)}
 @keyframes gateflash{0%,100%{background:var(--amber-soft)}30%{background:color-mix(in srgb,var(--amber) 32%,transparent)}}
@@ -935,7 +893,6 @@ body.resizing,body.resizing *{user-select:none!important}
 .scenario.quota-blocked .lockglyph{display:block}
 .scenario.denypulse{animation:denypulse .42s var(--ease)}
 @keyframes denypulse{0%,100%{transform:none}20%{transform:translateX(-4px)}60%{transform:translateX(4px)}}
-
 /* transcript per-turn controls */
 .turn{position:relative}
 .turn .turnact{position:absolute;top:2px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity var(--dfast)}
@@ -969,7 +926,6 @@ body.resizing,body.resizing *{user-select:none!important}
 .modal .mflow .fstep .fl{font-size:11.5px;font-weight:600;color:var(--text);line-height:1.3}
 .modal .mflow .farrow{display:flex;align-items:center;color:var(--text-3);flex:none}
 .modal .mflow .fstep.fgemini .fi{color:var(--green);background:var(--green-soft)}
-
 /* ============ SMALL-WINDOW BREAKPOINT ============ */
 @media (max-width:860px){
   .layout{grid-template-columns:1fr;overflow-y:auto}
@@ -978,16 +934,13 @@ body.resizing,body.resizing *{user-select:none!important}
   .topcenter{gap:var(--s2)}
   .quota-bar-wrap{display:none!important}
 }
-
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
 </style>
 </head>
 <body>
-
 <div class="bg-mesh"></div>
-
 <!-- Frameless resize grips (edges + corners; top-right omitted to keep window controls clickable) -->
 <div class="rsz rsz-r" data-rsz="r"></div>
 <div class="rsz rsz-l" data-rsz="l"></div>
@@ -996,7 +949,6 @@ body.resizing,body.resizing *{user-select:none!important}
 <div class="rsz rsz-br" data-rsz="br"></div>
 <div class="rsz rsz-bl" data-rsz="bl"></div>
 <div class="rsz rsz-tl" data-rsz="tl"></div>
-
 <!-- ============ AUTH OVERLAY ============ -->
 <div id="auth-overlay" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-dialog-label">
   <div class="auth-titlebar pywebview-drag-region">
@@ -1039,7 +991,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <p class="auth-sub"><a href="#" id="terms-link">voxislive.com</a><span data-i18n="auth_sub"> · Lisans bilgisi için giriş gerekli.</span></p>
   </div>
 </div>
-
 <!-- ============ TOP BAR ============ -->
 <header class="topbar pywebview-drag-region">
   <div class="brand">
@@ -1085,18 +1036,15 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="wbtn wclose" id="win-close" title="Kapat" data-i18n-title="title_close" aria-label="Kapat" data-i18n-aria="title_close"><svg width="11" height="11" viewBox="0 0 11 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M2.2 2.2l6.6 6.6M8.8 2.2l-6.6 6.6"/></svg></button>
   </div>
 </header>
-
 <!-- ============ QUOTA GATE BANNER ============ -->
 <div id="quota-gate" class="quota-gate" style="display:none" role="status" aria-live="polite" tabindex="-1">
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
   <span class="qg-msg" data-i18n="quota_gate_msg">Aylık çeviri kotanız doldu. Yeni oturum başlatmak için lisansınızı yükseltin.</span>
   <a id="quota-upgrade-link" href="#" data-i18n="upgrade_plan">Planı yükselt &rarr;</a>
 </div>
-
 <!-- ============ BODY ============ -->
 <main class="layout">
   <aside class="rail">
-
     <div class="card card-pad">
       <div class="cardlabel" data-i18n="scenario">Senaryo</div>
       <button class="scenario" data-mode="video" id="m-video">
@@ -1122,7 +1070,6 @@ body.resizing,body.resizing *{user-select:none!important}
         <span data-i18n="stop">Durdur</span>
       </button>
     </div>
-
     <div class="card card-pad">
       <div class="cardlabel" data-i18n="audio">Ses</div>
       <div class="fieldlabel" data-i18n="out_device">Çıkış cihazı</div>
@@ -1142,7 +1089,6 @@ body.resizing,body.resizing *{user-select:none!important}
         <span data-i18n="sound_check">Ses testi</span>
       </button>
     </div>
-
     <div class="card card-pad">
       <div class="cardlabel" data-i18n="translation">Çeviri</div>
       <div class="fieldlabel" data-i18n="profile">Profil</div>
@@ -1156,12 +1102,10 @@ body.resizing,body.resizing *{user-select:none!important}
         <input type="range" id="vol" min="0" max="150" value="100" aria-labelledby="vol-label" aria-valuetext="100%">
       </div>
     </div>
-
     <!-- The old "Oturum" card is gone: its status line duplicated the topbar
          pill, and saving now lives on the stream's persistent Kaydet chip
          (visible whenever there are turns — during AND after a session). -->
   </aside>
-
   <section class="stage">
     <div class="card stagebar">
       <div class="langgroup">
@@ -1180,7 +1124,6 @@ body.resizing,body.resizing *{user-select:none!important}
         <label class="switch"><input type="checkbox" id="subs" checked><span class="track"></span><span data-i18n="subtitle">Altyazı</span></label>
       </div>
     </div>
-
     <div class="card stream">
       <div class="streamhead">
         <span class="title" data-i18n="stream_title">Çeviri Akışı</span>
@@ -1213,7 +1156,6 @@ body.resizing,body.resizing *{user-select:none!important}
     </div>
   </section>
 </main>
-
 <!-- ============ SETTINGS DRAWER ============ -->
 <div class="scrim" id="scrim"></div>
 <div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
@@ -1226,6 +1168,10 @@ body.resizing,body.resizing *{user-select:none!important}
       <button class="dtab active" data-pane="general" role="tab" aria-selected="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 3.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 3.6h.09A1.65 1.65 0 0 0 9 2.09V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 14 3.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.4 8v.09c.27.49.7.88 1.21 1.09"/></svg>
         <span data-i18n="general">Genel</span>
+      </button>
+      <button class="dtab" data-pane="recording" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <span data-i18n="tab_recording">Kayıt</span>
       </button>
       <button class="dtab" data-pane="shortcuts" role="tab" aria-selected="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg>
@@ -1283,21 +1229,35 @@ body.resizing,body.resizing *{user-select:none!important}
           <div style="margin-top:14px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 0"><label class="switch"><input type="checkbox" id="brandbadge"><span class="track"></span><span data-i18n="brand_badge">"Powered by Voxis" rozetini göster</span></label><a id="badge-upgrade" data-i18n="badge_upgrade" style="display:none;font-size:11.5px;color:var(--accent);cursor:pointer;margin-left:10px">Yükselt →</a></div>
           <div style="margin-top:18px"><button class="btn btn-ghost" id="showtourbtn" style="width:auto" data-i18n="show_tour">Tanıtım turunu tekrar göster</button></div>
           <div style="margin-top:18px">
-            <div class="fieldlabel" data-i18n="transcript_folder">Transkript klasörü</div>
-            <div class="fieldhint" id="tx-dir-path" style="word-break:break-all;margin-bottom:8px"></div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-              <button class="btn btn-ghost" id="tx-dir-browse" style="width:auto" data-i18n="browse">Gözat…</button>
-              <button class="btn btn-ghost" id="tx-dir-open" style="width:auto" data-i18n="open_folder">Klasörü aç</button>
-              <a href="#" id="tx-dir-reset" style="font-size:12px;color:var(--accent)" data-i18n="reset_default">Varsayılana sıfırla</a>
-            </div>
+            <label class="switch"><input type="checkbox" id="spk-labels"><span class="track"></span><span data-i18n="spk_labels">Konuşmacı etiketleri (S1/S2)</span></label>
+            <div class="fieldhint" style="margin-top:6px" data-i18n="spk_labels_hint">Farklı kişiler ard arda konuştuğunda ses değişimini cihazında algılar ve altyazı satırlarını S1/S2 olarak etiketler. Tamamen yerel çalışır — ek bulut çağrısı yoktur. Etiketler ancak ikinci bir ses duyulduğunda görünür; kaydedilen transkriptlere de yazılır. Sesli çeviri yine tek sesle konuşur.</div>
+            <label class="switch" style="margin-top:12px"><input type="checkbox" id="allow-multiple-instances"><span class="track"></span><span data-i18n="allow_multiple_instances">Birden fazla uygulama örneğine izin ver</span></label>
+            <div class="fieldhint" style="margin-top:6px" data-i18n="allow_multiple_instances_hint">Bir sonraki başlatmada etkinleşir. Eşzamanlı oturumlar ses cihazları ve sistem yönlendirmesi için çakışabilir.</div>
+          </div>
+        </div>
+      </section>
+      <section class="dpane" data-pane="recording" role="tabpanel" hidden>
+        <div class="dsection">
+          <h3 data-i18n="tab_recording">Kayıt</h3>
+          <div class="fieldlabel" data-i18n="transcript_folder">Transkript klasörü</div>
+          <div class="fieldhint" id="tx-dir-path" style="word-break:break-all;margin-bottom:8px"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-ghost" id="tx-dir-browse" style="width:auto" data-i18n="browse">Gözat…</button>
+            <button class="btn btn-ghost" id="tx-dir-open" style="width:auto" data-i18n="open_folder">Klasörü aç</button>
+            <a href="#" id="tx-dir-reset" style="font-size:12px;color:var(--accent)" data-i18n="reset_default">Varsayılana sıfırla</a>
           </div>
           <div style="margin-top:18px">
             <label class="switch"><input type="checkbox" id="record-audio"><span class="track"></span><span data-i18n="record_audio">Sesi kaydet (kaynak + çeviri, ayrı dosyalar)</span></label>
             <div class="fieldhint" style="margin-top:6px" data-i18n="record_audio_hint">Her oturumun kaynak sesini ve çevrilmiş sesini iki ayrı WAV dosyası olarak transkript klasörüne kaydeder. Kaynak parça gerçek insan sesi içerdiğinden varsayılan olarak kapalıdır. Yalnızca Video/Oyun modunda çalışır — Toplantı modunda otomatik olarak kapanır, böylece karşı tarafın canlı sesi asla kaydedilmez.</div>
-            <label class="switch" style="margin-top:12px"><input type="checkbox" id="spk-labels"><span class="track"></span><span data-i18n="spk_labels">Konuşmacı etiketleri (S1/S2)</span></label>
-            <div class="fieldhint" style="margin-top:6px" data-i18n="spk_labels_hint">Farklı kişiler ard arda konuştuğunda ses değişimini cihazında algılar ve altyazı satırlarını S1/S2 olarak etiketler. Tamamen yerel çalışır — ek bulut çağrısı yoktur. Etiketler ancak ikinci bir ses duyulduğunda görünür; kaydedilen transkriptlere de yazılır. Sesli çeviri yine tek sesle konuşur.</div>
-            <label class="switch" style="margin-top:12px"><input type="checkbox" id="allow-multiple-instances"><span class="track"></span><span data-i18n="allow_multiple_instances">Birden fazla uygulama örneğine izin ver</span></label>
-            <div class="fieldhint" style="margin-top:6px" data-i18n="allow_multiple_instances_hint">Bir sonraki başlatmada etkinleşir. Eşzamanlı oturumlar ses cihazları ve sistem yönlendirmesi için çakışabilir.</div>
+          </div>
+          <div style="margin-top:18px">
+            <div class="fieldlabel" data-i18n="auto_export_label">Otomatik kayıt formatları</div>
+            <div class="fieldhint" style="margin-bottom:8px" data-i18n="auto_export_hint">JSON her zaman kaydedilir. Kaydet'e basıldığında veya oturum durdurulduğunda, işaretli formatlar aynı klasöre otomatik eklenir.</div>
+            <div style="display:flex;gap:18px;flex-wrap:wrap">
+              <label class="switch"><input type="checkbox" id="auto-export-txt"><span class="track"></span><span data-i18n="history_fmt_txt">TXT</span></label>
+              <label class="switch"><input type="checkbox" id="auto-export-srt"><span class="track"></span><span data-i18n="history_fmt_srt">SRT</span></label>
+              <label class="switch"><input type="checkbox" id="auto-export-vtt"><span class="track"></span><span data-i18n="history_fmt_vtt">VTT</span></label>
+            </div>
           </div>
         </div>
       </section>
@@ -1350,7 +1310,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <span class="ver" id="ver">Voxis · voxislive.com</span>
   </footer>
 </div>
-
 <!-- ============ MEETING CONSENT MODAL (ship-blocker) ============ -->
 <div class="modal" id="consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title" aria-describedby="consent-body">
   <div class="mhead">
@@ -1368,7 +1327,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="consent-accept" style="width:auto" data-i18n="consent_accept">Anladım, başlat</button>
   </div>
 </div>
-
 <!-- ============ FREE-LIMIT PAYWALL CARD ============ -->
 <div class="modal limitmodal" id="limit-modal" role="dialog" aria-modal="true" aria-labelledby="limit-title" aria-describedby="limit-body">
   <div class="mhead">
@@ -1385,7 +1343,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="limit-cta" style="width:auto" data-i18n="limit_cta">Dakika al &rarr;</button>
   </div>
 </div>
-
 <!-- Store rating ask. Raised once, after the third clean session — never with an
      offer attached (incentivised ratings breach Store policy). -->
 <div class="modal limitmodal" id="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-title" aria-describedby="review-body">
@@ -1402,7 +1359,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="review-cta" style="width:auto" data-i18n="review_cta">Puan ver</button>
   </div>
 </div>
-
 <!-- Three-rung explainer. Shown once, right after a free user's first sign-in:
      what they have NOW (paid engine), what they get later (free/local voice),
      and what buying restores. A user who never learns the rungs reads the drop
@@ -1425,7 +1381,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="ladder-ok" style="width:auto" data-i18n="ladder_ok">Anladım</button>
   </div>
 </div>
-
 <!-- The inverse demo. Offered ONCE, mid-taste, while the paid voice is still
      theirs to come back to: hear the free voice on the line you just heard.
      A comparison you can undo creates desire; one you cannot creates anger. -->
@@ -1456,7 +1411,6 @@ body.resizing,body.resizing *{user-select:none!important}
   <button class="btn btn-primary cc-primary" id="contrast-upgrade" style="display:none" data-i18n="contrast_upgrade">Pro'ya geç →</button>
   <button class="cc-dismiss" id="contrast-dismiss" data-i18n="contrast_dismiss">Şimdi değil</button>
 </div>
-
 <!-- Meeting is paid-only for the free tier. The reason is a quality promise, not a
      paywall: we will not put a synthetic voice in someone else's ear on your behalf. -->
 <div class="modal limitmodal" id="meeting-lock-modal" role="dialog" aria-modal="true" aria-labelledby="mlock-title">
@@ -1473,7 +1427,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="mlock-cta" style="width:auto" data-i18n="contrast_upgrade">Pro'ya geç →</button>
   </div>
 </div>
-
 <!-- The taste wall (owner's design, 2026-07-13). The Pro voice finishes its last
      sentence, the session stops, and THIS asks whether to continue on the free
      voice — with that same last sentence replayable in both voices. One session,
@@ -1505,7 +1458,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="tw-buy" style="width:auto" data-i18n="limit_cta">Dakika al &rarr;</button>
   </div>
 </div>
-
 <!-- The DAILY wall. Not the taste wall: nothing is being taken away here, the day
      simply ran out. Raised only when the cascade itself hit its allowance, so the
      user is never offered the free voice they are already listening to. -->
@@ -1523,7 +1475,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="dw-buy" style="width:auto" data-i18n="limit_cta">Dakika al &rarr;</button>
   </div>
 </div>
-
 <!-- The DEVICE-BLOCK wall (Tier A3b, 2026-07-17). Not a spent quota: this
      machine's one free tier was already claimed by a different account (see
      handlers/device.go bindDeviceOnUse). Raised only when the server resolved
@@ -1543,10 +1494,8 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="db-buy" style="width:auto" data-i18n="limit_cta">Dakika al &rarr;</button>
   </div>
 </div>
-
 <!-- soft ~80% warning (non-blocking, auto-dismiss) -->
 <div id="quota-toast" class="quota-toast" style="display:none" role="status" aria-live="polite"></div>
-
 <!-- ============ SOUND CHECK ("do I hear this device?") ============ -->
 <div class="modal" id="soundcheck-modal" role="dialog" aria-modal="true" aria-labelledby="sc-title">
   <div class="mhead">
@@ -1578,7 +1527,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="sc-close" style="width:auto" data-i18n="report_close">Kapat</button>
   </div>
 </div>
-
 <!-- ============ REPORT A PROBLEM ============ -->
 <div class="modal reportmodal" id="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-title">
   <div class="mhead">
@@ -1635,7 +1583,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="report-close" style="width:auto" data-i18n="report_close">Kapat</button>
   </div>
 </div>
-
 <!-- ============ FIRST-RUN SPOTLIGHT TOUR ============ -->
 <!-- Dims the whole app and cuts a lit hole around the element each step points
      at; #tour captures clicks so the UI underneath can't be triggered mid-tour. -->
@@ -1658,7 +1605,6 @@ body.resizing,body.resizing *{user-select:none!important}
     </div>
   </div>
 </div>
-
 <!-- ============ TRANSCRIPT HISTORY MODAL ============ -->
 <div class="modal historymodal" id="history-modal" role="dialog" aria-modal="true" aria-labelledby="history-title">
   <div class="mhead">
@@ -1688,7 +1634,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-danger" id="hist-delete" style="width:auto" disabled data-i18n="history_delete">Sil</button>
   </div>
 </div>
-
 <!-- ============ MEETING CABLE-REQUIRED MODAL (runtime gate) ============ -->
 <div class="modal" id="cable-modal" role="dialog" aria-modal="true" aria-labelledby="cable-title" aria-describedby="cable-body">
   <div class="mhead">
@@ -1713,7 +1658,6 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="cable-install" style="width:auto" data-i18n="cable_install">VB-CABLE kur</button>
   </div>
 </div>
-
 <!-- ============ PRIVACY / DATA-FLOW EXPLAINER MODAL (informational) ============ -->
 <div class="modal" id="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title" aria-describedby="privacy-body">
   <div class="mhead">
@@ -1750,12 +1694,10 @@ body.resizing,body.resizing *{user-select:none!important}
     <button class="btn btn-primary" id="privacy-close" style="width:auto" data-i18n="privacy_close">Anladım</button>
   </div>
 </div>
-
 <script>
 const api = () => window.pywebview.api;
 const $ = s => document.querySelector(s);
 let STATE = {}, QUOTA = null;
-
 /* ---------- i18n ---------- */
 const I18N = {
   tr: {"free_left_today":"bugün {n}/{m} dk kaldı","dw_title":"Bugünün ücretsiz dakikaları doldu","dw_body":"Ücretsiz ses günde {n} dakika. Dakikaların {t} geri geliyor.","dw_tomorrow":"yarın","db_title":"Bu cihazın ücretsiz hakkı başka bir hesapta","db_body":"{account} hesabında {min} dakika duruyor. Devam etmek için o hesapla giriş yap, ya da bu hesapla bir plan satın al.","db_body_short":"Bu cihazın ücretsiz hakkı {account} hesabında. Devam etmek için o hesapla giriş yap, ya da bu hesapla bir plan satın al.","db_switch":"Hesap değiştir","tw_title":"Pro dakikaların doldu","tw_body":"Tadım burada bitti. Buradan sonrası ücretsiz ses: aynı çeviri, yerel bir sesle. Son cümleyi iki sesle dinleyip farkı kendin duyabilirsin.","tw_continue":"Ücretsiz sesle devam et","free_voice_label":"Ücretsiz ses","free_daily":"{n} dk/gün","free_back_to_pro":"Gerçek sesi geri al","free_chip_tip":"Ücretsiz sürümdesin: aynı çeviri, yerel ses. Gerçek insan sesi ve toplantı modu ücretli sürümde.","downgrade_toast":"Pro dakikaların doldu — ücretsiz sese geçildi. Çeviri devam ediyor.","meeting_lock_title":"Toplantı modu ücretli","meeting_lock_body":"Toplantıda karşı taraf senin sesini duyar. Ücretsiz sürümün yerel sesini onların kulağına göndermeyiz — bu yüzden toplantı yalnızca gerçek sesle çalışır.","contrast_compare":"Karşılaştır","contrast_ab_free":"Ücretsiz ses","contrast_playing_pro":"Pro sesi çalıyor…","contrast_back_title":"Pro sesi geri geldi","contrast_back_body":"Farkı duydun. Pro sesi tadımın sonuna kadar senin — sonrasında ücretsiz sese geçersin. İki sesi karşılaştırmak için tekrar çal.","contrast_pro_replay":"Pro sesini duy","contrast_upgrade":"Pro'ya geç →","taste_pro":"Pro ses","taste_next":"sonrası ücretsiz ses","taste_tip":"Şu an gerçek insan sesini duyuyorsun. Tadım bitince ücretsiz sürüme (yerel ses) geçersin.","contrast_title":"Şu an Pro sesi dinliyorsun","contrast_body":"Ücretsiz sürüm aynı çeviriyi yapar — ama yerel, daha basit bir sesle. Farkı şimdi, hâlâ Pro'dayken duy.","contrast_cta":"Ücretsiz sesi dinle","contrast_dismiss":"Şimdi değil","contrast_loading":"Ses hazırlanıyor…","contrast_playing":"Ücretsiz ses çalıyor…","contrast_novoice":"Bu dilde ücretsiz ses yok — ücretsiz sürüm bu dilde altyazı verir.","contrast_failed":"Ses çalınamadı.","ladder_title":"Voxis'te üç basamak","ladder_pro":"Pro tadımı · 15 dakika, tek sefer — gerçek insan sesi, toplantı modu, 79 dil.","ladder_free":"Ücretsiz · günde 10 dakika — aynı çeviri, yerel ses, video/oyun.","ladder_paid":"Ücretli · gerçek ses geri gelir, toplantı açılır.","ladder_slogan":"Aynı beyin, daha basit ses. Ücretsiz sürüm çevirir; ücretli sürüm konuşur.","ladder_ok":"Anladım","review_title":"Voxis işine yarıyor mu?","review_body":"Store'da henüz hiç puanımız yok — ve insanlar bizi neredeyse tamamen puanlardan buluyor. Puan vermek 10 saniye sürer.","review_cta":"Puan ver","review_dismiss":"Şimdi değil",
@@ -2028,7 +1970,6 @@ const I18N = {
     browse:"Procházet…",
     byok_active:"BYOK aktivní",
     byok_hint:"Pro používání této verze je vyžadován vlastní API klíč Gemini.",
-    byok_openai_hint:"Volitelné — potřebné pouze pro překlad pomocí OpenAI.",
     cable_cancel:"Zrušit",
     cable_install:"Nainstalovat VB-CABLE",
     cable_lead:"Režim schůzky může odesílat váš přeložený hlas zpět do hovoru, takže vás druhá osoba slyší ve svém jazyce. K tomu je potřeba bezplatný virtuální mikrofon VB-CABLE. Je volitelný — bez něj schůzka stále funguje v režimu poslechu (druhou stranu slyšíte přeloženě).",
@@ -2124,13 +2065,11 @@ const I18N = {
     onboard_welcome:"Voxis překládá v reálném čase systémový zvuk videí, her a schůzek.",
     open_file:"Otevřít soubor",
     open_folder:"Otevřít složku",
-    openai_key:"API klíč OpenAI",
     out_device:"Výstupní zařízení",
     overlay:"Text na obrazovce",
     password:"Heslo",
     password2:"Heslo (znovu)",
     ph_gemkey:"AIza…",
-    ph_oaikey:"sk-…",
     ph_pw_again:"Zadejte heslo znovu",
     ph_pw_min:"Alespoň 8 znaků",
     press_key:"stiskněte klávesu…",
@@ -2152,7 +2091,7 @@ const I18N = {
     quota_gate_msg:"Vaše měsíční kvóta překladu je vyčerpána. Chcete-li zahájit novou relaci, přejděte na vyšší tarif.",
     ready_idle:"Připraveno",
     record_audio:"Nahrávat zvuk (zdroj + překlad, samostatné soubory)",
-    record_audio_hint:"Uloží zdrojový a přeložený zvuk každé relace jako dva samostatné WAV soubory do vaší složky s přepisy. Ve výchozím nastavení vypnuto, protože zdrojová stopa obsahuje skutečný lidský hlas. Pouze v režimu Video a hry — v režimu Schůzka se automaticky vypíná, takže živý hlas druhé osoby se nikdy nenahrává.",
+    record_audio_hint:"Uloží zdrojový a přeložený zvuk každé relace jako dva samostatné WAV soubory do vaší složky s přepisy. Ve výchozím nastavení vypnuto, protože zdrojová stopa obsahuje skutečný lidský hlas. Pouze v režimu Video a hry — v režimu Schůzka se automaticky vypíná, takže živý hlas druhé osoby se nikdy nenahrává.",tab_recording:"Ukládání",auto_export_label:"Automatické formáty ukládání",auto_export_hint:"Soubor JSON se ukládá vždy. Když jsou zaškrtnuté, tyto formáty se automaticky vytvoří vedle něj při každém stisknutí Uložit nebo ukončení relace.",
     registering:"Registrace…",
     report_cancel:"Zrušit",
     report_cat_audio:"Zvuk",
@@ -3877,7 +3816,6 @@ const I18N = {
     "browse":"Răsfoiește…",
     "byok_active":"BYOK activ",
     "byok_hint":"Această variantă necesită propria ta cheie API Gemini pentru a rula. ",
-    "byok_openai_hint":"Opțional — necesară doar pentru motorul OpenAI. ",
     "cable_cancel":"Anulează",
     "cable_install":"Instalează VB-CABLE",
     "cable_lead":"Modul Întâlnire poate trimite vocea ta tradusă înapoi în apel, astfel încât cealaltă persoană să te audă în limba ei. Pentru asta e nevoie de un microfon virtual gratuit numit VB-CABLE. Este opțional — fără el, Întâlnirea funcționează doar în ascultare (îi auzi pe ceilalți traduși).",
@@ -3973,13 +3911,11 @@ const I18N = {
     "onboard_welcome":"Voxis traduce în timp real sunetul de sistem al videoclipurilor, jocurilor și întâlnirilor pe care le urmărești.",
     "open_file":"Deschide fișierul",
     "open_folder":"Deschide folderul",
-    "openai_key":"Cheie API OpenAI",
     "out_device":"Dispozitiv de ieșire",
     "overlay":"Text pe ecran",
     "password":"Parolă",
     "password2":"Parolă (din nou)",
     "ph_gemkey":"AIza…",
-    "ph_oaikey":"sk-…",
     "ph_pw_again":"Reintrodu parola",
     "ph_pw_min":"Cel puțin 8 caractere",
     "press_key":"apasă o tastă…",
@@ -4001,7 +3937,7 @@ const I18N = {
     "quota_gate_msg":"Cota ta lunară de traducere s-a epuizat. Fă upgrade licenței pentru a porni o sesiune nouă.",
     "ready_idle":"Inactiv, pregătit",
     "record_audio":"Înregistrează audio (sursă + traducere, fișiere separate)",
-    "record_audio_hint":"Salvează sunetul sursă și sunetul tradus al fiecărei sesiuni ca două fișiere WAV separate în folderul de transcrieri. Dezactivat implicit, pentru că pista sursă conține voce umană reală. Doar în modul Video/Jocuri — se dezactivează automat în modul Întâlnire, astfel încât vocea live a celeilalte persoane să nu fie niciodată înregistrată.",
+    "record_audio_hint":"Salvează sunetul sursă și sunetul tradus al fiecărei sesiuni ca două fișiere WAV separate în folderul de transcrieri. Dezactivat implicit, pentru că pista sursă conține voce umană reală. Doar în modul Video/Jocuri — se dezactivează automat în modul Întâlnire, astfel încât vocea live a celeilalte persoane să nu fie niciodată înregistrată.","tab_recording":"Salvare","auto_export_label":"Formate de salvare automată","auto_export_hint":"Fișierul JSON este salvat întotdeauna. Când sunt bifate, aceste formate sunt generate automat și ele de fiecare dată când apeși Salvează sau oprești o sesiune.",
     "registering":"Se înregistrează…",
     "report_cancel":"Anulează",
     "report_cat_audio":"Audio",
@@ -4125,7 +4061,6 @@ const I18N = {
     "browse":"ब्राउज़ करें…",
     "byok_active":"BYOK सक्रिय",
     "byok_hint":"इस बिल्ड को चलाने के लिए आपकी अपनी Gemini API कुंजी आवश्यक है। ",
-    "byok_openai_hint":"वैकल्पिक — केवल OpenAI इंजन उपयोग करने के लिए आवश्यक। ",
     "cable_cancel":"रद्द करें",
     "cable_install":"VB-CABLE इंस्टॉल करें",
     "cable_lead":"मीटिंग मोड आपकी अनुवादित आवाज़ को कॉल में वापस भेज सकता है, ताकि सामने वाला आपको अपनी भाषा में सुने। इसके लिए VB-CABLE नामक एक मुफ़्त वर्चुअल माइक्रोफ़ोन चाहिए। यह वैकल्पिक है — इसके बिना भी मीटिंग केवल-सुनने में काम करती है (आप उन्हें अनुवादित सुनते हैं)।",
@@ -4221,13 +4156,11 @@ const I18N = {
     "onboard_welcome":"Voxis आपके देखे जा रहे वीडियो, गेम और मीटिंग के सिस्टम ऑडियो का रीयल-टाइम अनुवाद करता है।",
     "open_file":"फ़ाइल खोलें",
     "open_folder":"फ़ोल्डर खोलें",
-    "openai_key":"OpenAI API कुंजी",
     "out_device":"आउटपुट डिवाइस",
     "overlay":"ऑन-स्क्रीन टेक्स्ट",
     "password":"पासवर्ड",
     "password2":"पासवर्ड (फिर से)",
     "ph_gemkey":"AIza…",
-    "ph_oaikey":"sk-…",
     "ph_pw_again":"पासवर्ड दोबारा दर्ज करें",
     "ph_pw_min":"कम से कम 8 अक्षर",
     "press_key":"कोई कुंजी दबाएँ…",
@@ -4249,7 +4182,7 @@ const I18N = {
     "quota_gate_msg":"आपका मासिक अनुवाद कोटा समाप्त हो गया है। नया सत्र शुरू करने के लिए अपना लाइसेंस अपग्रेड करें।",
     "ready_idle":"निष्क्रिय, तैयार",
     "record_audio":"ऑडियो रिकॉर्ड करें (स्रोत + अनुवाद, अलग-अलग फ़ाइलें)",
-    "record_audio_hint":"हर सत्र के स्रोत ऑडियो और अनुवादित ऑडियो को आपके ट्रांसक्रिप्ट फ़ोल्डर में दो अलग WAV फ़ाइलों के रूप में सहेजता है। डिफ़ॉल्ट रूप से बंद है क्योंकि स्रोत ट्रैक में असली मानव आवाज़ होती है। केवल वीडियो/गेम मोड में — मीटिंग मोड में अपने आप बंद हो जाता है, ताकि सामने वाले की लाइव आवाज़ कभी रिकॉर्ड न हो।",
+    "record_audio_hint":"हर सत्र के स्रोत ऑडियो और अनुवादित ऑडियो को आपके ट्रांसक्रिप्ट फ़ोल्डर में दो अलग WAV फ़ाइलों के रूप में सहेजता है। डिफ़ॉल्ट रूप से बंद है क्योंकि स्रोत ट्रैक में असली मानव आवाज़ होती है। केवल वीडियो/गेम मोड में — मीटिंग मोड में अपने आप बंद हो जाता है, ताकि सामने वाले की लाइव आवाज़ कभी रिकॉर्ड न हो।","tab_recording":"सेविंग","auto_export_label":"स्वचालित सेव फ़ॉर्मेट","auto_export_hint":"JSON हमेशा सेव होता है। चुने जाने पर, ये फ़ॉर्मेट भी हर बार सेव दबाने या सत्र रोकने पर उसके साथ अपने आप बन जाते हैं।",
     "registering":"साइन अप हो रहा है…",
     "report_cancel":"रद्द करें",
     "report_cat_audio":"ऑडियो",
@@ -4373,7 +4306,6 @@ const I18N = {
     "browse":"Tallózás…",
     "byok_active":"BYOK aktív",
     "byok_hint":"Ehhez a verzióhoz saját Gemini API-kulcs szükséges. ",
-    "byok_openai_hint":"Opcionális — csak az OpenAI motor használatához szükséges. ",
     "cable_cancel":"Mégse",
     "cable_install":"VB-CABLE telepítése",
     "cable_lead":"A Megbeszélés mód vissza tudja küldeni a lefordított hangodat a hívásba, így a másik fél a saját nyelvén hall téged. Ehhez egy ingyenes virtuális mikrofon, a VB-CABLE szükséges. Opcionális — nélküle a Megbeszélés csak hallgatásra működik (te lefordítva hallod a másik felet).",
@@ -4469,13 +4401,11 @@ const I18N = {
     "onboard_welcome":"A Voxis valós időben fordítja a nézett videók, játékok és megbeszélések rendszerhangját.",
     "open_file":"Fájl megnyitása",
     "open_folder":"Mappa megnyitása",
-    "openai_key":"OpenAI API-kulcs",
     "out_device":"Kimeneti eszköz",
     "overlay":"Szöveg a képernyőn",
     "password":"Jelszó",
     "password2":"Jelszó (újra)",
     "ph_gemkey":"AIza…",
-    "ph_oaikey":"sk-…",
     "ph_pw_again":"Add meg újra a jelszót",
     "ph_pw_min":"Legalább 8 karakter",
     "press_key":"nyomj le egy billentyűt…",
@@ -4497,7 +4427,7 @@ const I18N = {
     "quota_gate_msg":"A havi fordítási kereted elfogyott. Új munkamenet indításához válts nagyobb csomagra.",
     "ready_idle":"Tétlen, készen áll",
     "record_audio":"Hang rögzítése (forrás + fordítás, külön fájlok)",
-    "record_audio_hint":"Minden munkamenet forráshangját és lefordított hangját két külön WAV-fájlként menti az átiratok mappájába. Alapértelmezés szerint kikapcsolva, mert a forrássáv valódi emberi hangot tartalmaz. Csak Videó/Játék módban működik — Megbeszélés módban automatikusan kikapcsol, így a másik fél élő hangja soha nem kerül rögzítésre.",
+    "record_audio_hint":"Minden munkamenet forráshangját és lefordított hangját két külön WAV-fájlként menti az átiratok mappájába. Alapértelmezés szerint kikapcsolva, mert a forrássáv valódi emberi hangot tartalmaz. Csak Videó/Játék módban működik — Megbeszélés módban automatikusan kikapcsol, így a másik fél élő hangja soha nem kerül rögzítésre.","tab_recording":"Mentés","auto_export_label":"Automatikus mentési formátumok","auto_export_hint":"A JSON fájl mindig mentésre kerül. Ha be van jelölve, ezek a formátumok is automatikusan létrejönnek mellette, amikor a Mentés gombra kattint, vagy leállít egy munkamenetet.",
     "registering":"Regisztráció…",
     "report_cancel":"Mégse",
     "report_cat_audio":"Hang",
@@ -4621,7 +4551,6 @@ const I18N = {
     "browse":"Bläddra…",
     "byok_active":"BYOK aktiv",
     "byok_hint":"Den här versionen kräver din egen Gemini API-nyckel för att köras. ",
-    "byok_openai_hint":"Valfritt — behövs endast för att använda OpenAI-motorn. ",
     "cable_cancel":"Avbryt",
     "cable_install":"Installera VB-CABLE",
     "cable_lead":"Mötesläget kan skicka din översatta röst tillbaka in i samtalet, så att den andra personen hör dig på sitt språk. Det kräver en gratis virtuell mikrofon som heter VB-CABLE. Den är valfri — utan den fungerar Möte ändå i endast lyssning (du hör dem översatta).",
@@ -4717,13 +4646,11 @@ const I18N = {
     "onboard_welcome":"Voxis översätter systemljudet i videor, spel och möten du tittar på, i realtid.",
     "open_file":"Öppna fil",
     "open_folder":"Öppna mapp",
-    "openai_key":"OpenAI API-nyckel",
     "out_device":"Utdataenhet",
     "overlay":"Text på skärmen",
     "password":"Lösenord",
     "password2":"Lösenord (igen)",
     "ph_gemkey":"AIza…",
-    "ph_oaikey":"sk-…",
     "ph_pw_again":"Ange lösenordet igen",
     "ph_pw_min":"Minst 8 tecken",
     "press_key":"tryck på en tangent…",
@@ -4745,7 +4672,7 @@ const I18N = {
     "quota_gate_msg":"Din månatliga översättningskvot är slut. Uppgradera din licens för att starta en ny session.",
     "ready_idle":"Redo i viloläge",
     "record_audio":"Spela in ljud (källa + översättning, separata filer)",
-    "record_audio_hint":"Sparar varje sessions källjud och översatta ljud som två separata WAV-filer i din transkriptmapp. Av som standard eftersom källspåret innehåller riktig mänsklig röst. Endast i video-/spelläget — stängs av automatiskt i mötesläget, så den andra personens röst spelas aldrig in.",
+    "record_audio_hint":"Sparar varje sessions källjud och översatta ljud som två separata WAV-filer i din transkriptmapp. Av som standard eftersom källspåret innehåller riktig mänsklig röst. Endast i video-/spelläget — stängs av automatiskt i mötesläget, så den andra personens röst spelas aldrig in.","tab_recording":"Sparande","auto_export_label":"Automatiska sparformat","auto_export_hint":"JSON-filen sparas alltid. När de är markerade skapas dessa format också automatiskt bredvid den varje gång du trycker på Spara eller avslutar en session.",
     "registering":"Skapar konto…",
     "report_cancel":"Avbryt",
     "report_cat_audio":"Ljud",
@@ -4869,7 +4796,6 @@ const I18N = {
     "browse":"Potraži…",
     "byok_active":"BYOK aktivan",
     "byok_hint":"Ova verzija zahteva tvoj sopstveni Gemini API ključ za rad. ",
-    "byok_openai_hint":"Opciono — potrebno samo za korišćenje OpenAI motora. ",
     "cable_cancel":"Otkaži",
     "cable_install":"Instaliraj VB-CABLE",
     "cable_lead":"Režim sastanka može da pošalje tvoj prevedeni glas nazad u poziv, tako da te sagovornik čuje na svom jeziku. Za to je potreban besplatan virtuelni mikrofon VB-CABLE. Opcion je — bez njega Sastanak i dalje radi kao samo slušanje (ti sagovornika čuješ prevedeno).",
@@ -4965,13 +4891,11 @@ const I18N = {
     "onboard_welcome":"Voxis u realnom vremenu prevodi sistemski zvuk videa, igara i sastanaka koje pratiš.",
     "open_file":"Otvori fajl",
     "open_folder":"Otvori fasciklu",
-    "openai_key":"OpenAI API ključ",
     "out_device":"Izlazni uređaj",
     "overlay":"Tekst na ekranu",
     "password":"Lozinka",
     "password2":"Lozinka (ponovo)",
     "ph_gemkey":"AIza…",
-    "ph_oaikey":"sk-…",
     "ph_pw_again":"Ponovo unesi lozinku",
     "ph_pw_min":"Najmanje 8 znakova",
     "press_key":"pritisni taster…",
@@ -4993,7 +4917,7 @@ const I18N = {
     "quota_gate_msg":"Tvoja mesečna kvota prevoda je potrošena. Nadogradi licencu da pokreneš novu sesiju.",
     "ready_idle":"Miruje, spremno",
     "record_audio":"Snimaj zvuk (izvor + prevod, odvojeni fajlovi)",
-    "record_audio_hint":"Čuva izvorni i prevedeni zvuk svake sesije kao dva odvojena WAV fajla u tvojoj fascikli za transkripte. Podrazumevano je isključeno jer izvorna traka sadrži pravi ljudski glas. Radi samo u režimu Video/Igre — u režimu sastanka se automatski isključuje, tako da se glas sagovornika uživo nikada ne snima.",
+    "record_audio_hint":"Čuva izvorni i prevedeni zvuk svake sesije kao dva odvojena WAV fajla u tvojoj fascikli za transkripte. Podrazumevano je isključeno jer izvorna traka sadrži pravi ljudski glas. Radi samo u režimu Video/Igre — u režimu sastanka se automatski isključuje, tako da se glas sagovornika uživo nikada ne snima.","tab_recording":"Čuvanje","auto_export_label":"Automatski formati čuvanja","auto_export_hint":"JSON fajl se uvek čuva. Kada su označeni, ovi formati se takođe automatski kreiraju pored njega svaki put kada pritisneš Sačuvaj ili zaustaviš sesiju.",
     "registering":"Registrovanje…",
     "report_cancel":"Otkaži",
     "report_cat_audio":"Zvuk",
@@ -5117,7 +5041,6 @@ const I18N = {
     "browse":"瀏覽…",
     "byok_active":"BYOK 已啟用",
     "byok_hint":"此版本需要你自己的 Gemini API 金鑰才能執行。 ",
-    "byok_openai_hint":"選填——僅在使用 OpenAI 引擎時需要。 ",
     "cable_cancel":"取消",
     "cable_install":"安裝 VB-CABLE",
     "cable_lead":"會議模式可以把你翻譯後的語音送回通話中，讓對方以他的語言聽到你。這需要一款名為 VB-CABLE 的免費虛擬麥克風。它是選用的——沒有安裝時，會議模式仍可用僅聆聽方式運作（你會聽到對方的翻譯）。",
@@ -5213,13 +5136,11 @@ const I18N = {
     "onboard_welcome":"Voxis 會即時翻譯你觀看的影片、遊戲和會議的系統音訊。",
     "open_file":"開啟檔案",
     "open_folder":"開啟資料夾",
-    "openai_key":"OpenAI API 金鑰",
     "out_device":"輸出裝置",
     "overlay":"浮動字幕",
     "password":"密碼",
     "password2":"密碼（再次輸入）",
     "ph_gemkey":"AIza…",
-    "ph_oaikey":"sk-…",
     "ph_pw_again":"再次輸入密碼",
     "ph_pw_min":"至少 8 個字元",
     "press_key":"請按下按鍵…",
@@ -5241,7 +5162,7 @@ const I18N = {
     "quota_gate_msg":"你本月的翻譯配額已用完。請升級授權以開始新的工作階段。",
     "ready_idle":"閒置，準備就緒",
     "record_audio":"錄製音訊（原音＋翻譯，個別檔案）",
-    "record_audio_hint":"將每次工作階段的原始音訊與翻譯後音訊，以兩個獨立的 WAV 檔儲存到你的逐字稿資料夾。由於原音音軌包含真實人聲，預設為關閉。僅適用於影片／遊戲模式——在會議模式會自動關閉，因此絕不會錄下對方的即時語音。",
+    "record_audio_hint":"將每次工作階段的原始音訊與翻譯後音訊，以兩個獨立的 WAV 檔儲存到你的逐字稿資料夾。由於原音音軌包含真實人聲，預設為關閉。僅適用於影片／遊戲模式——在會議模式會自動關閉，因此絕不會錄下對方的即時語音。","tab_recording":"儲存","auto_export_label":"自動儲存格式","auto_export_hint":"JSON 一律會儲存。勾選後，每次按下儲存或結束工作階段時，這些格式也會自動在旁邊產生。",
     "registering":"註冊中…",
     "report_cancel":"取消",
     "report_cat_audio":"音訊",
@@ -5340,7 +5261,7 @@ const I18N = {
     "waiting_signal":"等待輸入訊號",
   },
 };
-const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this language.","al_credits":"Voice credits","tab_membership":"Membership","tab_about":"About","al_pricing":"Pricing","al_terms":"Terms","al_privacy":"Privacy","al_contact":"Contact","about_powered":"Powered by advanced AI translation.","mem_active_plan":"Active plan","mem_unlimited":"Unlimited minutes","mem_this_month":"This month: ","mem_your_plan":"Your plan","mem_upgrade":"Upgrade","mem_creator_meta":"700 min/mo · all languages · transcripts","mem_pro_meta":"1,500 min/mo · priority · meeting mode","mem_dev_byok":"Developer (BYOK)","mem_your_key":"Your key","mem_byok_note":"This build runs on your own Gemini key; no subscription. Manage it in the General tab.","badge_upgrade":"Upgrade to remove →","auth_no_account":"No account? ","auth_create":"Create account","auth_forgot":"Forgot password?","auth_offline":"Could not reach the server. Check your internet connection.","auth_retry":"Retry","store_view":"View in Microsoft Store","open_file":"Open file","open_folder":"Open folder","transcript_folder":"Transcript folder","browse":"Browse…","reset_default":"Reset to default","record_audio":"Record audio (source + translation, separate files)","record_audio_hint":"Saves each session's source audio and translated audio as two separate WAV files in your transcript folder. Off by default because the source track contains real human voice. Video/Game mode only — turned off automatically in Meeting mode, so the other person's live voice is never recorded.","st_capture_lost":"Audio capture stopped (the device may have changed). Restart the session.","openai_key":"OpenAI API key","ph_oaikey":"sk-…","byok_openai_hint":"Optional — only needed to use the OpenAI engine. ","privacy_policy_link":"Full privacy policy","report_open":"Report a problem","report_title":"Report a problem","report_notice":"This sends Voxis support a small technical snapshot: app version, channel, your Windows version, the audio mode, quality setting and language pair. Secrets (your API key, login token) and your Windows username are never included. Your transcript is sent only if you tick the box below.","report_category":"Category","report_cat_audio":"Audio","report_cat_translation":"Translation","report_cat_billing":"Membership / billing","report_cat_crash":"Crash","report_cat_ui":"Interface","report_cat_other":"Other","report_severity":"Severity","report_sev_low":"Low","report_sev_normal":"Normal","report_sev_high":"High","report_message":"Briefly describe the problem (optional)","report_message_ph":"What happened? You can leave this blank — we'll look at the log.","report_log_note":"Your app log is attached automatically (secrets removed).","report_pii_hint":"Don't type passwords or personal details.","report_repro":"Steps to reproduce (optional)","report_email":"Email (optional)","report_email_ph":"you@example.com","report_email_hint":"Only if you want a reply about this report.","report_include_transcript":"Include my recent transcript (off by default)","report_preview":"Preview data to be sent","report_cancel":"Cancel","report_send":"Send report","report_sending":"Sending…","report_close":"Close","report_copy":"Copy","report_done_intro":"Report sent. If you contact us, your reference is:","report_done_keep":"Keep this reference if you contact us.","report_queued":"Saved — we'll send it the next time you open Voxis.","report_err_empty":"Please describe the problem.","report_err_failed":"Could not send your report. Please try again."},"tr":{"no_voice_free":"Ücretsiz seste bu dil yalnızca altyazı.","al_credits":"Ses künyesi","tab_membership":"Üyelik","tab_about":"Hakkında","al_pricing":"Fiyatlandırma","al_terms":"Koşullar","al_privacy":"Gizlilik","al_contact":"İletişim","about_powered":"Gelişmiş yapay zeka çevirisiyle desteklenir.","mem_active_plan":"Aktif plan","mem_unlimited":"Sınırsız dakika","mem_this_month":"Bu ay: ","mem_your_plan":"Mevcut planın","mem_upgrade":"Yükselt","mem_creator_meta":"700 dk/ay · tüm diller · transkript","mem_pro_meta":"1.500 dk/ay · öncelik · toplantı modu","mem_dev_byok":"Geliştirici (BYOK)","mem_your_key":"Kendi anahtarın","mem_byok_note":"Bu derleme kendi Gemini anahtarınla çalışır; abonelik yoktur. Anahtarı Genel sekmesinden yönet.","badge_upgrade":"Kaldırmak için yükselt →","auth_no_account":"Hesabın yok mu? ","auth_create":"Hesap oluştur","auth_forgot":"Şifreni mi unuttun?","auth_offline":"Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.","auth_retry":"Yeniden dene","store_view":"Microsoft Store'da görüntüle","open_file":"Dosyayı aç","open_folder":"Klasörü aç","transcript_folder":"Transkript klasörü","browse":"Gözat…","reset_default":"Varsayılana sıfırla","record_audio":"Sesi kaydet (kaynak + çeviri, ayrı dosyalar)","record_audio_hint":"Her oturumun kaynak sesini ve çevrilmiş sesini transkript klasörüne iki ayrı WAV dosyası olarak kaydeder. Kaynak parça gerçek insan sesi içerdiğinden varsayılan olarak kapalıdır. Yalnızca Video/Oyun modunda çalışır — Toplantı modunda otomatik olarak kapanır, böylece karşı tarafın canlı sesi asla kaydedilmez.","st_capture_lost":"Ses yakalama durdu (cihaz değişmiş olabilir). Oturumu yeniden başlat.","openai_key":"OpenAI API anahtarı","ph_oaikey":"sk-…","byok_openai_hint":"Opsiyonel — yalnızca OpenAI motorunu kullanmak için gerekli. ","privacy_policy_link":"Tam gizlilik politikası","report_open":"Sorun bildir","report_title":"Sorun bildir","report_notice":"Bu, Voxis destek ekibine küçük bir teknik özet gönderir: uygulama sürümü, kanal, Windows sürümünüz, ses modu, kalite ayarı ve dil çifti. Gizli bilgiler (API anahtarınız, oturum jetonunuz) ve Windows kullanıcı adınız asla gönderilmez. Konuşma metniniz yalnızca aşağıdaki kutuyu işaretlerseniz gönderilir.","report_category":"Kategori","report_cat_audio":"Ses","report_cat_translation":"Çeviri","report_cat_billing":"Üyelik / faturalandırma","report_cat_crash":"Çökme","report_cat_ui":"Arayüz","report_cat_other":"Diğer","report_severity":"Önem","report_sev_low":"Düşük","report_sev_normal":"Normal","report_sev_high":"Yüksek","report_message":"Sorunu kısaca anlat (isteğe bağlı)","report_message_ph":"Ne oldu? Boş bırakabilirsin — günlükten bakarız.","report_log_note":"Uygulama günlüğü otomatik eklenir (gizli bilgiler temizlenir).","report_pii_hint":"Şifre veya kişisel bilgi yazma.","report_repro":"Nasıl tekrarlanır (opsiyonel)","report_email":"E-posta (opsiyonel)","report_email_ph":"ornek@eposta.com","report_email_hint":"Yalnızca bu raporla ilgili yanıt istiyorsanız.","report_include_transcript":"Son konuşma metnimi ekle (varsayılan kapalı)","report_preview":"Gönderilecek veriyi önizle","report_cancel":"Vazgeç","report_send":"Gönder","report_sending":"Gönderiliyor…","report_close":"Kapat","report_copy":"Kopyala","report_done_intro":"Raporun gönderildi. Bizimle iletişime geçersen referans numaran:","report_done_keep":"Bizimle iletişime geçersen bu numarayı belirt.","report_queued":"Kaydedildi — Voxis'i bir sonraki açışında göndereceğiz.","report_err_empty":"Lütfen sorunu anlat.","report_err_failed":"Raporun gönderilemedi. Lütfen tekrar dene."},"de":{"no_voice_free":"Freie Stimme: In dieser Sprache nur Untertitel.","al_credits":"Stimmen-Credits",
+const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this language.","al_credits":"Voice credits","tab_membership":"Membership","tab_about":"About","tab_recording":"Saving","al_pricing":"Pricing","al_terms":"Terms","al_privacy":"Privacy","al_contact":"Contact","about_powered":"Powered by advanced AI translation.","mem_active_plan":"Active plan","mem_unlimited":"Unlimited minutes","mem_this_month":"This month: ","mem_your_plan":"Your plan","mem_upgrade":"Upgrade","mem_creator_meta":"700 min/mo · all languages · transcripts","mem_pro_meta":"1,500 min/mo · priority · meeting mode","mem_dev_byok":"Developer (BYOK)","mem_your_key":"Your key","mem_byok_note":"This build runs on your own Gemini key; no subscription. Manage it in the General tab.","badge_upgrade":"Upgrade to remove →","auth_no_account":"No account? ","auth_create":"Create account","auth_forgot":"Forgot password?","auth_offline":"Could not reach the server. Check your internet connection.","auth_retry":"Retry","store_view":"View in Microsoft Store","open_file":"Open file","open_folder":"Open folder","transcript_folder":"Transcript folder","browse":"Browse…","reset_default":"Reset to default","record_audio":"Record audio (source + translation, separate files)","record_audio_hint":"Saves each session's source audio and translated audio as two separate WAV files in your transcript folder. Off by default because the source track contains real human voice. Video/Game mode only — turned off automatically in Meeting mode, so the other person's live voice is never recorded.","auto_export_label":"Automatic save formats","auto_export_hint":"The JSON is always saved. When checked, these formats are also generated automatically next to it whenever you press Save or stop a session.","st_capture_lost":"Audio capture stopped (the device may have changed). Restart the session.","privacy_policy_link":"Full privacy policy","report_open":"Report a problem","report_title":"Report a problem","report_notice":"This sends Voxis support a small technical snapshot: app version, channel, your Windows version, the audio mode, quality setting and language pair. Secrets (your API key, login token) and your Windows username are never included. Your transcript is sent only if you tick the box below.","report_category":"Category","report_cat_audio":"Audio","report_cat_translation":"Translation","report_cat_billing":"Membership / billing","report_cat_crash":"Crash","report_cat_ui":"Interface","report_cat_other":"Other","report_severity":"Severity","report_sev_low":"Low","report_sev_normal":"Normal","report_sev_high":"High","report_message":"Briefly describe the problem (optional)","report_message_ph":"What happened? You can leave this blank — we'll look at the log.","report_log_note":"Your app log is attached automatically (secrets removed).","report_pii_hint":"Don't type passwords or personal details.","report_repro":"Steps to reproduce (optional)","report_email":"Email (optional)","report_email_ph":"you@example.com","report_email_hint":"Only if you want a reply about this report.","report_include_transcript":"Include my recent transcript (off by default)","report_preview":"Preview data to be sent","report_cancel":"Cancel","report_send":"Send report","report_sending":"Sending…","report_close":"Close","report_copy":"Copy","report_done_intro":"Report sent. If you contact us, your reference is:","report_done_keep":"Keep this reference if you contact us.","report_queued":"Saved — we'll send it the next time you open Voxis.","report_err_empty":"Please describe the problem.","report_err_failed":"Could not send your report. Please try again."},"tr":{"no_voice_free":"Ücretsiz seste bu dil yalnızca altyazı.","al_credits":"Ses künyesi","tab_membership":"Üyelik","tab_about":"Hakkında","tab_recording":"Kayıt","al_pricing":"Fiyatlandırma","al_terms":"Koşullar","al_privacy":"Gizlilik","al_contact":"İletişim","about_powered":"Gelişmiş yapay zeka çevirisiyle desteklenir.","mem_active_plan":"Aktif plan","mem_unlimited":"Sınırsız dakika","mem_this_month":"Bu ay: ","mem_your_plan":"Mevcut planın","mem_upgrade":"Yükselt","mem_creator_meta":"700 dk/ay · tüm diller · transkript","mem_pro_meta":"1.500 dk/ay · öncelik · toplantı modu","mem_dev_byok":"Geliştirici (BYOK)","mem_your_key":"Kendi anahtarın","mem_byok_note":"Bu derleme kendi Gemini anahtarınla çalışır; abonelik yoktur. Anahtarı Genel sekmesinden yönet.","badge_upgrade":"Kaldırmak için yükselt →","auth_no_account":"Hesabın yok mu? ","auth_create":"Hesap oluştur","auth_forgot":"Şifreni mi unuttun?","auth_offline":"Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.","auth_retry":"Yeniden dene","store_view":"Microsoft Store'da görüntüle","open_file":"Dosyayı aç","open_folder":"Klasörü aç","transcript_folder":"Transkript klasörü","browse":"Gözat…","reset_default":"Varsayılana sıfırla","record_audio":"Sesi kaydet (kaynak + çeviri, ayrı dosyalar)","record_audio_hint":"Her oturumun kaynak sesini ve çevrilmiş sesini transkript klasörüne iki ayrı WAV dosyası olarak kaydeder. Kaynak parça gerçek insan sesi içerdiğinden varsayılan olarak kapalıdır. Yalnızca Video/Oyun modunda çalışır — Toplantı modunda otomatik olarak kapanır, böylece karşı tarafın canlı sesi asla kaydedilmez.","auto_export_label":"Otomatik kayıt formatları","auto_export_hint":"JSON her zaman kaydedilir. İşaretli formatlar, Kaydet'e her basıldığında veya bir oturum durdurulduğunda aynı klasöre otomatik olarak eklenir.","st_capture_lost":"Ses yakalama durdu (cihaz değişmiş olabilir). Oturumu yeniden başlat.","privacy_policy_link":"Tam gizlilik politikası","report_open":"Sorun bildir","report_title":"Sorun bildir","report_notice":"Bu, Voxis destek ekibine küçük bir teknik özet gönderir: uygulama sürümü, kanal, Windows sürümünüz, ses modu, kalite ayarı ve dil çifti. Gizli bilgiler (API anahtarınız, oturum jetonunuz) ve Windows kullanıcı adınız asla gönderilmez. Konuşma metniniz yalnızca aşağıdaki kutuyu işaretlerseniz gönderilir.","report_category":"Kategori","report_cat_audio":"Ses","report_cat_translation":"Çeviri","report_cat_billing":"Üyelik / faturalandırma","report_cat_crash":"Çökme","report_cat_ui":"Arayüz","report_cat_other":"Diğer","report_severity":"Önem","report_sev_low":"Düşük","report_sev_normal":"Normal","report_sev_high":"Yüksek","report_message":"Sorunu kısaca anlat (isteğe bağlı)","report_message_ph":"Ne oldu? Boş bırakabilirsin — günlükten bakarız.","report_log_note":"Uygulama günlüğü otomatik eklenir (gizli bilgiler temizlenir).","report_pii_hint":"Şifre veya kişisel bilgi yazma.","report_repro":"Nasıl tekrarlanır (opsiyonel)","report_email":"E-posta (opsiyonel)","report_email_ph":"ornek@eposta.com","report_email_hint":"Yalnızca bu raporla ilgili yanıt istiyorsanız.","report_include_transcript":"Son konuşma metnimi ekle (varsayılan kapalı)","report_preview":"Gönderilecek veriyi önizle","report_cancel":"Vazgeç","report_send":"Gönder","report_sending":"Gönderiliyor…","report_close":"Kapat","report_copy":"Kopyala","report_done_intro":"Raporun gönderildi. Bizimle iletişime geçersen referans numaran:","report_done_keep":"Bizimle iletişime geçersen bu numarayı belirt.","report_queued":"Kaydedildi — Voxis'i bir sonraki açışında göndereceğiz.","report_err_empty":"Lütfen sorunu anlat.","report_err_failed":"Raporun gönderilemedi. Lütfen tekrar dene."},"de":{"no_voice_free":"Freie Stimme: In dieser Sprache nur Untertitel.","al_credits":"Stimmen-Credits",
     report_open:"Problem melden",
     report_title:"Problem melden",
     report_notice:"Dabei wird an den Voxis-Support ein kleiner technischer Schnappschuss gesendet: App-Version, Kanal, deine Windows-Version, der Audiomodus, die Qualitätseinstellung und das Sprachpaar. Geheimnisse (dein API-Schlüssel, Login-Token) und dein Windows-Benutzername werden nie übermittelt. Dein Transkript wird nur gesendet, wenn du das Kästchen unten aktivierst.",
@@ -5374,7 +5295,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Bewahre diese Referenz auf, falls du uns kontaktierst.",
     report_queued:"Gespeichert — wir senden sie, wenn du Voxis das nächste Mal öffnest.",
     report_err_empty:"Bitte beschreibe das Problem.",
-    report_err_failed:"Deine Meldung konnte nicht gesendet werden. Bitte versuche es erneut.","record_audio":"Audio aufnehmen (Original + Übersetzung, separate Dateien)","record_audio_hint":"Speichert das Originalaudio und das übersetzte Audio jeder Sitzung als zwei separate WAV-Dateien in Ihrem Transkriptordner. Standardmäßig deaktiviert, da die Originalspur echte menschliche Stimme enthält. Nur im Video-/Spielmodus – im Meetingmodus wird die Aufnahme automatisch deaktiviert, sodass die Live-Stimme der anderen Person nie aufgezeichnet wird.","tab_membership":"Mitgliedschaft","tab_about":"Über","al_pricing":"Preise","al_terms":"Nutzungsbedingungen","al_privacy":"Datenschutz","al_contact":"Kontakt","about_powered":"Mit fortschrittlicher KI-Übersetzung.","mem_active_plan":"Aktiver Plan","mem_unlimited":"Unbegrenzte Minuten","mem_this_month":"Diesen Monat: ","mem_your_plan":"Dein Plan","mem_upgrade":"Upgraden","mem_creator_meta":"700 Min./Monat · alle Sprachen · Transkripte","mem_pro_meta":"1.500 Min./Monat · Priorität · Meeting-Modus","mem_dev_byok":"Entwickler (BYOK)","mem_your_key":"Dein Schlüssel","mem_byok_note":"Diese Version läuft mit deinem eigenen Gemini-Schlüssel; kein Abo. Verwalte ihn im Tab „Allgemein\".","badge_upgrade":"Zum Entfernen upgraden →","auth_no_account":"Kein Konto? ","auth_create":"Konto erstellen","auth_forgot":"Passwort vergessen?","auth_offline":"Server nicht erreichbar. Überprüfe deine Internetverbindung.","auth_retry":"Erneut versuchen","store_view":"Im Microsoft Store ansehen","open_file":"Datei öffnen","open_folder":"Ordner öffnen","transcript_folder":"Transkriptordner","browse":"Durchsuchen…","reset_default":"Auf Standard zurücksetzen","st_capture_lost":"Audioaufnahme gestoppt (das Gerät hat sich möglicherweise geändert). Starte die Sitzung neu.","openai_key":"OpenAI-API-Schlüssel","ph_oaikey":"sk-…","byok_openai_hint":"Optional – nur nötig, um die OpenAI-Engine zu nutzen. ","privacy_policy_link":"Vollständige Datenschutzerklärung"},"fr":{"no_voice_free":"Voix gratuite : sous-titres uniquement dans cette langue.","al_credits":"Crédits des voix",
+    report_err_failed:"Deine Meldung konnte nicht gesendet werden. Bitte versuche es erneut.","record_audio":"Audio aufnehmen (Original + Übersetzung, separate Dateien)","record_audio_hint":"Speichert das Originalaudio und das übersetzte Audio jeder Sitzung als zwei separate WAV-Dateien in Ihrem Transkriptordner. Standardmäßig deaktiviert, da die Originalspur echte menschliche Stimme enthält. Nur im Video-/Spielmodus – im Meetingmodus wird die Aufnahme automatisch deaktiviert, sodass die Live-Stimme der anderen Person nie aufgezeichnet wird.","tab_recording":"Speichern","auto_export_label":"Automatische Speicherformate","auto_export_hint":"Die JSON-Datei wird immer gespeichert. Wenn aktiviert, werden diese Formate zusätzlich automatisch daneben erstellt, sobald Sie auf Speichern klicken oder eine Sitzung beenden.","tab_membership":"Mitgliedschaft","tab_about":"Über","al_pricing":"Preise","al_terms":"Nutzungsbedingungen","al_privacy":"Datenschutz","al_contact":"Kontakt","about_powered":"Mit fortschrittlicher KI-Übersetzung.","mem_active_plan":"Aktiver Plan","mem_unlimited":"Unbegrenzte Minuten","mem_this_month":"Diesen Monat: ","mem_your_plan":"Dein Plan","mem_upgrade":"Upgraden","mem_creator_meta":"700 Min./Monat · alle Sprachen · Transkripte","mem_pro_meta":"1.500 Min./Monat · Priorität · Meeting-Modus","mem_dev_byok":"Entwickler (BYOK)","mem_your_key":"Dein Schlüssel","mem_byok_note":"Diese Version läuft mit deinem eigenen Gemini-Schlüssel; kein Abo. Verwalte ihn im Tab „Allgemein\".","badge_upgrade":"Zum Entfernen upgraden →","auth_no_account":"Kein Konto? ","auth_create":"Konto erstellen","auth_forgot":"Passwort vergessen?","auth_offline":"Server nicht erreichbar. Überprüfe deine Internetverbindung.","auth_retry":"Erneut versuchen","store_view":"Im Microsoft Store ansehen","open_file":"Datei öffnen","open_folder":"Ordner öffnen","transcript_folder":"Transkriptordner","browse":"Durchsuchen…","reset_default":"Auf Standard zurücksetzen","st_capture_lost":"Audioaufnahme gestoppt (das Gerät hat sich möglicherweise geändert). Starte die Sitzung neu.","privacy_policy_link":"Vollständige Datenschutzerklärung"},"fr":{"no_voice_free":"Voix gratuite : sous-titres uniquement dans cette langue.","al_credits":"Crédits des voix",
     report_open:"Signaler un problème",
     report_title:"Signaler un problème",
     report_notice:"Cela envoie au support Voxis un petit instantané technique : version de l'app, canal, votre version de Windows, le mode audio, le réglage de qualité et la paire de langues. Les secrets (votre clé API, jeton de connexion) et votre nom d'utilisateur Windows ne sont jamais inclus. Votre transcription n'est envoyée que si vous cochez la case ci-dessous.",
@@ -5408,7 +5329,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Conservez cette référence si vous nous contactez.",
     report_queued:"Enregistré — nous l'enverrons à la prochaine ouverture de Voxis.",
     report_err_empty:"Veuillez décrire le problème.",
-    report_err_failed:"Impossible d'envoyer votre signalement. Veuillez réessayer.","record_audio":"Enregistrer l'audio (source + traduction, fichiers séparés)","record_audio_hint":"Enregistre l'audio source et l'audio traduit de chaque session dans deux fichiers WAV distincts, dans votre dossier de transcriptions. Désactivé par défaut car la piste source contient une vraie voix humaine. Uniquement en mode Vidéo/Jeu — automatiquement désactivé en mode Réunion, afin que la voix en direct de votre interlocuteur ne soit jamais enregistrée.","tab_membership":"Abonnement","tab_about":"À propos","al_pricing":"Tarifs","al_terms":"Conditions","al_privacy":"Confidentialité","al_contact":"Contact","about_powered":"Propulsé par une traduction IA avancée.","mem_active_plan":"Forfait actif","mem_unlimited":"Minutes illimitées","mem_this_month":"Ce mois-ci : ","mem_your_plan":"Votre forfait","mem_upgrade":"Passer à un forfait supérieur","mem_creator_meta":"700 min/mois · toutes les langues · transcriptions","mem_pro_meta":"1 500 min/mois · prioritaire · mode réunion","mem_dev_byok":"Développeur (BYOK)","mem_your_key":"Votre clé","mem_byok_note":"Cette version fonctionne avec votre propre clé Gemini ; aucun abonnement. Gérez-la dans l'onglet Général.","badge_upgrade":"Passer à un forfait supérieur pour le retirer →","auth_no_account":"Pas de compte ? ","auth_create":"Créer un compte","auth_forgot":"Mot de passe oublié ?","auth_offline":"Impossible de joindre le serveur. Vérifiez votre connexion Internet.","auth_retry":"Réessayer","store_view":"Voir dans le Microsoft Store","open_file":"Ouvrir le fichier","open_folder":"Ouvrir le dossier","transcript_folder":"Dossier des transcriptions","browse":"Parcourir…","reset_default":"Réinitialiser par défaut","st_capture_lost":"La capture audio s'est arrêtée (l'appareil a peut-être changé). Redémarrez la session.","openai_key":"Clé API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Facultatif — nécessaire uniquement pour utiliser le moteur OpenAI. ","privacy_policy_link":"Politique de confidentialité complète"},"es":{"no_voice_free":"Voz gratuita: solo subtítulos en este idioma.","al_credits":"Créditos de voces",
+    report_err_failed:"Impossible d'envoyer votre signalement. Veuillez réessayer.","record_audio":"Enregistrer l'audio (source + traduction, fichiers séparés)","record_audio_hint":"Enregistre l'audio source et l'audio traduit de chaque session dans deux fichiers WAV distincts, dans votre dossier de transcriptions. Désactivé par défaut car la piste source contient une vraie voix humaine. Uniquement en mode Vidéo/Jeu — automatiquement désactivé en mode Réunion, afin que la voix en direct de votre interlocuteur ne soit jamais enregistrée.","tab_recording":"Enregistrement","auto_export_label":"Formats d'enregistrement automatique","auto_export_hint":"Le fichier JSON est toujours enregistré. Une fois cochés, ces formats sont aussi générés automatiquement à côté à chaque clic sur Enregistrer ou arrêt d'une session.","tab_membership":"Abonnement","tab_about":"À propos","al_pricing":"Tarifs","al_terms":"Conditions","al_privacy":"Confidentialité","al_contact":"Contact","about_powered":"Propulsé par une traduction IA avancée.","mem_active_plan":"Forfait actif","mem_unlimited":"Minutes illimitées","mem_this_month":"Ce mois-ci : ","mem_your_plan":"Votre forfait","mem_upgrade":"Passer à un forfait supérieur","mem_creator_meta":"700 min/mois · toutes les langues · transcriptions","mem_pro_meta":"1 500 min/mois · prioritaire · mode réunion","mem_dev_byok":"Développeur (BYOK)","mem_your_key":"Votre clé","mem_byok_note":"Cette version fonctionne avec votre propre clé Gemini ; aucun abonnement. Gérez-la dans l'onglet Général.","badge_upgrade":"Passer à un forfait supérieur pour le retirer →","auth_no_account":"Pas de compte ? ","auth_create":"Créer un compte","auth_forgot":"Mot de passe oublié ?","auth_offline":"Impossible de joindre le serveur. Vérifiez votre connexion Internet.","auth_retry":"Réessayer","store_view":"Voir dans le Microsoft Store","open_file":"Ouvrir le fichier","open_folder":"Ouvrir le dossier","transcript_folder":"Dossier des transcriptions","browse":"Parcourir…","reset_default":"Réinitialiser par défaut","st_capture_lost":"La capture audio s'est arrêtée (l'appareil a peut-être changé). Redémarrez la session.","privacy_policy_link":"Politique de confidentialité complète"},"es":{"no_voice_free":"Voz gratuita: solo subtítulos en este idioma.","al_credits":"Créditos de voces",
     report_open:"Informar de un problema",
     report_title:"Informar de un problema",
     report_notice:"Esto envía al soporte de Voxis una pequeña instantánea técnica: versión de la app, canal, tu versión de Windows, el modo de audio, el ajuste de calidad y el par de idiomas. Los secretos (tu clave de API, token de inicio de sesión) y tu nombre de usuario de Windows nunca se incluyen. Tu transcripción se envía solo si marcas la casilla de abajo.",
@@ -5442,7 +5363,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Guarda esta referencia si nos contactas.",
     report_queued:"Guardado: lo enviaremos la próxima vez que abras Voxis.",
     report_err_empty:"Describe el problema, por favor.",
-    report_err_failed:"No se pudo enviar tu informe. Inténtalo de nuevo.","record_audio":"Grabar audio (original + traducción, archivos separados)","record_audio_hint":"Guarda el audio original y el audio traducido de cada sesión como dos archivos WAV independientes en tu carpeta de transcripciones. Desactivado de forma predeterminada porque la pista original contiene voz humana real. Solo en modo Vídeo/Juego: se desactiva automáticamente en modo Reunión, de modo que la voz en directo de la otra persona nunca se graba.","tab_membership":"Suscripción","tab_about":"Acerca de","al_pricing":"Precios","al_terms":"Términos","al_privacy":"Privacidad","al_contact":"Contacto","about_powered":"Con tecnología de traducción de IA avanzada.","mem_active_plan":"Plan activo","mem_unlimited":"Minutos ilimitados","mem_this_month":"Este mes: ","mem_your_plan":"Tu plan","mem_upgrade":"Mejorar","mem_creator_meta":"700 min/mes · todos los idiomas · transcripciones","mem_pro_meta":"1.500 min/mes · prioridad · modo reunión","mem_dev_byok":"Desarrollador (BYOK)","mem_your_key":"Tu clave","mem_byok_note":"Esta versión funciona con tu propia clave de Gemini; sin suscripción. Gestiónala en la pestaña General.","badge_upgrade":"Mejora para quitarlo →","auth_no_account":"¿No tienes cuenta? ","auth_create":"Crear cuenta","auth_forgot":"¿Olvidaste tu contraseña?","auth_offline":"No se pudo conectar con el servidor. Comprueba tu conexión a internet.","auth_retry":"Reintentar","store_view":"Ver en Microsoft Store","open_file":"Abrir archivo","open_folder":"Abrir carpeta","transcript_folder":"Carpeta de transcripciones","browse":"Examinar…","reset_default":"Restablecer valores predeterminados","st_capture_lost":"Se detuvo la captura de audio (es posible que el dispositivo haya cambiado). Reinicia la sesión.","openai_key":"Clave de API de OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Opcional: solo se necesita para usar el motor de OpenAI. ","privacy_policy_link":"Política de privacidad completa"},"pt":{"no_voice_free":"Voz gratuita: apenas legendas neste idioma.","al_credits":"Créditos de voz",
+    report_err_failed:"No se pudo enviar tu informe. Inténtalo de nuevo.","record_audio":"Grabar audio (original + traducción, archivos separados)","record_audio_hint":"Guarda el audio original y el audio traducido de cada sesión como dos archivos WAV independientes en tu carpeta de transcripciones. Desactivado de forma predeterminada porque la pista original contiene voz humana real. Solo en modo Vídeo/Juego: se desactiva automáticamente en modo Reunión, de modo que la voz en directo de la otra persona nunca se graba.","tab_recording":"Guardado","auto_export_label":"Formatos de guardado automático","auto_export_hint":"El JSON siempre se guarda. Cuando están marcados, estos formatos también se generan automáticamente junto a él cada vez que pulsas Guardar o detienes una sesión.","tab_membership":"Suscripción","tab_about":"Acerca de","al_pricing":"Precios","al_terms":"Términos","al_privacy":"Privacidad","al_contact":"Contacto","about_powered":"Con tecnología de traducción de IA avanzada.","mem_active_plan":"Plan activo","mem_unlimited":"Minutos ilimitados","mem_this_month":"Este mes: ","mem_your_plan":"Tu plan","mem_upgrade":"Mejorar","mem_creator_meta":"700 min/mes · todos los idiomas · transcripciones","mem_pro_meta":"1.500 min/mes · prioridad · modo reunión","mem_dev_byok":"Desarrollador (BYOK)","mem_your_key":"Tu clave","mem_byok_note":"Esta versión funciona con tu propia clave de Gemini; sin suscripción. Gestiónala en la pestaña General.","badge_upgrade":"Mejora para quitarlo →","auth_no_account":"¿No tienes cuenta? ","auth_create":"Crear cuenta","auth_forgot":"¿Olvidaste tu contraseña?","auth_offline":"No se pudo conectar con el servidor. Comprueba tu conexión a internet.","auth_retry":"Reintentar","store_view":"Ver en Microsoft Store","open_file":"Abrir archivo","open_folder":"Abrir carpeta","transcript_folder":"Carpeta de transcripciones","browse":"Examinar…","reset_default":"Restablecer valores predeterminados","st_capture_lost":"Se detuvo la captura de audio (es posible que el dispositivo haya cambiado). Reinicia la sesión.","privacy_policy_link":"Política de privacidad completa"},"pt":{"no_voice_free":"Voz gratuita: apenas legendas neste idioma.","al_credits":"Créditos de voz",
     report_open:"Relatar um problema",
     report_title:"Relatar um problema",
     report_notice:"Isto envia ao suporte da Voxis um pequeno resumo técnico: versão do app, canal, sua versão do Windows, o modo de áudio, a configuração de qualidade e o par de idiomas. Segredos (sua chave de API, token de login) e seu nome de usuário do Windows nunca são incluídos. Sua transcrição só é enviada se você marcar a caixa abaixo.",
@@ -5476,7 +5397,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Guarde esta referência se entrar em contato.",
     report_queued:"Salvo — enviaremos na próxima vez que você abrir a Voxis.",
     report_err_empty:"Descreva o problema, por favor.",
-    report_err_failed:"Não foi possível enviar seu relato. Tente novamente.","record_audio":"Gravar áudio (original + tradução, ficheiros separados)","record_audio_hint":"Guarda o áudio original e o áudio traduzido de cada sessão como dois ficheiros WAV separados na sua pasta de transcrições. Desativado por predefinição porque a faixa original contém voz humana real. Apenas no modo Vídeo/Jogo — é desativado automaticamente no modo Reunião, por isso a voz ao vivo da outra pessoa nunca é gravada.","tab_membership":"Assinatura","tab_about":"Sobre","al_pricing":"Preços","al_terms":"Termos","al_privacy":"Privacidade","al_contact":"Contato","about_powered":"Com tecnologia de tradução de IA avançada.","mem_active_plan":"Plano ativo","mem_unlimited":"Minutos ilimitados","mem_this_month":"Este mês: ","mem_your_plan":"Seu plano","mem_upgrade":"Fazer upgrade","mem_creator_meta":"700 min/mês · todos os idiomas · transcrições","mem_pro_meta":"1.500 min/mês · prioridade · modo reunião","mem_dev_byok":"Desenvolvedor (BYOK)","mem_your_key":"Sua chave","mem_byok_note":"Esta versão usa sua própria chave Gemini; sem assinatura. Gerencie-a na aba Geral.","badge_upgrade":"Faça upgrade para remover →","auth_no_account":"Não tem conta? ","auth_create":"Criar conta","auth_forgot":"Esqueceu a senha?","auth_offline":"Não foi possível conectar ao servidor. Verifique sua conexão com a internet.","auth_retry":"Tentar novamente","store_view":"Ver na Microsoft Store","open_file":"Abrir arquivo","open_folder":"Abrir pasta","transcript_folder":"Pasta de transcrições","browse":"Procurar…","reset_default":"Redefinir para o padrão","st_capture_lost":"A captura de áudio parou (o dispositivo pode ter mudado). Reinicie a sessão.","openai_key":"Chave de API da OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Opcional — necessário apenas para usar o motor da OpenAI. ","privacy_policy_link":"Política de privacidade completa"},"ja":{"no_voice_free":"無料音声: この言語は字幕のみです。","al_credits":"音声クレジット",
+    report_err_failed:"Não foi possível enviar seu relato. Tente novamente.","record_audio":"Gravar áudio (original + tradução, ficheiros separados)","record_audio_hint":"Guarda o áudio original e o áudio traduzido de cada sessão como dois ficheiros WAV separados na sua pasta de transcrições. Desativado por predefinição porque a faixa original contém voz humana real. Apenas no modo Vídeo/Jogo — é desativado automaticamente no modo Reunião, por isso a voz ao vivo da outra pessoa nunca é gravada.","tab_recording":"Salvamento","auto_export_label":"Formatos de salvamento automático","auto_export_hint":"O JSON é sempre salvo. Quando marcados, esses formatos também são gerados automaticamente ao lado dele sempre que você pressiona Salvar ou encerra uma sessão.","tab_membership":"Assinatura","tab_about":"Sobre","al_pricing":"Preços","al_terms":"Termos","al_privacy":"Privacidade","al_contact":"Contato","about_powered":"Com tecnologia de tradução de IA avançada.","mem_active_plan":"Plano ativo","mem_unlimited":"Minutos ilimitados","mem_this_month":"Este mês: ","mem_your_plan":"Seu plano","mem_upgrade":"Fazer upgrade","mem_creator_meta":"700 min/mês · todos os idiomas · transcrições","mem_pro_meta":"1.500 min/mês · prioridade · modo reunião","mem_dev_byok":"Desenvolvedor (BYOK)","mem_your_key":"Sua chave","mem_byok_note":"Esta versão usa sua própria chave Gemini; sem assinatura. Gerencie-a na aba Geral.","badge_upgrade":"Faça upgrade para remover →","auth_no_account":"Não tem conta? ","auth_create":"Criar conta","auth_forgot":"Esqueceu a senha?","auth_offline":"Não foi possível conectar ao servidor. Verifique sua conexão com a internet.","auth_retry":"Tentar novamente","store_view":"Ver na Microsoft Store","open_file":"Abrir arquivo","open_folder":"Abrir pasta","transcript_folder":"Pasta de transcrições","browse":"Procurar…","reset_default":"Redefinir para o padrão","st_capture_lost":"A captura de áudio parou (o dispositivo pode ter mudado). Reinicie a sessão.","privacy_policy_link":"Política de privacidade completa"},"ja":{"no_voice_free":"無料音声: この言語は字幕のみです。","al_credits":"音声クレジット",
     report_open:"問題を報告",
     report_title:"問題を報告",
     report_notice:"Voxis サポートに小さな技術情報が送信されます: アプリのバージョン、チャンネル、お使いの Windows バージョン、音声モード、品質設定、言語ペア。機密情報 (API キー、ログイントークン) と Windows のユーザー名は一切含まれません。文字起こしは下のチェックボックスをオンにした場合のみ送信されます。",
@@ -5510,7 +5431,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"お問い合わせの際はこの参照番号を控えてください。",
     report_queued:"保存しました — 次回 Voxis を開いたときに送信します。",
     report_err_empty:"問題を説明してください。",
-    report_err_failed:"報告を送信できませんでした。もう一度お試しください。","record_audio":"音声を録音（元音声＋翻訳、別ファイル）","record_audio_hint":"各セッションの元音声と翻訳音声を、文字起こしフォルダー内に2つの別々のWAVファイルとして保存します。元音声トラックには実際の人の声が含まれるため、既定ではオフです。ビデオ/ゲームモード専用で、会議モードでは自動的にオフになるため、相手のライブ音声が録音されることはありません。","tab_membership":"メンバーシップ","tab_about":"概要","al_pricing":"料金","al_terms":"利用規約","al_privacy":"プライバシー","al_contact":"お問い合わせ","about_powered":"高度なAI翻訳を搭載。","mem_active_plan":"現在のプラン","mem_unlimited":"無制限の利用時間","mem_this_month":"今月: ","mem_your_plan":"ご利用中のプラン","mem_upgrade":"アップグレード","mem_creator_meta":"月700分 · 全言語対応 · 文字起こし","mem_pro_meta":"月1,500分 · 優先処理 · 会議モード","mem_dev_byok":"開発者向け (BYOK)","mem_your_key":"自分のキー","mem_byok_note":"このビルドはご自身のGeminiキーで動作し、サブスクリプションは不要です。キーは「一般」タブで管理できます。","badge_upgrade":"アップグレードで非表示 →","auth_no_account":"アカウントをお持ちでないですか? ","auth_create":"アカウントを作成","auth_forgot":"パスワードをお忘れですか?","auth_offline":"サーバーに接続できませんでした。インターネット接続を確認してください。","auth_retry":"再試行","store_view":"Microsoft Store で表示","open_file":"ファイルを開く","open_folder":"フォルダーを開く","transcript_folder":"文字起こしフォルダー","browse":"参照…","reset_default":"既定に戻す","st_capture_lost":"音声のキャプチャが停止しました (デバイスが変更された可能性があります)。セッションを再開してください。","openai_key":"OpenAI APIキー","ph_oaikey":"sk-…","byok_openai_hint":"任意 — OpenAIエンジンを使う場合のみ必要です。","privacy_policy_link":"プライバシーポリシー全文"},"ko":{"no_voice_free":"무료 음성: 이 언어는 자막만 제공됩니다.","al_credits":"음성 크레딧",
+    report_err_failed:"報告を送信できませんでした。もう一度お試しください。","record_audio":"音声を録音（元音声＋翻訳、別ファイル）","record_audio_hint":"各セッションの元音声と翻訳音声を、文字起こしフォルダー内に2つの別々のWAVファイルとして保存します。元音声トラックには実際の人の声が含まれるため、既定ではオフです。ビデオ/ゲームモード専用で、会議モードでは自動的にオフになるため、相手のライブ音声が録音されることはありません。","tab_recording":"保存","auto_export_label":"自動保存フォーマット","auto_export_hint":"JSONは常に保存されます。チェックすると、保存を押すかセッションを終了するたびに、これらの形式もその横に自動的に生成されます。","tab_membership":"メンバーシップ","tab_about":"概要","al_pricing":"料金","al_terms":"利用規約","al_privacy":"プライバシー","al_contact":"お問い合わせ","about_powered":"高度なAI翻訳を搭載。","mem_active_plan":"現在のプラン","mem_unlimited":"無制限の利用時間","mem_this_month":"今月: ","mem_your_plan":"ご利用中のプラン","mem_upgrade":"アップグレード","mem_creator_meta":"月700分 · 全言語対応 · 文字起こし","mem_pro_meta":"月1,500分 · 優先処理 · 会議モード","mem_dev_byok":"開発者向け (BYOK)","mem_your_key":"自分のキー","mem_byok_note":"このビルドはご自身のGeminiキーで動作し、サブスクリプションは不要です。キーは「一般」タブで管理できます。","badge_upgrade":"アップグレードで非表示 →","auth_no_account":"アカウントをお持ちでないですか? ","auth_create":"アカウントを作成","auth_forgot":"パスワードをお忘れですか?","auth_offline":"サーバーに接続できませんでした。インターネット接続を確認してください。","auth_retry":"再試行","store_view":"Microsoft Store で表示","open_file":"ファイルを開く","open_folder":"フォルダーを開く","transcript_folder":"文字起こしフォルダー","browse":"参照…","reset_default":"既定に戻す","st_capture_lost":"音声のキャプチャが停止しました (デバイスが変更された可能性があります)。セッションを再開してください。","privacy_policy_link":"プライバシーポリシー全文"},"ko":{"no_voice_free":"무료 음성: 이 언어는 자막만 제공됩니다.","al_credits":"음성 크레딧",
     report_open:"문제 신고",
     report_title:"문제 신고",
     report_notice:"Voxis 지원팀에 간단한 기술 정보가 전송됩니다: 앱 버전, 채널, Windows 버전, 오디오 모드, 품질 설정, 언어 쌍. 비밀 정보(API 키, 로그인 토큰)와 Windows 사용자 이름은 절대 포함되지 않습니다. 자막 기록은 아래 확인란을 선택한 경우에만 전송됩니다.",
@@ -5544,7 +5465,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"문의할 때를 대비해 이 참조 코드를 보관하세요.",
     report_queued:"저장되었습니다 — 다음에 Voxis를 열 때 전송됩니다.",
     report_err_empty:"문제를 설명해 주세요.",
-    report_err_failed:"보고서를 보낼 수 없습니다. 다시 시도해 주세요.","record_audio":"오디오 녹음 (원본 + 번역, 별도 파일)","record_audio_hint":"각 세션의 원본 오디오와 번역 오디오를 대본 폴더에 두 개의 별도 WAV 파일로 저장합니다. 원본 트랙에는 실제 사람의 음성이 담기므로 기본적으로 꺼져 있습니다. 동영상/게임 모드에서만 사용할 수 있으며, 회의 모드에서는 자동으로 꺼지므로 상대방의 실시간 음성은 절대 녹음되지 않습니다.","tab_membership":"멤버십","tab_about":"정보","al_pricing":"요금제","al_terms":"약관","al_privacy":"개인정보","al_contact":"문의","about_powered":"고급 AI 번역 기반.","mem_active_plan":"사용 중인 플랜","mem_unlimited":"무제한 사용 시간","mem_this_month":"이번 달: ","mem_your_plan":"내 플랜","mem_upgrade":"업그레이드","mem_creator_meta":"월 700분 · 모든 언어 · 전사","mem_pro_meta":"월 1,500분 · 우선 처리 · 회의 모드","mem_dev_byok":"개발자 (BYOK)","mem_your_key":"내 키","mem_byok_note":"이 빌드는 본인의 Gemini 키로 실행되며 구독이 없습니다. 일반 탭에서 관리하세요.","badge_upgrade":"제거하려면 업그레이드 →","auth_no_account":"계정이 없으신가요? ","auth_create":"계정 만들기","auth_forgot":"비밀번호를 잊으셨나요?","auth_offline":"서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.","auth_retry":"다시 시도","store_view":"Microsoft Store에서 보기","open_file":"파일 열기","open_folder":"폴더 열기","transcript_folder":"전사 폴더","browse":"찾아보기…","reset_default":"기본값으로 재설정","st_capture_lost":"오디오 캡처가 중단되었습니다(장치가 변경되었을 수 있습니다). 세션을 다시 시작하세요.","openai_key":"OpenAI API 키","ph_oaikey":"sk-…","byok_openai_hint":"선택 사항 — OpenAI 엔진을 사용할 때만 필요합니다. ","privacy_policy_link":"전체 개인정보 처리방침"},"ru":{"no_voice_free":"Бесплатный голос: на этом языке только субтитры.","al_credits":"Авторы голосов",
+    report_err_failed:"보고서를 보낼 수 없습니다. 다시 시도해 주세요.","record_audio":"오디오 녹음 (원본 + 번역, 별도 파일)","record_audio_hint":"각 세션의 원본 오디오와 번역 오디오를 대본 폴더에 두 개의 별도 WAV 파일로 저장합니다. 원본 트랙에는 실제 사람의 음성이 담기므로 기본적으로 꺼져 있습니다. 동영상/게임 모드에서만 사용할 수 있으며, 회의 모드에서는 자동으로 꺼지므로 상대방의 실시간 음성은 절대 녹음되지 않습니다.","tab_recording":"저장","auto_export_label":"자동 저장 형식","auto_export_hint":"JSON은 항상 저장됩니다. 선택하면 저장을 누르거나 세션을 종료할 때마다 이 형식들도 옆에 자동으로 생성됩니다.","tab_membership":"멤버십","tab_about":"정보","al_pricing":"요금제","al_terms":"약관","al_privacy":"개인정보","al_contact":"문의","about_powered":"고급 AI 번역 기반.","mem_active_plan":"사용 중인 플랜","mem_unlimited":"무제한 사용 시간","mem_this_month":"이번 달: ","mem_your_plan":"내 플랜","mem_upgrade":"업그레이드","mem_creator_meta":"월 700분 · 모든 언어 · 전사","mem_pro_meta":"월 1,500분 · 우선 처리 · 회의 모드","mem_dev_byok":"개발자 (BYOK)","mem_your_key":"내 키","mem_byok_note":"이 빌드는 본인의 Gemini 키로 실행되며 구독이 없습니다. 일반 탭에서 관리하세요.","badge_upgrade":"제거하려면 업그레이드 →","auth_no_account":"계정이 없으신가요? ","auth_create":"계정 만들기","auth_forgot":"비밀번호를 잊으셨나요?","auth_offline":"서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.","auth_retry":"다시 시도","store_view":"Microsoft Store에서 보기","open_file":"파일 열기","open_folder":"폴더 열기","transcript_folder":"전사 폴더","browse":"찾아보기…","reset_default":"기본값으로 재설정","st_capture_lost":"오디오 캡처가 중단되었습니다(장치가 변경되었을 수 있습니다). 세션을 다시 시작하세요.","privacy_policy_link":"전체 개인정보 처리방침"},"ru":{"no_voice_free":"Бесплатный голос: на этом языке только субтитры.","al_credits":"Авторы голосов",
     report_open:"Сообщить о проблеме",
     report_title:"Сообщить о проблеме",
     report_notice:"В поддержку Voxis отправляется небольшой технический снимок: версия приложения, канал, версия Windows, аудиорежим, настройка качества и языковая пара. Секреты (ваш API-ключ, токен входа) и имя пользователя Windows никогда не включаются. Расшифровка отправляется, только если вы отметите поле ниже.",
@@ -5578,7 +5499,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Сохраните этот код на случай обращения в поддержку.",
     report_queued:"Сохранено — отправим при следующем запуске Voxis.",
     report_err_empty:"Пожалуйста, опишите проблему.",
-    report_err_failed:"Не удалось отправить отчёт. Попробуйте ещё раз.","record_audio":"Запись аудио (оригинал + перевод, отдельные файлы)","record_audio_hint":"Сохраняет исходное и переведённое аудио каждой сессии в виде двух отдельных файлов WAV в папке с транскриптами. По умолчанию отключено, так как исходная дорожка содержит настоящий человеческий голос. Только в режиме «Видео/Игра» — в режиме «Встреча» отключается автоматически, поэтому живой голос собеседника никогда не записывается.","tab_membership":"Подписка","tab_about":"О программе","al_pricing":"Цены","al_terms":"Условия","al_privacy":"Конфиденциальность","al_contact":"Контакты","about_powered":"На основе передового ИИ-перевода.","mem_active_plan":"Активный план","mem_unlimited":"Безлимитные минуты","mem_this_month":"В этом месяце: ","mem_your_plan":"Ваш план","mem_upgrade":"Повысить","mem_creator_meta":"700 мин/мес · все языки · транскрипты","mem_pro_meta":"1 500 мин/мес · приоритет · режим встреч","mem_dev_byok":"Разработчик (BYOK)","mem_your_key":"Ваш ключ","mem_byok_note":"Эта сборка использует ваш собственный ключ Gemini; подписка не нужна. Управляйте им на вкладке «Общие».","badge_upgrade":"Повысить, чтобы убрать →","auth_no_account":"Нет аккаунта? ","auth_create":"Создать аккаунт","auth_forgot":"Забыли пароль?","auth_offline":"Не удалось подключиться к серверу. Проверьте интернет-соединение.","auth_retry":"Повторить","store_view":"Открыть в Microsoft Store","open_file":"Открыть файл","open_folder":"Открыть папку","transcript_folder":"Папка транскриптов","browse":"Обзор…","reset_default":"Сбросить по умолчанию","st_capture_lost":"Захват звука остановлен (возможно, изменилось устройство). Перезапустите сеанс.","openai_key":"Ключ API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Необязательно — нужен только для использования движка OpenAI. ","privacy_policy_link":"Полная политика конфиденциальности"},"zh":{"no_voice_free":"免费语音：此语言仅提供字幕。","al_credits":"语音致谢",
+    report_err_failed:"Не удалось отправить отчёт. Попробуйте ещё раз.","record_audio":"Запись аудио (оригинал + перевод, отдельные файлы)","record_audio_hint":"Сохраняет исходное и переведённое аудио каждой сессии в виде двух отдельных файлов WAV в папке с транскриптами. По умолчанию отключено, так как исходная дорожка содержит настоящий человеческий голос. Только в режиме «Видео/Игра» — в режиме «Встреча» отключается автоматически, поэтому живой голос собеседника никогда не записывается.","tab_recording":"Сохранение","auto_export_label":"Автоматические форматы сохранения","auto_export_hint":"Файл JSON сохраняется всегда. Если отмечено, эти форматы также автоматически создаются рядом с ним при каждом нажатии «Сохранить» или завершении сессии.","tab_membership":"Подписка","tab_about":"О программе","al_pricing":"Цены","al_terms":"Условия","al_privacy":"Конфиденциальность","al_contact":"Контакты","about_powered":"На основе передового ИИ-перевода.","mem_active_plan":"Активный план","mem_unlimited":"Безлимитные минуты","mem_this_month":"В этом месяце: ","mem_your_plan":"Ваш план","mem_upgrade":"Повысить","mem_creator_meta":"700 мин/мес · все языки · транскрипты","mem_pro_meta":"1 500 мин/мес · приоритет · режим встреч","mem_dev_byok":"Разработчик (BYOK)","mem_your_key":"Ваш ключ","mem_byok_note":"Эта сборка использует ваш собственный ключ Gemini; подписка не нужна. Управляйте им на вкладке «Общие».","badge_upgrade":"Повысить, чтобы убрать →","auth_no_account":"Нет аккаунта? ","auth_create":"Создать аккаунт","auth_forgot":"Забыли пароль?","auth_offline":"Не удалось подключиться к серверу. Проверьте интернет-соединение.","auth_retry":"Повторить","store_view":"Открыть в Microsoft Store","open_file":"Открыть файл","open_folder":"Открыть папку","transcript_folder":"Папка транскриптов","browse":"Обзор…","reset_default":"Сбросить по умолчанию","st_capture_lost":"Захват звука остановлен (возможно, изменилось устройство). Перезапустите сеанс.","privacy_policy_link":"Полная политика конфиденциальности"},"zh":{"no_voice_free":"免费语音：此语言仅提供字幕。","al_credits":"语音致谢",
     report_open:"报告问题",
     report_title:"报告问题",
     report_notice:"这会向 Voxis 支持发送一份简要技术快照：应用版本、渠道、Windows 版本、音频模式、质量设置和语言对。敏感信息（你的 API 密钥、登录令牌）和 Windows 用户名绝不会包含。只有勾选下方选项时才会发送字幕记录。",
@@ -5612,7 +5533,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"如需联系我们，请保留此参考代码。",
     report_queued:"已保存——下次打开 Voxis 时发送。",
     report_err_empty:"请描述问题。",
-    report_err_failed:"报告发送失败，请重试。","record_audio":"录制音频（原声 + 译文，分开保存）","record_audio_hint":"将每次会话的原声音频和译文音频分别保存为两个 WAV 文件，存放在你的转录文件夹中。默认关闭，因为原声轨道包含真实人声。仅在视频/游戏模式下可用——会议模式会自动关闭，因此绝不会录制对方的实时语音。","tab_membership":"会员","tab_about":"关于","al_pricing":"价格","al_terms":"条款","al_privacy":"隐私","al_contact":"联系我们","about_powered":"由先进的 AI 翻译技术驱动。","mem_active_plan":"当前套餐","mem_unlimited":"无限分钟数","mem_this_month":"本月：","mem_your_plan":"你的套餐","mem_upgrade":"升级","mem_creator_meta":"700 分钟/月 · 全部语言 · 转写文稿","mem_pro_meta":"1,500 分钟/月 · 优先处理 · 会议模式","mem_dev_byok":"开发者 (BYOK)","mem_your_key":"你的密钥","mem_byok_note":"此版本使用你自己的 Gemini 密钥运行，无需订阅。可在“常规”选项卡中管理密钥。","badge_upgrade":"升级以移除 →","auth_no_account":"还没有账户？ ","auth_create":"创建账户","auth_forgot":"忘记密码？","auth_offline":"无法连接到服务器。请检查你的网络连接。","auth_retry":"重试","store_view":"在 Microsoft Store 中查看","open_file":"打开文件","open_folder":"打开文件夹","transcript_folder":"转写文件夹","browse":"浏览…","reset_default":"恢复默认","st_capture_lost":"音频采集已停止（设备可能已更改）。请重新启动会话。","openai_key":"OpenAI API 密钥","ph_oaikey":"sk-…","byok_openai_hint":"可选 — 仅在使用 OpenAI 引擎时需要。","privacy_policy_link":"完整隐私政策"},"pl":{"no_voice_free":"Darmowy głos: w tym języku tylko napisy.","al_credits":"Autorzy głosów",
+    report_err_failed:"报告发送失败，请重试。","record_audio":"录制音频（原声 + 译文，分开保存）","record_audio_hint":"将每次会话的原声音频和译文音频分别保存为两个 WAV 文件，存放在你的转录文件夹中。默认关闭，因为原声轨道包含真实人声。仅在视频/游戏模式下可用——会议模式会自动关闭，因此绝不会录制对方的实时语音。","tab_recording":"保存","auto_export_label":"自动保存格式","auto_export_hint":"JSON 始终会保存。勾选后，每次按下保存或结束会话时，这些格式也会自动在旁边生成。","tab_membership":"会员","tab_about":"关于","al_pricing":"价格","al_terms":"条款","al_privacy":"隐私","al_contact":"联系我们","about_powered":"由先进的 AI 翻译技术驱动。","mem_active_plan":"当前套餐","mem_unlimited":"无限分钟数","mem_this_month":"本月：","mem_your_plan":"你的套餐","mem_upgrade":"升级","mem_creator_meta":"700 分钟/月 · 全部语言 · 转写文稿","mem_pro_meta":"1,500 分钟/月 · 优先处理 · 会议模式","mem_dev_byok":"开发者 (BYOK)","mem_your_key":"你的密钥","mem_byok_note":"此版本使用你自己的 Gemini 密钥运行，无需订阅。可在“常规”选项卡中管理密钥。","badge_upgrade":"升级以移除 →","auth_no_account":"还没有账户？ ","auth_create":"创建账户","auth_forgot":"忘记密码？","auth_offline":"无法连接到服务器。请检查你的网络连接。","auth_retry":"重试","store_view":"在 Microsoft Store 中查看","open_file":"打开文件","open_folder":"打开文件夹","transcript_folder":"转写文件夹","browse":"浏览…","reset_default":"恢复默认","st_capture_lost":"音频采集已停止（设备可能已更改）。请重新启动会话。","privacy_policy_link":"完整隐私政策"},"pl":{"no_voice_free":"Darmowy głos: w tym języku tylko napisy.","al_credits":"Autorzy głosów",
     report_open:"Zgłoś problem",
     report_title:"Zgłoś problem",
     report_notice:"Do pomocy Voxis trafia mały zrzut techniczny: wersja aplikacji, kanał, wersja Windows, tryb audio, ustawienie jakości i para językowa. Sekrety (Twój klucz API, token logowania) i nazwa użytkownika Windows nigdy nie są dołączane. Transkrypcja jest wysyłana tylko po zaznaczeniu pola poniżej.",
@@ -5646,7 +5567,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Zachowaj ten kod na wypadek kontaktu z nami.",
     report_queued:"Zapisano — wyślemy przy następnym uruchomieniu Voxis.",
     report_err_empty:"Opisz problem.",
-    report_err_failed:"Nie udało się wysłać zgłoszenia. Spróbuj ponownie.","record_audio":"Nagrywaj dźwięk (źródło + tłumaczenie, osobne pliki)","record_audio_hint":"Zapisuje dźwięk źródłowy i przetłumaczony każdej sesji jako dwa osobne pliki WAV w folderze transkrypcji. Domyślnie wyłączone, ponieważ ścieżka źródłowa zawiera prawdziwy ludzki głos. Tylko w trybie Wideo/Gra — w trybie Spotkanie wyłączane automatycznie, więc głos drugiej osoby na żywo nigdy nie jest nagrywany.","tab_membership":"Subskrypcja","tab_about":"Informacje","al_pricing":"Cennik","al_terms":"Warunki","al_privacy":"Prywatność","al_contact":"Kontakt","about_powered":"Napędzane zaawansowanym tłumaczeniem AI.","mem_active_plan":"Aktywny plan","mem_unlimited":"Nielimitowane minuty","mem_this_month":"W tym miesiącu: ","mem_your_plan":"Twój plan","mem_upgrade":"Ulepsz","mem_creator_meta":"700 min/mies. · wszystkie języki · transkrypcje","mem_pro_meta":"1500 min/mies. · priorytet · tryb spotkania","mem_dev_byok":"Deweloper (BYOK)","mem_your_key":"Twój klucz","mem_byok_note":"Ta wersja działa na Twoim własnym kluczu Gemini; bez subskrypcji. Zarządzaj nim w karcie Ogólne.","badge_upgrade":"Ulepsz, aby usunąć →","auth_no_account":"Nie masz konta? ","auth_create":"Utwórz konto","auth_forgot":"Nie pamiętasz hasła?","auth_offline":"Nie udało się połączyć z serwerem. Sprawdź połączenie z internetem.","auth_retry":"Ponów","store_view":"Zobacz w Microsoft Store","open_file":"Otwórz plik","open_folder":"Otwórz folder","transcript_folder":"Folder transkrypcji","browse":"Przeglądaj…","reset_default":"Przywróć domyślne","st_capture_lost":"Przechwytywanie dźwięku zostało zatrzymane (urządzenie mogło się zmienić). Uruchom sesję ponownie.","openai_key":"Klucz API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Opcjonalne — wymagane tylko do korzystania z silnika OpenAI. ","privacy_policy_link":"Pełna polityka prywatności"},"it":{"no_voice_free":"Voce gratuita: solo sottotitoli in questa lingua.","al_credits":"Crediti delle voci",
+    report_err_failed:"Nie udało się wysłać zgłoszenia. Spróbuj ponownie.","record_audio":"Nagrywaj dźwięk (źródło + tłumaczenie, osobne pliki)","record_audio_hint":"Zapisuje dźwięk źródłowy i przetłumaczony każdej sesji jako dwa osobne pliki WAV w folderze transkrypcji. Domyślnie wyłączone, ponieważ ścieżka źródłowa zawiera prawdziwy ludzki głos. Tylko w trybie Wideo/Gra — w trybie Spotkanie wyłączane automatycznie, więc głos drugiej osoby na żywo nigdy nie jest nagrywany.","tab_recording":"Zapis","auto_export_label":"Automatyczne formaty zapisu","auto_export_hint":"Plik JSON jest zapisywany zawsze. Gdy zaznaczone, te formaty są również automatycznie tworzone obok niego przy każdym kliknięciu Zapisz lub zakończeniu sesji.","tab_membership":"Subskrypcja","tab_about":"Informacje","al_pricing":"Cennik","al_terms":"Warunki","al_privacy":"Prywatność","al_contact":"Kontakt","about_powered":"Napędzane zaawansowanym tłumaczeniem AI.","mem_active_plan":"Aktywny plan","mem_unlimited":"Nielimitowane minuty","mem_this_month":"W tym miesiącu: ","mem_your_plan":"Twój plan","mem_upgrade":"Ulepsz","mem_creator_meta":"700 min/mies. · wszystkie języki · transkrypcje","mem_pro_meta":"1500 min/mies. · priorytet · tryb spotkania","mem_dev_byok":"Deweloper (BYOK)","mem_your_key":"Twój klucz","mem_byok_note":"Ta wersja działa na Twoim własnym kluczu Gemini; bez subskrypcji. Zarządzaj nim w karcie Ogólne.","badge_upgrade":"Ulepsz, aby usunąć →","auth_no_account":"Nie masz konta? ","auth_create":"Utwórz konto","auth_forgot":"Nie pamiętasz hasła?","auth_offline":"Nie udało się połączyć z serwerem. Sprawdź połączenie z internetem.","auth_retry":"Ponów","store_view":"Zobacz w Microsoft Store","open_file":"Otwórz plik","open_folder":"Otwórz folder","transcript_folder":"Folder transkrypcji","browse":"Przeglądaj…","reset_default":"Przywróć domyślne","st_capture_lost":"Przechwytywanie dźwięku zostało zatrzymane (urządzenie mogło się zmienić). Uruchom sesję ponownie.","privacy_policy_link":"Pełna polityka prywatności"},"it":{"no_voice_free":"Voce gratuita: solo sottotitoli in questa lingua.","al_credits":"Crediti delle voci",
     report_open:"Segnala un problema",
     report_title:"Segnala un problema",
     report_notice:"Invia al supporto Voxis un piccolo riepilogo tecnico: versione dell'app, canale, versione di Windows, modalità audio, impostazione qualità e coppia di lingue. I segreti (la tua chiave API, il token di accesso) e il nome utente Windows non sono mai inclusi. La trascrizione viene inviata solo se selezioni la casella qui sotto.",
@@ -5680,7 +5601,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Conserva questo codice se ci contatti.",
     report_queued:"Salvato — lo invieremo alla prossima apertura di Voxis.",
     report_err_empty:"Descrivi il problema.",
-    report_err_failed:"Impossibile inviare la segnalazione. Riprova.","record_audio":"Registra audio (originale + traduzione, file separati)","record_audio_hint":"Salva l'audio originale e l'audio tradotto di ogni sessione come due file WAV separati nella cartella delle trascrizioni. Disattivato per impostazione predefinita perché la traccia originale contiene voce umana reale. Solo in modalità Video/Gioco — viene disattivato automaticamente in modalità Riunione, così la voce dal vivo dell'altra persona non viene mai registrata.","tab_membership":"Abbonamento","tab_about":"Informazioni","al_pricing":"Prezzi","al_terms":"Termini","al_privacy":"Privacy","al_contact":"Contatti","about_powered":"Basato su traduzione IA avanzata.","mem_active_plan":"Piano attivo","mem_unlimited":"Minuti illimitati","mem_this_month":"Questo mese: ","mem_your_plan":"Il tuo piano","mem_upgrade":"Esegui l'upgrade","mem_creator_meta":"700 min/mese · tutte le lingue · trascrizioni","mem_pro_meta":"1.500 min/mese · priorità · modalità riunione","mem_dev_byok":"Sviluppatore (BYOK)","mem_your_key":"La tua chiave","mem_byok_note":"Questa build funziona con la tua chiave Gemini; nessun abbonamento. Gestiscila nella scheda Generale.","badge_upgrade":"Esegui l'upgrade per rimuovere →","auth_no_account":"Non hai un account? ","auth_create":"Crea account","auth_forgot":"Password dimenticata?","auth_offline":"Impossibile raggiungere il server. Controlla la connessione a Internet.","auth_retry":"Riprova","store_view":"Visualizza nel Microsoft Store","open_file":"Apri file","open_folder":"Apri cartella","transcript_folder":"Cartella trascrizioni","browse":"Sfoglia…","reset_default":"Ripristina predefinito","st_capture_lost":"Acquisizione audio interrotta (il dispositivo potrebbe essere cambiato). Riavvia la sessione.","openai_key":"Chiave API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Facoltativo — necessario solo per usare il motore OpenAI. ","privacy_policy_link":"Informativa sulla privacy completa"},"id":{"no_voice_free":"Suara gratis: hanya teks dalam bahasa ini.","al_credits":"Kredit suara",
+    report_err_failed:"Impossibile inviare la segnalazione. Riprova.","record_audio":"Registra audio (originale + traduzione, file separati)","record_audio_hint":"Salva l'audio originale e l'audio tradotto di ogni sessione come due file WAV separati nella cartella delle trascrizioni. Disattivato per impostazione predefinita perché la traccia originale contiene voce umana reale. Solo in modalità Video/Gioco — viene disattivato automaticamente in modalità Riunione, così la voce dal vivo dell'altra persona non viene mai registrata.","tab_recording":"Salvataggio","auto_export_label":"Formati di salvataggio automatico","auto_export_hint":"Il file JSON viene sempre salvato. Se selezionati, questi formati vengono generati automaticamente accanto ad esso ogni volta che premi Salva o interrompi una sessione.","tab_membership":"Abbonamento","tab_about":"Informazioni","al_pricing":"Prezzi","al_terms":"Termini","al_privacy":"Privacy","al_contact":"Contatti","about_powered":"Basato su traduzione IA avanzata.","mem_active_plan":"Piano attivo","mem_unlimited":"Minuti illimitati","mem_this_month":"Questo mese: ","mem_your_plan":"Il tuo piano","mem_upgrade":"Esegui l'upgrade","mem_creator_meta":"700 min/mese · tutte le lingue · trascrizioni","mem_pro_meta":"1.500 min/mese · priorità · modalità riunione","mem_dev_byok":"Sviluppatore (BYOK)","mem_your_key":"La tua chiave","mem_byok_note":"Questa build funziona con la tua chiave Gemini; nessun abbonamento. Gestiscila nella scheda Generale.","badge_upgrade":"Esegui l'upgrade per rimuovere →","auth_no_account":"Non hai un account? ","auth_create":"Crea account","auth_forgot":"Password dimenticata?","auth_offline":"Impossibile raggiungere il server. Controlla la connessione a Internet.","auth_retry":"Riprova","store_view":"Visualizza nel Microsoft Store","open_file":"Apri file","open_folder":"Apri cartella","transcript_folder":"Cartella trascrizioni","browse":"Sfoglia…","reset_default":"Ripristina predefinito","st_capture_lost":"Acquisizione audio interrotta (il dispositivo potrebbe essere cambiato). Riavvia la sessione.","privacy_policy_link":"Informativa sulla privacy completa"},"id":{"no_voice_free":"Suara gratis: hanya teks dalam bahasa ini.","al_credits":"Kredit suara",
     report_open:"Laporkan masalah",
     report_title:"Laporkan masalah",
     report_notice:"Ini mengirim cuplikan teknis kecil ke dukungan Voxis: versi aplikasi, saluran, versi Windows, mode audio, pengaturan kualitas, dan pasangan bahasa. Rahasia (kunci API, token masuk) dan nama pengguna Windows tidak pernah disertakan. Transkrip hanya dikirim jika Anda mencentang kotak di bawah.",
@@ -5714,7 +5635,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Simpan kode referensi ini jika Anda menghubungi kami.",
     report_queued:"Tersimpan — akan dikirim saat Voxis dibuka lagi.",
     report_err_empty:"Mohon jelaskan masalahnya.",
-    report_err_failed:"Laporan gagal terkirim. Silakan coba lagi.","record_audio":"Rekam audio (sumber + terjemahan, file terpisah)","record_audio_hint":"Menyimpan audio sumber dan audio terjemahan setiap sesi sebagai dua file WAV terpisah di folder transkrip Anda. Nonaktif secara default karena trek sumber berisi suara manusia asli. Hanya untuk mode Video/Game — dimatikan otomatis di mode Rapat, sehingga suara langsung lawan bicara tidak pernah direkam.","tab_membership":"Keanggotaan","tab_about":"Tentang","al_pricing":"Harga","al_terms":"Ketentuan","al_privacy":"Privasi","al_contact":"Kontak","about_powered":"Didukung oleh terjemahan AI canggih.","mem_active_plan":"Paket aktif","mem_unlimited":"Menit tanpa batas","mem_this_month":"Bulan ini: ","mem_your_plan":"Paket Anda","mem_upgrade":"Tingkatkan","mem_creator_meta":"700 mnt/bln · semua bahasa · transkrip","mem_pro_meta":"1.500 mnt/bln · prioritas · mode rapat","mem_dev_byok":"Pengembang (BYOK)","mem_your_key":"Kunci Anda","mem_byok_note":"Build ini berjalan dengan kunci Gemini Anda sendiri; tanpa langganan. Kelola di tab Umum.","badge_upgrade":"Tingkatkan untuk menghapus →","auth_no_account":"Belum punya akun? ","auth_create":"Buat akun","auth_forgot":"Lupa kata sandi?","auth_offline":"Tidak dapat menjangkau server. Periksa koneksi internet Anda.","auth_retry":"Coba lagi","store_view":"Lihat di Microsoft Store","open_file":"Buka file","open_folder":"Buka folder","transcript_folder":"Folder transkrip","browse":"Telusuri…","reset_default":"Setel ulang ke default","st_capture_lost":"Perekaman audio berhenti (perangkat mungkin berubah). Mulai ulang sesi.","openai_key":"Kunci API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Opsional — hanya diperlukan untuk menggunakan mesin OpenAI. ","privacy_policy_link":"Kebijakan privasi lengkap"},"nl":{"no_voice_free":"Gratis stem: alleen ondertiteling in deze taal.","al_credits":"Stemcredits",
+    report_err_failed:"Laporan gagal terkirim. Silakan coba lagi.","record_audio":"Rekam audio (sumber + terjemahan, file terpisah)","record_audio_hint":"Menyimpan audio sumber dan audio terjemahan setiap sesi sebagai dua file WAV terpisah di folder transkrip Anda. Nonaktif secara default karena trek sumber berisi suara manusia asli. Hanya untuk mode Video/Game — dimatikan otomatis di mode Rapat, sehingga suara langsung lawan bicara tidak pernah direkam.","tab_recording":"Penyimpanan","auto_export_label":"Format simpan otomatis","auto_export_hint":"File JSON selalu disimpan. Jika dicentang, format ini juga akan dibuat secara otomatis di sebelahnya setiap kali Anda menekan Simpan atau menghentikan sesi.","tab_membership":"Keanggotaan","tab_about":"Tentang","al_pricing":"Harga","al_terms":"Ketentuan","al_privacy":"Privasi","al_contact":"Kontak","about_powered":"Didukung oleh terjemahan AI canggih.","mem_active_plan":"Paket aktif","mem_unlimited":"Menit tanpa batas","mem_this_month":"Bulan ini: ","mem_your_plan":"Paket Anda","mem_upgrade":"Tingkatkan","mem_creator_meta":"700 mnt/bln · semua bahasa · transkrip","mem_pro_meta":"1.500 mnt/bln · prioritas · mode rapat","mem_dev_byok":"Pengembang (BYOK)","mem_your_key":"Kunci Anda","mem_byok_note":"Build ini berjalan dengan kunci Gemini Anda sendiri; tanpa langganan. Kelola di tab Umum.","badge_upgrade":"Tingkatkan untuk menghapus →","auth_no_account":"Belum punya akun? ","auth_create":"Buat akun","auth_forgot":"Lupa kata sandi?","auth_offline":"Tidak dapat menjangkau server. Periksa koneksi internet Anda.","auth_retry":"Coba lagi","store_view":"Lihat di Microsoft Store","open_file":"Buka file","open_folder":"Buka folder","transcript_folder":"Folder transkrip","browse":"Telusuri…","reset_default":"Setel ulang ke default","st_capture_lost":"Perekaman audio berhenti (perangkat mungkin berubah). Mulai ulang sesi.","privacy_policy_link":"Kebijakan privasi lengkap"},"nl":{"no_voice_free":"Gratis stem: alleen ondertiteling in deze taal.","al_credits":"Stemcredits",
     report_open:"Probleem melden",
     report_title:"Probleem melden",
     report_notice:"Dit stuurt Voxis-support een kleine technische momentopname: appversie, kanaal, je Windows-versie, de audiomodus, kwaliteitsinstelling en het talenpaar. Geheimen (je API-sleutel, inlogtoken) en je Windows-gebruikersnaam worden nooit meegestuurd. Je transcript wordt alleen verzonden als je het vakje hieronder aanvinkt.",
@@ -5748,7 +5669,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Bewaar deze referentie als je contact met ons opneemt.",
     report_queued:"Opgeslagen — we verzenden het zodra je Voxis weer opent.",
     report_err_empty:"Beschrijf het probleem.",
-    report_err_failed:"Kon je melding niet verzenden. Probeer het opnieuw.","record_audio":"Audio opnemen (bron + vertaling, aparte bestanden)","record_audio_hint":"Slaat de bronaudio en de vertaalde audio van elke sessie op als twee aparte WAV-bestanden in je transcriptiemap. Standaard uitgeschakeld omdat de bronaudio een echte menselijke stem bevat. Alleen in de Video/Game-modus — in de Vergadermodus wordt dit automatisch uitgeschakeld, zodat de live stem van de andere persoon nooit wordt opgenomen.","tab_membership":"Lidmaatschap","tab_about":"Over","al_pricing":"Prijzen","al_terms":"Voorwaarden","al_privacy":"Privacy","al_contact":"Contact","about_powered":"Mogelijk gemaakt door geavanceerde AI-vertaling.","mem_active_plan":"Actief abonnement","mem_unlimited":"Onbeperkte minuten","mem_this_month":"Deze maand: ","mem_your_plan":"Jouw abonnement","mem_upgrade":"Upgraden","mem_creator_meta":"700 min/maand · alle talen · transcripties","mem_pro_meta":"1.500 min/maand · prioriteit · vergadermodus","mem_dev_byok":"Ontwikkelaar (BYOK)","mem_your_key":"Jouw sleutel","mem_byok_note":"Deze build werkt met je eigen Gemini-sleutel; geen abonnement. Beheer hem op het tabblad Algemeen.","badge_upgrade":"Upgraden om te verwijderen →","auth_no_account":"Nog geen account? ","auth_create":"Account aanmaken","auth_forgot":"Wachtwoord vergeten?","auth_offline":"Kan de server niet bereiken. Controleer je internetverbinding.","auth_retry":"Opnieuw proberen","store_view":"Bekijken in Microsoft Store","open_file":"Bestand openen","open_folder":"Map openen","transcript_folder":"Transcriptiemap","browse":"Bladeren…","reset_default":"Standaard herstellen","st_capture_lost":"Audio-opname gestopt (het apparaat is mogelijk gewijzigd). Start de sessie opnieuw.","openai_key":"OpenAI API-sleutel","ph_oaikey":"sk-…","byok_openai_hint":"Optioneel — alleen nodig om de OpenAI-engine te gebruiken. ","privacy_policy_link":"Volledig privacybeleid"},"vi":{"no_voice_free":"Giọng miễn phí: chỉ có phụ đề cho ngôn ngữ này.","al_credits":"Ghi công giọng nói",
+    report_err_failed:"Kon je melding niet verzenden. Probeer het opnieuw.","record_audio":"Audio opnemen (bron + vertaling, aparte bestanden)","record_audio_hint":"Slaat de bronaudio en de vertaalde audio van elke sessie op als twee aparte WAV-bestanden in je transcriptiemap. Standaard uitgeschakeld omdat de bronaudio een echte menselijke stem bevat. Alleen in de Video/Game-modus — in de Vergadermodus wordt dit automatisch uitgeschakeld, zodat de live stem van de andere persoon nooit wordt opgenomen.","tab_recording":"Opslaan","auto_export_label":"Automatische opslagformaten","auto_export_hint":"Het JSON-bestand wordt altijd opgeslagen. Indien aangevinkt, worden deze formaten ook automatisch ernaast gegenereerd telkens wanneer je op Opslaan drukt of een sessie stopt.","tab_membership":"Lidmaatschap","tab_about":"Over","al_pricing":"Prijzen","al_terms":"Voorwaarden","al_privacy":"Privacy","al_contact":"Contact","about_powered":"Mogelijk gemaakt door geavanceerde AI-vertaling.","mem_active_plan":"Actief abonnement","mem_unlimited":"Onbeperkte minuten","mem_this_month":"Deze maand: ","mem_your_plan":"Jouw abonnement","mem_upgrade":"Upgraden","mem_creator_meta":"700 min/maand · alle talen · transcripties","mem_pro_meta":"1.500 min/maand · prioriteit · vergadermodus","mem_dev_byok":"Ontwikkelaar (BYOK)","mem_your_key":"Jouw sleutel","mem_byok_note":"Deze build werkt met je eigen Gemini-sleutel; geen abonnement. Beheer hem op het tabblad Algemeen.","badge_upgrade":"Upgraden om te verwijderen →","auth_no_account":"Nog geen account? ","auth_create":"Account aanmaken","auth_forgot":"Wachtwoord vergeten?","auth_offline":"Kan de server niet bereiken. Controleer je internetverbinding.","auth_retry":"Opnieuw proberen","store_view":"Bekijken in Microsoft Store","open_file":"Bestand openen","open_folder":"Map openen","transcript_folder":"Transcriptiemap","browse":"Bladeren…","reset_default":"Standaard herstellen","st_capture_lost":"Audio-opname gestopt (het apparaat is mogelijk gewijzigd). Start de sessie opnieuw.","privacy_policy_link":"Volledig privacybeleid"},"vi":{"no_voice_free":"Giọng miễn phí: chỉ có phụ đề cho ngôn ngữ này.","al_credits":"Ghi công giọng nói",
     report_open:"Báo cáo sự cố",
     report_title:"Báo cáo sự cố",
     report_notice:"Thao tác này gửi cho bộ phận hỗ trợ Voxis một bản chụp kỹ thuật nhỏ: phiên bản ứng dụng, kênh, phiên bản Windows, chế độ âm thanh, cài đặt chất lượng và cặp ngôn ngữ. Thông tin bí mật (khóa API, mã đăng nhập) và tên người dùng Windows không bao giờ được gửi kèm. Bản ghi chỉ được gửi nếu bạn đánh dấu ô bên dưới.",
@@ -5782,7 +5703,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"Hãy giữ mã tham chiếu này nếu bạn liên hệ với chúng tôi.",
     report_queued:"Đã lưu — sẽ gửi vào lần mở Voxis tiếp theo.",
     report_err_empty:"Vui lòng mô tả sự cố.",
-    report_err_failed:"Không gửi được báo cáo. Vui lòng thử lại.","record_audio":"Ghi âm (nguồn + bản dịch, hai tệp riêng)","record_audio_hint":"Lưu âm thanh gốc và âm thanh đã dịch của mỗi phiên thành hai tệp WAV riêng biệt trong thư mục bản chép lời của bạn. Tắt theo mặc định vì bản ghi nguồn chứa giọng nói thật của con người. Chỉ dành cho chế độ Video/Trò chơi — tự động tắt trong chế độ Cuộc họp, nên giọng nói trực tiếp của người kia không bao giờ bị ghi lại.","tab_membership":"Thành viên","tab_about":"Giới thiệu","al_pricing":"Bảng giá","al_terms":"Điều khoản","al_privacy":"Quyền riêng tư","al_contact":"Liên hệ","about_powered":"Được hỗ trợ bởi công nghệ dịch AI tiên tiến.","mem_active_plan":"Gói đang dùng","mem_unlimited":"Số phút không giới hạn","mem_this_month":"Tháng này: ","mem_your_plan":"Gói của bạn","mem_upgrade":"Nâng cấp","mem_creator_meta":"700 phút/tháng · mọi ngôn ngữ · bản ghi","mem_pro_meta":"1.500 phút/tháng · ưu tiên · chế độ họp","mem_dev_byok":"Nhà phát triển (BYOK)","mem_your_key":"Khóa của bạn","mem_byok_note":"Bản dựng này chạy bằng khóa Gemini của riêng bạn; không cần đăng ký. Quản lý khóa ở tab Chung.","badge_upgrade":"Nâng cấp để gỡ bỏ →","auth_no_account":"Chưa có tài khoản? ","auth_create":"Tạo tài khoản","auth_forgot":"Quên mật khẩu?","auth_offline":"Không thể kết nối máy chủ. Hãy kiểm tra kết nối internet của bạn.","auth_retry":"Thử lại","store_view":"Xem trong Microsoft Store","open_file":"Mở tệp","open_folder":"Mở thư mục","transcript_folder":"Thư mục bản ghi","browse":"Duyệt…","reset_default":"Đặt lại về mặc định","st_capture_lost":"Đã dừng thu âm thanh (thiết bị có thể đã thay đổi). Hãy khởi động lại phiên.","openai_key":"Khóa API OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"Tùy chọn — chỉ cần khi dùng công cụ OpenAI. ","privacy_policy_link":"Chính sách quyền riêng tư đầy đủ"},"th":{"no_voice_free":"เสียงฟรี: ภาษานี้มีเฉพาะคำบรรยาย","al_credits":"เครดิตเสียง",
+    report_err_failed:"Không gửi được báo cáo. Vui lòng thử lại.","record_audio":"Ghi âm (nguồn + bản dịch, hai tệp riêng)","record_audio_hint":"Lưu âm thanh gốc và âm thanh đã dịch của mỗi phiên thành hai tệp WAV riêng biệt trong thư mục bản chép lời của bạn. Tắt theo mặc định vì bản ghi nguồn chứa giọng nói thật của con người. Chỉ dành cho chế độ Video/Trò chơi — tự động tắt trong chế độ Cuộc họp, nên giọng nói trực tiếp của người kia không bao giờ bị ghi lại.","tab_recording":"Lưu","auto_export_label":"Định dạng lưu tự động","auto_export_hint":"Tệp JSON luôn được lưu. Khi được chọn, các định dạng này cũng sẽ được tạo tự động bên cạnh nó mỗi khi bạn nhấn Lưu hoặc dừng phiên.","tab_membership":"Thành viên","tab_about":"Giới thiệu","al_pricing":"Bảng giá","al_terms":"Điều khoản","al_privacy":"Quyền riêng tư","al_contact":"Liên hệ","about_powered":"Được hỗ trợ bởi công nghệ dịch AI tiên tiến.","mem_active_plan":"Gói đang dùng","mem_unlimited":"Số phút không giới hạn","mem_this_month":"Tháng này: ","mem_your_plan":"Gói của bạn","mem_upgrade":"Nâng cấp","mem_creator_meta":"700 phút/tháng · mọi ngôn ngữ · bản ghi","mem_pro_meta":"1.500 phút/tháng · ưu tiên · chế độ họp","mem_dev_byok":"Nhà phát triển (BYOK)","mem_your_key":"Khóa của bạn","mem_byok_note":"Bản dựng này chạy bằng khóa Gemini của riêng bạn; không cần đăng ký. Quản lý khóa ở tab Chung.","badge_upgrade":"Nâng cấp để gỡ bỏ →","auth_no_account":"Chưa có tài khoản? ","auth_create":"Tạo tài khoản","auth_forgot":"Quên mật khẩu?","auth_offline":"Không thể kết nối máy chủ. Hãy kiểm tra kết nối internet của bạn.","auth_retry":"Thử lại","store_view":"Xem trong Microsoft Store","open_file":"Mở tệp","open_folder":"Mở thư mục","transcript_folder":"Thư mục bản ghi","browse":"Duyệt…","reset_default":"Đặt lại về mặc định","st_capture_lost":"Đã dừng thu âm thanh (thiết bị có thể đã thay đổi). Hãy khởi động lại phiên.","privacy_policy_link":"Chính sách quyền riêng tư đầy đủ"},"th":{"no_voice_free":"เสียงฟรี: ภาษานี้มีเฉพาะคำบรรยาย","al_credits":"เครดิตเสียง",
     report_open:"แจ้งปัญหา",
     report_title:"แจ้งปัญหา",
     report_notice:"ระบบจะส่งข้อมูลทางเทคนิคชุดเล็กให้ฝ่ายสนับสนุน Voxis: เวอร์ชันแอป ช่องทาง เวอร์ชัน Windows โหมดเสียง การตั้งค่าคุณภาพ และคู่ภาษา ข้อมูลลับ (คีย์ API โทเคนเข้าสู่ระบบ) และชื่อผู้ใช้ Windows จะไม่ถูกส่งเด็ดขาด บทสนทนาจะถูกส่งเฉพาะเมื่อคุณเลือกช่องด้านล่าง",
@@ -5816,7 +5737,7 @@ const I18N_EXTRA = {"en":{"no_voice_free":"Free voice: subtitles only in this la
     report_done_keep:"เก็บรหัสอ้างอิงนี้ไว้เผื่อกรณีติดต่อเรา",
     report_queued:"บันทึกแล้ว — จะส่งเมื่อเปิด Voxis ครั้งถัดไป",
     report_err_empty:"กรุณาอธิบายปัญหา",
-    report_err_failed:"ส่งรายงานไม่สำเร็จ กรุณาลองใหม่","record_audio":"บันทึกเสียง (ต้นฉบับ + คำแปล แยกไฟล์)","record_audio_hint":"บันทึกเสียงต้นฉบับและเสียงคำแปลของแต่ละเซสชันเป็นไฟล์ WAV แยกกันสองไฟล์ในโฟลเดอร์คำบรรยายของคุณ ปิดไว้เป็นค่าเริ่มต้นเพราะแทร็กต้นฉบับมีเสียงพูดของคนจริง ใช้ได้เฉพาะโหมดวิดีโอ/เกมเท่านั้น — จะปิดอัตโนมัติในโหมดประชุม เพื่อไม่ให้เสียงสดของอีกฝ่ายถูกบันทึก","tab_membership":"สมาชิก","tab_about":"เกี่ยวกับ","al_pricing":"ราคา","al_terms":"ข้อกำหนด","al_privacy":"ความเป็นส่วนตัว","al_contact":"ติดต่อ","about_powered":"ขับเคลื่อนด้วยการแปลด้วย AI ขั้นสูง","mem_active_plan":"แพ็กเกจที่ใช้งานอยู่","mem_unlimited":"นาทีไม่จำกัด","mem_this_month":"เดือนนี้: ","mem_your_plan":"แพ็กเกจของคุณ","mem_upgrade":"อัปเกรด","mem_creator_meta":"700 นาที/เดือน · ทุกภาษา · ถอดเสียงเป็นข้อความ","mem_pro_meta":"1,500 นาที/เดือน · ลำดับความสำคัญ · โหมดประชุม","mem_dev_byok":"นักพัฒนา (BYOK)","mem_your_key":"คีย์ของคุณ","mem_byok_note":"บิลด์นี้ทำงานด้วยคีย์ Gemini ของคุณเอง ไม่ต้องสมัครสมาชิก จัดการได้ในแท็บทั่วไป","badge_upgrade":"อัปเกรดเพื่อนำออก →","auth_no_account":"ยังไม่มีบัญชี? ","auth_create":"สร้างบัญชี","auth_forgot":"ลืมรหัสผ่าน?","auth_offline":"ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณ","auth_retry":"ลองอีกครั้ง","store_view":"ดูใน Microsoft Store","open_file":"เปิดไฟล์","open_folder":"เปิดโฟลเดอร์","transcript_folder":"โฟลเดอร์ถอดเสียง","browse":"เรียกดู…","reset_default":"รีเซ็ตเป็นค่าเริ่มต้น","st_capture_lost":"การจับเสียงหยุดลง (อุปกรณ์อาจมีการเปลี่ยนแปลง) โปรดเริ่มเซสชันใหม่","openai_key":"คีย์ API ของ OpenAI","ph_oaikey":"sk-…","byok_openai_hint":"ไม่บังคับ — จำเป็นเฉพาะเมื่อใช้เอนจิน OpenAI เท่านั้น ","privacy_policy_link":"นโยบายความเป็นส่วนตัวฉบับเต็ม"}};
+    report_err_failed:"ส่งรายงานไม่สำเร็จ กรุณาลองใหม่","record_audio":"บันทึกเสียง (ต้นฉบับ + คำแปล แยกไฟล์)","record_audio_hint":"บันทึกเสียงต้นฉบับและเสียงคำแปลของแต่ละเซสชันเป็นไฟล์ WAV แยกกันสองไฟล์ในโฟลเดอร์คำบรรยายของคุณ ปิดไว้เป็นค่าเริ่มต้นเพราะแทร็กต้นฉบับมีเสียงพูดของคนจริง ใช้ได้เฉพาะโหมดวิดีโอ/เกมเท่านั้น — จะปิดอัตโนมัติในโหมดประชุม เพื่อไม่ให้เสียงสดของอีกฝ่ายถูกบันทึก","tab_recording":"การบันทึก","auto_export_label":"รูปแบบบันทึกอัตโนมัติ","auto_export_hint":"ไฟล์ JSON จะถูกบันทึกเสมอ เมื่อทำเครื่องหมาย รูปแบบเหล่านี้จะถูกสร้างขึ้นโดยอัตโนมัติควบคู่กันทุกครั้งที่คุณกดบันทึกหรือหยุดเซสชัน","tab_membership":"สมาชิก","tab_about":"เกี่ยวกับ","al_pricing":"ราคา","al_terms":"ข้อกำหนด","al_privacy":"ความเป็นส่วนตัว","al_contact":"ติดต่อ","about_powered":"ขับเคลื่อนด้วยการแปลด้วย AI ขั้นสูง","mem_active_plan":"แพ็กเกจที่ใช้งานอยู่","mem_unlimited":"นาทีไม่จำกัด","mem_this_month":"เดือนนี้: ","mem_your_plan":"แพ็กเกจของคุณ","mem_upgrade":"อัปเกรด","mem_creator_meta":"700 นาที/เดือน · ทุกภาษา · ถอดเสียงเป็นข้อความ","mem_pro_meta":"1,500 นาที/เดือน · ลำดับความสำคัญ · โหมดประชุม","mem_dev_byok":"นักพัฒนา (BYOK)","mem_your_key":"คีย์ของคุณ","mem_byok_note":"บิลด์นี้ทำงานด้วยคีย์ Gemini ของคุณเอง ไม่ต้องสมัครสมาชิก จัดการได้ในแท็บทั่วไป","badge_upgrade":"อัปเกรดเพื่อนำออก →","auth_no_account":"ยังไม่มีบัญชี? ","auth_create":"สร้างบัญชี","auth_forgot":"ลืมรหัสผ่าน?","auth_offline":"ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณ","auth_retry":"ลองอีกครั้ง","store_view":"ดูใน Microsoft Store","open_file":"เปิดไฟล์","open_folder":"เปิดโฟลเดอร์","transcript_folder":"โฟลเดอร์ถอดเสียง","browse":"เรียกดู…","reset_default":"รีเซ็ตเป็นค่าเริ่มต้น","st_capture_lost":"การจับเสียงหยุดลง (อุปกรณ์อาจมีการเปลี่ยนแปลง) โปรดเริ่มเซสชันใหม่","privacy_policy_link":"นโยบายความเป็นส่วนตัวฉบับเต็ม"}};
 /* Settings/auth strings (1.0.18) merged into the 16 language blocks above so
    they need no per-block edits; T()/applyI18n resolve them (en fallback if any). */
 Object.keys(I18N_EXTRA).forEach(function(l){ if(!I18N[l]) I18N[l]={}; var s=I18N_EXTRA[l]; for(var k in s) I18N[l][k]=s[k]; });
@@ -6043,7 +5964,6 @@ function applyI18n(lang){
     if(typeof renderMembership==='function') renderMembership();
   }
 }
-
 /* ---------- tema ---------- */
 function applyTheme(t){
   document.documentElement.dataset.theme = t;
@@ -6055,7 +5975,6 @@ $('#themebtn').onclick = () => {
   applyTheme(t);
   try{ api().set_cfg('ui_theme', t); }catch(e){}
 };
-
 /* ---------- yardımcılar ---------- */
 // Language picker labels use each language's own endonym, not the bare code.
 const LANG_NAMES = {
@@ -6094,7 +6013,6 @@ function updRange(el, vid){
   $('#'+vid).textContent = el.value + '%';
   el.setAttribute('aria-valuetext', el.value + '%');
 }
-
 /* ── AUTH ──────────────────────────────────────────────────────────────── */
 // Boot vs card: the overlay shows a loading state until check_auth resolves so a
 // returning user never sees the login form flash by.
@@ -6117,7 +6035,6 @@ function showAuthOffline(){
 function hideLoginOverlay(){ $('#auth-overlay').classList.add('hidden'); if(activeModal===$('#auth-card')) closeModal(); }
 function showErr(msg){ const e=$('#auth-error'); e.textContent=msg; e.style.display='block'; }
 function hideErr(){ $('#auth-error').style.display='none'; }
-
 async function doLogin(){
   const email = $('#login-email').value.trim();
   const pw    = $('#login-pw').value;
@@ -6133,7 +6050,6 @@ async function doLogin(){
 }
 $('#login-btn').onclick = doLogin;
 $('#login-pw').onkeydown  = e => { if(e.key==='Enter') doLogin(); };
-
 // Browser-relay Google/email sign-in (D1): opens the system browser to
 // voxislive.com/app-login where PocketBase mints the token natively (Google
 // blocks OAuth inside this embedded webview), then relays it back to the app.
@@ -6158,7 +6074,6 @@ const PACKS_URL='https://voxislive.com/account?panel=billing';  // ?panel surviv
 $('#quota-upgrade-link').onclick = e => { e.preventDefault(); try{api().open_url(PACKS_URL);}catch(_){} };
 $('#limit-cta').onclick = () => { try{api().open_url(PACKS_URL);}catch(_){} };
 $('#limit-dismiss').onclick = e => { e.preventDefault(); closeLimitModal(); };
-
 // Login-only card: build the create-account / forgot links (sign-up & reset
 // run on the website, opened in the system browser). TR/EN per LANG.
 (function(){
@@ -6170,7 +6085,6 @@ $('#limit-dismiss').onclick = e => { e.preventDefault(); closeLimitModal(); };
   if(su) su.onclick = function(e){ e.preventDefault(); try{api().open_url('https://voxislive.com/signup');}catch(_){} };
   if(fp) fp.onclick = function(e){ e.preventDefault(); try{api().open_url('https://voxislive.com/forgot-password');}catch(_){} };
 })();
-
 // Custom frameless resize: drag the right/bottom/corner grips → win_resize
 // bridge (pywebview 6.2.1 lacks native frameless resize). Anchored top-left.
 (function(){
@@ -6201,7 +6115,6 @@ $('#limit-dismiss').onclick = e => { e.preventDefault(); closeLimitModal(); };
     });
   });
 })();
-
 // Custom frameless drag for Linux (WebKitGTK never implements
 // `-webkit-app-region: drag` the way WebView2 on Windows does -- see
 // is_linux in get_init). Scoped to .pywebview-drag-region, explicitly
@@ -6232,7 +6145,6 @@ function wireLinuxWindowDrag(){
     });
   });
 }
-
 /* ── QUOTA BAR ──────────────────────────────────────────────────────────── */
 function renderQuotaBadge(quota){ renderQuotaBar(quota); renderTasteChip(quota); maybeShowLadder(quota); }
 function renderQuotaBar(quota){
@@ -6343,7 +6255,6 @@ function checkQuotaSoftWarn(q){
     clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.display='none'; }, 6500);
   }
 }
-
 /* ---------- init ---------- */
 async function init(){
   STATE = await api().get_init() || {};
@@ -6367,6 +6278,9 @@ async function init(){
   $('#overlay').checked = !!cfg.overlay_enabled;
   $('#obs').checked     = !!cfg.obs_subtitle_enabled;
   { const ra = $('#record-audio'); if(ra) ra.checked = !!cfg.record_audio; }
+  { const e = $('#auto-export-txt'); if(e) e.checked = !!cfg.auto_export_txt; }
+  { const e = $('#auto-export-srt'); if(e) e.checked = !!cfg.auto_export_srt; }
+  { const e = $('#auto-export-vtt'); if(e) e.checked = !!cfg.auto_export_vtt; }
   { const sl = $('#spk-labels'); if(sl) sl.checked = cfg.speaker_labels !== false; }
   { const mi = $('#allow-multiple-instances'); if(mi) mi.checked = !!cfg.allow_multiple_instances; }
   { const mo = $('#monitor-outgoing'); if(mo) mo.checked = !!cfg.monitor_outgoing_translation; }
@@ -6403,11 +6317,9 @@ async function init(){
     { const rb=$('#reportbtn'); if(rb) rb.style.display=''; }
     { const rbt=$('#reportbtn-top'); if(rbt) rbt.style.display=''; }
   } else {
-    const st = STATE.byok_status || {gemini: STATE.byok_set, openai: false};
+    const st = STATE.byok_status || {gemini: STATE.byok_set};
     $('#byok-badge').style.display = st.gemini ? 'inline' : 'none';
-    { const ob=$('#oai-badge'); if(ob) ob.style.display = st.openai ? 'inline' : 'none'; }
     $('#gemkey').value = '';
-    { const ok=$('#oaikey'); if(ok) ok.value = ''; }
     $('#logoutbtn').style.display = 'none';
     bindByokHandlers();
   }
@@ -6415,7 +6327,6 @@ async function init(){
   if(!STATE.onboarding_done) openOnboard();
   poll();
 }
-
 /* ---------- kontroller ---------- */
 const duck=$('#duck'), vol=$('#vol');
 // Coalesce config writes while a slider is being dragged: the % label tracks
@@ -6452,18 +6363,19 @@ $('#mic').onchange    = e=>api().set_device('mic', e.target.value);
 $('#subs').onchange   = e=>api().set_cfg('show_subtitles', e.target.checked);
 $('#obs').onchange    = e=>api().set_cfg('obs_subtitle_enabled', e.target.checked);
 { const ra = $('#record-audio'); if(ra) ra.onchange = e=>api().set_cfg('record_audio', e.target.checked); }
+{ const e = $('#auto-export-txt'); if(e) e.onchange = ev=>api().set_cfg('auto_export_txt', ev.target.checked); }
+{ const e = $('#auto-export-srt'); if(e) e.onchange = ev=>api().set_cfg('auto_export_srt', ev.target.checked); }
+{ const e = $('#auto-export-vtt'); if(e) e.onchange = ev=>api().set_cfg('auto_export_vtt', ev.target.checked); }
 { const sl = $('#spk-labels'); if(sl) sl.onchange = e=>api().set_cfg('speaker_labels', e.target.checked); }
 { const mi = $('#allow-multiple-instances'); if(mi) mi.onchange = e=>api().set_cfg('allow_multiple_instances', e.target.checked); }
 { const mo = $('#monitor-outgoing'); if(mo) mo.onchange = e=>api().set_cfg('monitor_outgoing_translation', e.target.checked); }
 $('#brandbadge').onchange = e=>api().set_cfg('branding_badge_enabled', e.target.checked);
 $('#overlay').onchange= e=>api().toggle_overlay(e.target.checked);
 $('#uilang').onchange = e=>{ applyI18n(e.target.value); try{api().set_cfg('ui_language', e.target.value);}catch(_){} };
-
 async function refreshFromCfg(){
   const c = await api().get_cfg();
   duck.value = Math.round(c.duck_gain*100); updRange(duck,'duckv');
 }
-
 document.querySelectorAll('.scenario').forEach(b=>{
   b.addEventListener('pointermove',e=>{const r=b.getBoundingClientRect();b.style.setProperty('--mx',(e.clientX-r.left)+'px');b.style.setProperty('--my',(e.clientY-r.top)+'px');});
   b.onclick=async()=>{
@@ -6495,7 +6407,6 @@ $('#savechip').onclick = saveTranscript;
 $('#soundcheckbtn').onclick = ()=>{ if(!SESSION_LIVE) openSoundcheck(); };
 $('#sc-close').onclick = closeSoundcheck;
 $('#clearstream').onclick = ()=>resetTranscript();
-
 /* ---------- transcript folder (Settings › General) ---------- */
 async function refreshTxDir(){
   const el=$('#tx-dir-path'); if(!el) return;
@@ -6507,7 +6418,6 @@ async function refreshTxDir(){
   const rs=$('#tx-dir-reset'); if(rs) rs.onclick=async e=>{ e.preventDefault(); try{ await api().reset_transcript_dir(); refreshTxDir(); }catch(_){}};
 }
 { const hf=$('#hist-open-folder'); if(hf) hf.onclick=()=>{ try{api().open_transcript_folder();}catch(_){}}; }
-
 /* ---------- pencere + çekmece ---------- */
 $('#win-min').onclick   = ()=>{ try{api().win_minimize();}catch(e){} };
 // The bridge toggles maximize/restore; track the state client-side so the glyph
@@ -6527,7 +6437,6 @@ $('#win-max').onclick   = ()=>{ try{api().win_toggle_max();}catch(e){} winMaxed=
 $('#win-close').onclick = ()=>{ try{api().win_close();}catch(e){} };
 $('#auth-win-min').onclick   = ()=>{ try{api().win_minimize();}catch(e){} };
 $('#auth-win-close').onclick = ()=>{ try{api().win_close();}catch(e){} };
-
 /* ---------- modal focus management (drawer, consent, onboarding, auth) ----- */
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 // Modal STACK: a nested modal (e.g. topbar History/Privacy opened over the
@@ -6565,7 +6474,6 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Escape' && activeModal && modalOnEsc){ modalOnEsc(); }
   else trapTab(e);
 });
-
 function openDrawer(){ $('#scrim').classList.add('open'); $('#drawer').classList.add('open'); localizeSettings(); renderMembership(); refreshTxDir(); switchSettingsTab('general'); openModal($('#drawer'), closeDrawer, $('#gear')); }
 function closeDrawer(){ $('#scrim').classList.remove('open'); $('#drawer').classList.remove('open'); closeModal(); }
 // Settings tabs (Genel / Kısayollar / Üyelik / Hakkında)
@@ -6652,14 +6560,11 @@ $('#gear').onclick = openDrawer;
 $('#closedrawer').onclick = closeDrawer;
 // Backdrop click dismisses whichever modal currently owns the scrim.
 $('#scrim').onclick = ()=>{ if(modalOnEsc) modalOnEsc(); else closeDrawer(); };
-
 /* ---------- consent + onboarding modals ---------- */
 function openConsent(){ $('#scrim').classList.add('open'); $('#consent-modal').classList.add('open'); openModal($('#consent-modal'), closeConsent, $('#m-meeting')); }
 function closeConsent(){ $('#consent-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
-
 // Free-limit paywall card (SaaS only — OSS builds never hit a server quota wall).
 let SESSION_LIVE=false, limitShown=false, warn80Shown=false, sessionT0=0;
-
 /* ---------- sound check ("do I hear this device?") ---------- */
 let scOpen=false, scHeard=false, scMicHeard=false, scOutputTimer=null;
 function openSoundcheck(){
@@ -6826,7 +6731,6 @@ function maybeShowLadder(q){
   openModal($('#ladder-modal'), closeLadder, null);
 }
 $('#ladder-ok').onclick = e => { e.preventDefault(); closeLadder(); };
-
 const CONTRAST_AFTER_MS = 120000;   // let them settle into the content first
 let contrastArmed=false, contrastLines=0, contrastHeard=false;
 function hideContrast(){ const c=$('#contrast-card'); if(c) c.style.display='none'; }
@@ -6933,7 +6837,6 @@ function onPreviewEvent(p){
     setTimeout(hideContrast, 6000);
   }
 }
-
 /* ── THE TASTE WALL ─────────────────────────────────────────────────────────
    The session has already stopped (the Pro voice finished its sentence first).
    This card is the decision point: hear the last sentence in both voices, then
@@ -6955,7 +6858,6 @@ function openTasteWall(mode){
 }
 function closeTasteWall(){ $('#taste-wall-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
 $('#tw-buy').onclick = e => { e.preventDefault(); try{ api().open_url(PACKS_URL); }catch(_){} };
-
 /* ── THE DAILY WALL ─────────────────────────────────────────────────────────
    Raised when the CASCADE ran out of today's minutes (the engine was already the
    free voice, so this can only be the daily allowance — see webui._on_quota_
@@ -6989,7 +6891,6 @@ function openDailyWall(){
 }
 $('#dw-ok').onclick  = e => { e.preventDefault(); closeDailyWall(); };
 $('#dw-buy').onclick = e => { e.preventDefault(); try{ api().open_url(PACKS_URL); }catch(_){} };
-
 /* ── THE DEVICE-BLOCK WALL ─────────────────────────────────────────────────
    Raised when THIS account can't start because its device's one free tier was
    already claimed by a different account (Tier A3b — webui._start's
@@ -7024,7 +6925,6 @@ $('#db-switch').onclick = async e => {
   resetTranscript();
   showLoginOverlay('login');
 };
-
 $('#tw-continue').onclick = async e => {
   e.preventDefault();
   closeTasteWall();
@@ -7034,7 +6934,6 @@ $('#tw-continue').onclick = async e => {
 // play through the standalone player (proven path).
 $('#tw-pro').onclick  = async e => { e.preventDefault(); try{ await api().pro_voice_replay(); }catch(_){} };
 $('#tw-free').onclick = async e => { e.preventDefault(); try{ await api().free_voice_preview(); }catch(_){} };
-
 function closeMeetingLock(){ $('#meeting-lock-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
 function openMeetingLock(){
   $('#scrim').classList.add('open'); $('#meeting-lock-modal').classList.add('open');
@@ -7042,7 +6941,6 @@ function openMeetingLock(){
 }
 $('#mlock-dismiss').onclick = e => { e.preventDefault(); closeMeetingLock(); };
 $('#mlock-cta').onclick = e => { e.preventDefault(); closeMeetingLock(); try{ api().open_url(PACKS_URL); }catch(_){} };
-
 $('#review-dismiss').onclick = e => { e.preventDefault(); closeReviewModal(); };
 $('#review-cta').onclick = async e => {
   e.preventDefault();
@@ -7144,7 +7042,6 @@ document.addEventListener('keydown', e=>{
   else if(e.key==='ArrowLeft') $('#tour-back').click();
 });
 window.addEventListener('resize', ()=>{ if(!$('#tour').hidden) positionTour(); });
-
 /* ---------- meeting cable-required modal ---------- */
 function openCable(){
   // Official (Store) build only informs — Store policy 10.1.5 bars the app from
@@ -7158,7 +7055,6 @@ function openCable(){
 function closeCable(){ $('#cable-modal').classList.remove('open'); if(!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); closeModal(); }
 $('#cable-cancel').onclick = closeCable;
 $('#cable-install').onclick = ()=>{ try{ api().open_cable_download(); }catch(_){} closeCable(); };
-
 /* ---------- report a problem modal ---------- */
 function reportGather(){
   return {
@@ -7222,7 +7118,6 @@ function closeReport(){ $('#report-modal').classList.remove('open'); if(!$('#dra
     }
   };
 })();
-
 /* ---------- transcript history modal ---------- */
 let HIST_SESSIONS = [], HIST_CUR = null, HIST_CUR_FILE = null;
 function openHistory(){
@@ -7237,7 +7132,6 @@ function closeHistory(){
 }
 $('#historybtn').onclick = openHistory;
 $('#history-close').onclick = closeHistory;
-
 function fmtSessionWhen(iso, started){
   try{ const d = iso ? new Date(iso) : new Date((started||0)*1000); return d.toLocaleString(LANG); }
   catch(_){ return iso || ''; }
@@ -7268,7 +7162,6 @@ function renderHistoryList(){
   });
 }
 $('#history-search').oninput = ()=>{ renderHistoryList(); if(HIST_CUR) renderHistoryTurns(); };
-
 async function openSession(file, rowEl){
   document.querySelectorAll('#history-list .histrow').forEach(r=>r.classList.toggle('sel', r===rowEl));
   try{ HIST_CUR = await api().load_session(file); }catch(_){ HIST_CUR=null; }
@@ -7350,7 +7243,6 @@ $('#hist-delete').onclick = async()=>{
   ['#hist-export-txt','#hist-export-srt','#hist-export-vtt','#hist-delete'].forEach(s=>$(s).disabled=true);
   loadHistoryList();
 };
-
 /* ---------- privacy / data-flow explainer modal (informational) ---------- */
 // Honest, build-aware copy: OSS emphasizes BYOK + zero telemetry; official SaaS
 // names the AI translation provider generically (audio may route to either engine);
@@ -7365,7 +7257,6 @@ function closePrivacy(){ $('#privacy-modal').classList.remove('open'); if(!$('#d
 $('#trustbadge').onclick = openPrivacy;
 $('#privacy-close').onclick = closePrivacy;
 $('#privacy-policy-link').onclick = e=>{ e.preventDefault(); try{ api().open_url('https://voxislive.com/privacy'); }catch(_){} };
-
 // "Show tour again": clear the persisted flag, close the drawer, replay the tour.
 $('#showtourbtn').onclick = async()=>{
   try{ await api().reset_onboarding(); }catch(_){}
@@ -7377,11 +7268,6 @@ $('#storebtn').onclick = async()=>{ try{ await api().open_store_page(); }catch(_
 $('#showgem').onclick = e=>{
   e.preventDefault();
   const g=$('#gemkey'); const show=g.type==='password';
-  g.type=show?'text':'password'; e.target.textContent=show?T('hide'):T('show');
-};
-if($('#showoai')) $('#showoai').onclick = e=>{
-  e.preventDefault();
-  const g=$('#oaikey'); if(!g) return; const show=g.type==='password';
   g.type=show?'text':'password'; e.target.textContent=show?T('hide'):T('show');
 };
 // BYOK clear/save handlers are bound only on developer builds; the official
@@ -7397,23 +7283,14 @@ function bindByokHandlers(){
     $('#byok-badge').style.display='none';
     $('#gemkey').value='';
   };
-  if($('#clearoai')) $('#clearoai').onclick = async e=>{
-    e.preventDefault();
-    if(!confirm(T('confirm_clear_byok'))) return;
-    await api().clear_byok('openai');
-    { const ob=$('#oai-badge'); if(ob) ob.style.display='none'; }
-    { const ok=$('#oaikey'); if(ok) ok.value=''; }
-  };
 }
 $('#savesettings').onclick = async()=>{
   if(!STATE.official_release){
     const gem = $('#gemkey').value.trim();
-    const oai = ($('#oaikey') ? $('#oaikey').value.trim() : '');
-    if(gem || oai){
-      const ok = await api().save_keys(gem, oai);
+    if(gem){
+      const ok = await api().save_keys(gem);
       if(ok){
-        if(gem){ $('#byok-badge').style.display='inline'; $('#gemkey').value=''; }
-        if(oai){ const ob=$('#oai-badge'); if(ob) ob.style.display='inline'; const k=$('#oaikey'); if(k) k.value=''; }
+        $('#byok-badge').style.display='inline'; $('#gemkey').value='';
       } else { alert(T('alert_key_failed')); return; }
     }
   }
@@ -7446,17 +7323,19 @@ function updateTileTitles(){
   set('#m-video', T('video_t1'), 'video');
   set('#m-meeting', T('meeting_t1'), 'meeting');
 }
-
 /* ---------- transkript ---------- */
 function emptyHtml(){ return `<div class="empty" id="empty"><div class="orb"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 9.5v5M8 6v12M12 9v6M16 4v16M20 8.5v7"/></svg></div><div class="big" data-i18n="empty_big">${T('empty_big')}</div><div class="small" data-i18n-html="empty_small">${T('empty_small')}</div><button class="btn btn-primary emptystart" type="button"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><span data-i18n="start_cue">${T('start_cue')}</span><span class="dim">—</span><span data-i18n="video_t1">${T('video_t1')}</span></button></div>`; }
 // Delegated: the empty state is rebuilt on reset, the handler survives it.
 $('#scroll').addEventListener('click', e=>{ if(e.target.closest('.emptystart')) $('#m-video').click(); });
-let curTurn=null, curBubble=null;
+let curTurn=null, curBubble=null, pendingTurn=null;
 function trimScroll(){ const sc=$('#scroll'); while(sc.children.length>90) sc.removeChild(sc.firstChild); }
 function scrollEnd(){ const sc=$('#scroll'); sc.scrollTop=sc.scrollHeight; }
 function removeEmpty(){ const e=$('#empty'); if(e) e.remove(); }
-function resetTranscript(){ $('#scroll').innerHTML=emptyHtml(); curTurn=null; curBubble=null; latencyNoteShown=false; lastSpk=null; }
-
+function resetTranscript(){
+  if(pendingTurn){ clearTimeout(pendingTurn.timer); pendingTurn=null; }
+  $('#scroll').innerHTML=emptyHtml(); curTurn=null; curBubble=null;
+  latencyNoteShown=false; lastSpk=null;
+}
 /* Speaker tag on a turn bubble. The Python side sends a label only for a
    genuinely multi-speaker session (≥2 voices seen); here the tag renders only
    where the speaker CHANGES vs the previous turn, so one person talking
@@ -7480,7 +7359,6 @@ function setSpkTag(bubble, spk, final){
   if(!tag){ tag=document.createElement('span'); tag.className='spk'; bubble.prepend(tag); }
   tag.textContent='S'+spk;
 }
-
 function newTurn(spk){
   removeEmpty();
   const turn=document.createElement('div'); turn.className='turn'; turn.setAttribute('role','group');
@@ -7512,7 +7390,21 @@ function appendWords(el, text){
   });
 }
 let latencyNoteShown=false;
-function onTrans(text, newline, spk){
+// A new caption bubble whose creation is being held back (see onTrans) while
+// its translated audio is still queued behind a playback backlog. Holding
+// only the BUBBLE — never the words inside it — is what tonight's reverted
+// wordQueue got wrong: that throttled every word and dropped some at turn
+// boundaries. Here, once the delay elapses, all queued text is dumped
+// instantly via the normal (unthrottled) appendWords.
+function flushPendingTurn(){
+  if(!pendingTurn) return;
+  clearTimeout(pendingTurn.timer);
+  if(curBubble) curBubble.classList.remove('active');
+  newTurn(pendingTurn.spk);
+  pendingTurn.queued.forEach(t=>appendWords(curBubble, t));
+  pendingTurn=null;
+}
+function onTrans(text, newline, spk, backlogS){
   // Counted before the subtitle gate: the inverse demo replays the last line
   // Voxis SPOKE, which happens whether or not captions are switched on.
   if(newline) contrastLines++;
@@ -7528,8 +7420,26 @@ function onTrans(text, newline, spk){
   }
   // spk is the LIVE hint for the streaming line (the definitive label lands
   // with the src event when the turn finalizes).
-  if(newline || !curBubble){ if(curBubble) curBubble.classList.remove('active'); newTurn(spk); }
-  appendWords(curBubble, text);
+  if(newline || !curBubble){
+    flushPendingTurn();  // an earlier delayed turn must land before this one starts
+    // Under a heavy playback backlog the translated audio for this NEW line
+    // hasn't started yet — showing its bubble immediately would put the
+    // caption visibly ahead of what's actually audible. Hold its appearance
+    // back by (at most) the current backlog, capped so it never feels laggy.
+    const delayMs = Math.min(Math.max(backlogS||0, 0), 1.5) * 1000;
+    if(curBubble) curBubble.classList.remove('active');
+    if(delayMs < 50){
+      newTurn(spk);
+      appendWords(curBubble, text);
+    } else {
+      pendingTurn = {spk, queued:[text],
+        timer: setTimeout(()=>{ flushPendingTurn(); scrollEnd(); }, delayMs)};
+    }
+  } else if(pendingTurn){
+    pendingTurn.queued.push(text);
+  } else {
+    appendWords(curBubble, text);
+  }
   scrollEnd();
 }
 /* Live "heard now" ghost line: streams the source utterance as it is spoken.
@@ -7568,6 +7478,7 @@ function onSrc(text, spk){
   scrollEnd();
 }
 function addSys(text, level){
+  if(pendingTurn){ clearTimeout(pendingTurn.timer); pendingTurn=null; }
   removeEmpty();
   const sc=$('#scroll'); const d=document.createElement('div');
   d.className='line sys' + (level==='error' ? ' err' : level==='warn' ? ' warn' : '');
@@ -7593,11 +7504,19 @@ function addTranscriptActions(file){
   };
   const icFile='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
   const icFolder='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>';
+  const icExport='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>';
   d.appendChild(mk(T('open_file'), icFile, ()=>api().open_transcript(file)));
   d.appendChild(mk(T('open_folder'), icFolder, ()=>api().reveal_transcript(file)));
+  // Quick TXT/SRT/VTT export beside the always-saved JSON, without a trip
+  // through History (owner feedback: "Kaydet" only wrote JSON, and users
+  // may not think to click through to History for the other formats).
+  // Status feedback ("saved to …") comes from the existing 'status' event
+  // Python already emits inside export_session — nothing extra needed here.
+  ['txt','srt','vtt'].forEach(fmt=>{
+    d.appendChild(mk(T('history_fmt_'+fmt), icExport, ()=>api().export_session(file, fmt, true)));
+  });
   sc.appendChild(d); scrollEnd(); trimScroll();
 }
-
 /* ---------- canlı ses ölçeri ---------- */
 const rodEls=[...document.querySelectorAll('#rods i')];
 const presEls=[...document.querySelectorAll('#presence i')];
@@ -7623,7 +7542,6 @@ function stopMeter(){
   $('#meterdb').textContent='−∞ dB';
 }
 function dbText(level){ const db = level>0.02 ? Math.round(-46+level*44) : null; return (db===null?'−∞':db)+' dB'; }
-
 /* ---------- pill durumu + footer ---------- */
 function setPillState(p){
   let st='idle';
@@ -7632,7 +7550,6 @@ function setPillState(p){
   else if(p.mode){ st = p.playing ? 'translating' : 'listening'; }
   $('#pill').dataset.state = st;
 }
-
 /* ---------- poll ---------- */
 // Adaptive cadence: the caption is the product's fastest signal, so during a
 // live session the poll runs at 70 ms (worst-case token→screen ≈ 70 ms vs the
@@ -7655,7 +7572,7 @@ function dispatchUIEvent(ev) {
     }
   }
   if(ev[0]==='status'){ addSys(ev[1], ev[2] && ev[2].level); }
-  else if(ev[0]==='trans'){ onTrans(ev[1], ev[2], ev[3]); }
+  else if(ev[0]==='trans'){ onTrans(ev[1], ev[2], ev[3], ev[4]); }
   else if(ev[0]==='src'){ onSrc(ev[1], ev[2]); }
   else if(ev[0]==='hear_live'){ onHearLive(ev[1]); }
   else if(ev[0]==='saved'){ addTranscriptActions(ev[1]); }
@@ -7668,7 +7585,6 @@ function dispatchUIEvent(ev) {
   else if(ev[0]==='device_blocked'){ openDeviceBlockWall(ev[1]); }
 }
 window.onVoxisEvent = function(ev) { dispatchUIEvent(ev); };
-
 async function poll(){
   try{
     const p = await api().poll();
@@ -7742,7 +7658,6 @@ async function poll(){
   }catch(e){}
   setTimeout(poll, pollFast ? 70 : 250);
 }
-
 /* ── BOOT ────────────────────────────────────────────────────────────────── */
 // Localize the static chrome before anything renders so the first paint is in
 // the detected language, not hardcoded Turkish.
@@ -7759,8 +7674,6 @@ async function bootAuth(){
 }
 window.addEventListener('pywebviewready', bootAuth);
 if(window.pywebview && window.pywebview.api) bootAuth();
-
-
 
 
 </script>

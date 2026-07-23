@@ -1,18 +1,19 @@
 """Shared session machine for every realtime translation engine.
 
-All three engines — Gemini Live (SDK), OpenAI gpt-realtime-translate and
-Qwen3.5-LiveTranslate (both raw websockets) — run the SAME field-hardened
-lifecycle: a bounded drop-oldest input queue, carryover across a planned
-rotation, backoff-bounded reconnect with transient/terminal classification, a
-covert-immediate-close guard, and two watchdogs (stall on sent-audio-with-no-
-server-events, and no-output-despite-input). That machinery lived copy-pasted in
-three files and drifted (see the 2026-07-04 audit P0 #6); it now lives here once.
+Both engines — Gemini Live (SDK) and Qwen3.5-LiveTranslate (raw websockets) —
+run the SAME field-hardened lifecycle: a bounded drop-oldest input queue,
+carryover across a planned rotation, backoff-bounded reconnect with
+transient/terminal classification, a covert-immediate-close guard, and two
+watchdogs (stall on sent-audio-with-no-server-events, and no-output-despite-
+input). That machinery lived copy-pasted in multiple files and drifted (see
+the 2026-07-04 audit P0 #6); it now lives here once.
 
 Subclass contract — a concrete engine supplies only its protocol:
   * class attrs: HARD_ROTATE_SECONDS, IN_BYTES_PER_SEC (usage divisor),
     TERMINAL_PHRASES, READY_ON_CONNECT (True = _ready fires the moment the
     connection opens, as Gemini/Qwen do; False = the receiver sets it on a
-    server 'session live' event, as OpenAI does).
+    server 'session live' event instead, for an engine whose protocol
+    requires waiting for one).
   * async _connect(self) -> raw connection (websocket engines only; the base
     wraps it in a close-on-exit context manager). Gemini overrides _session_cm
     instead, since its connection IS an async context manager (the SDK).
@@ -135,7 +136,7 @@ class BaseTranslator(threading.Thread):
     TERMINAL_CODES = _DEFAULT_TERMINAL_CODES
     TERMINAL_PHRASES = ()
     # When _ready fires: True = on connect (Gemini/Qwen), False = the receiver
-    # sets it on a server 'session live' event (OpenAI).
+    # sets it on a server 'session live' event instead.
     READY_ON_CONNECT = True
     # False for text-only engines (cascade cloud leg): no cloud audio ever
     # arrives, so "text flowing but no audio" is their normal state, not a

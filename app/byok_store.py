@@ -191,23 +191,23 @@ def _write_slot(user_id: str, data: dict) -> None:
             raise
 
 
-# Both vendor keys live in ONE slot per user_id. Always default-merge so a slot
-# written by an older single-key build still loads (a missing field -> "").
-_EMPTY = {"gemini": "", "openai": ""}
+# Gemini is the only BYOK provider. Always default-merge so a slot written by
+# an older build still loads (a missing field -> "").
+_EMPTY = {"gemini": ""}
 
 
 def _normalize(d) -> dict:
     if not isinstance(d, dict):
         return dict(_EMPTY)
-    return {"gemini": d.get("gemini", "") or "", "openai": d.get("openai", "") or ""}
+    return {"gemini": d.get("gemini", "") or ""}
 
 
-def save_byok(user_id: str, gemini: str = "", openai: str = "") -> None:
-    _write_slot(user_id, {"gemini": gemini, "openai": openai})
+def save_byok(user_id: str, gemini: str = "") -> None:
+    _write_slot(user_id, {"gemini": gemini})
 
 
 def load_byok(user_id: str) -> dict:
-    """Return both provider keys, or empty strings when unset/unreadable.
+    """Return the provider key, or an empty string when unset/unreadable.
 
     The lock also makes migrate-on-read and engine-specific clear operations one
     transaction with respect to concurrent pywebview API calls.
@@ -268,8 +268,7 @@ def clear_byok(user_id: str, engine: str | None = None) -> None:
         cur = _load_byok_unlocked(user_id)
         cur[engine] = ""
         if any(cur.values()):
-            save_byok(user_id, gemini=cur.get("gemini", ""),
-                      openai=cur.get("openai", ""))
+            save_byok(user_id, gemini=cur.get("gemini", ""))
         else:
             path = _slot_path(user_id)
             if os.path.exists(path):

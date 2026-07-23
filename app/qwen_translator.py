@@ -2,9 +2,9 @@
 
 Shares the field-hardened session machine (bounded drop-oldest queue, carryover
 across reconnect, planned rotation, stall/no-output watchdogs, terminal-error
-classification) with the Gemini and OpenAI engines via app/base_translator.py,
-and adds only the DashScope realtime protocol. Playback catch-up pacing is
-shared with Gemini through app/playback_sync.py.
+classification) with the Gemini engine via app/base_translator.py, and adds
+only the DashScope realtime protocol. Playback catch-up pacing is shared with
+Gemini through app/playback_sync.py.
 
 Verified protocol + behavior (sandbox-qwen-livetranslate/FINDINGS.md +
 TEST_REPORT_2026-07-04.md, all live-measured):
@@ -82,8 +82,8 @@ class QwenTranslator(BaseTranslator):
                  hotwords: dict | None = None, vad_silence_ms: int = 500,
                  workspace: str = QWEN_WORKSPACE):
         # Qwen wants base ISO codes: Voxis's 79-language BCP-47 targets
-        # (pt-BR, zh-Hans, …) are normalized the same way the OpenAI router does,
-        # so a regional variant can't bounce the session with InvalidParameter.
+        # (pt-BR, zh-Hans, …) are normalized via the shared routing helper, so
+        # a regional variant can't bounce the session with InvalidParameter.
         from .config import _norm_lang  # noqa: PLC0415
         norm_target = _norm_lang(target_lang) or target_lang
         super().__init__(api_key, norm_target, on_audio, on_text, on_status,
@@ -190,7 +190,7 @@ class QwenTranslator(BaseTranslator):
     # ---- cumulative-stream -> increment conversion --------------------------
     def _delta(self, acc_attr: str, txt: str) -> str:
         """Qwen's caption streams repeat CUMULATIVE text; the product transcript
-        expects increments (Gemini/OpenAI semantics). Emit only what extends the
+        expects increments (Gemini semantics). Emit only what extends the
         accumulator; genuinely new text after a reset is emitted whole."""
         acc = getattr(self, acc_attr)
         if txt.startswith(acc):

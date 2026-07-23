@@ -14,7 +14,7 @@ import pytest
 
 from app import pipeline as P
 from app.base_translator import BaseTranslator, is_terminal_error
-from app.config import ENGINE_GEMINI, ENGINE_OPENAI, ENGINE_QWEN
+from app.config import ENGINE_CASCADE, ENGINE_GEMINI, ENGINE_QWEN
 from app.qwen_translator import _TERMINAL_PHRASES
 
 
@@ -69,8 +69,7 @@ def pipe(monkeypatch):
     built = []
 
     def fake_make_translator(cfg, target, *, engine, key, model, on_audio, on_text,
-                             on_status, name, noise_reduction=None, on_fatal=None,
-                             key_provider=None):
+                             on_status, name, on_fatal=None, key_provider=None):
         built.append({"engine": engine, "key": key, "on_fatal": on_fatal,
                       "key_provider": key_provider})
         return _FakeTr(engine)
@@ -218,12 +217,13 @@ def test_the_dead_engine_stops_talking(pipe):
     assert pipe.player.cleared == 1
 
 
-def test_openai_failover_retargets_capture_to_gemini_16khz(pipe, monkeypatch):
+def test_cascade_failover_installs_stager_when_missing(pipe, monkeypatch):
     monkeypatch.setattr(P, "AdaptivePlaybackStager", _FakeStager)
-    pipe._engine = ENGINE_OPENAI
+    pipe._engine = ENGINE_CASCADE
     pipe._stager = None
-    pipe._source = _FakeSource(24000)
+    pipe._source = _FakeSource(16000)
     assert pipe._failover_to_gemini(Exception("quota")) is True
     assert pipe._source.rate == 16000
-    # Incoming OpenAI starts without a pacing worker; Gemini needs one.
+    # Incoming cascade paces its own local synthesis and starts without a
+    # pacing worker; Gemini needs one.
     assert pipe._stager is not None

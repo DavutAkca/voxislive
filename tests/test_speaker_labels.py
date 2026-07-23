@@ -11,7 +11,7 @@ import numpy as np
 import app.webui as webui
 from app.pipeline import _FRAME, _GatedSource
 from app.transcript_store import build_record, render_srt, render_txt, render_vtt
-from app.webui import LINE_GAP, SPK_GAP, Bridge
+from app.webui import LINE_GAP, SPK_GAP, SRC_LAG_S, Bridge
 
 
 def _bare_bridge():
@@ -19,6 +19,7 @@ def _bare_bridge():
     b._text_lock = threading.RLock()
     b._src_buf = ""
     b._src_done = []
+    b._src_marks = []
     b._last_src_t = 0.0
     b._cur_line = ""
     b._last_t = 0.0
@@ -35,6 +36,8 @@ def _bare_bridge():
     b.events = []
     b._put_event = b.events.append
     b._obs_write = lambda *a, **k: None
+    # No live session/stager off this bare Bridge — backlog is always 0.
+    b.controller = type("C", (), {"current_playback_backlog": lambda self: 0.0})()
     return b
 
 
@@ -51,17 +54,22 @@ def test_speaker_change_splits_back_to_back_turn():
     """The reported bug: two people speaking back-to-back (no LINE_GAP pause
     anywhere) used to merge into ONE caption turn. A speaker-change event must
     split the translated stream at the next micro-pause (> SPK_GAP) and tag
-    each turn with its own speaker."""
+    each turn with its own speaker.
+
+    Output is fed SRC_LAG_S behind its matching source (the model's real
+    simultaneous-interpretation lag — see SRC_LAG_S), since _pop_source's
+    cutoff is relative to that lag, not to output-side gaps."""
     b = _bare_bridge()
     b._on_speaker(1)
     _feed(b, "in", "Hallo, wie geht's?", 0.0)
-    _feed(b, "out", "Merhaba, nasılsın?", 1.0)
+    _feed(b, "out", "Merhaba, nasılsın?", SRC_LAG_S)
     # Speaker 2 starts talking immediately (no pause). The tracker fires.
     b._on_speaker(2)
-    _feed(b, "in", "Gut, danke!", 2.0)   # arrives < LINE_GAP after S1's source
-    # S2's translation begins only ~1 s after the last S1 token — far below
-    # LINE_GAP, which is exactly why the old code merged the two speakers.
-    _feed(b, "out", "İyiyim, teşekkürler!", 1.0 + SPK_GAP + 0.1)
+    _feed(b, "in", "Gut, danke!", 1.0)   # arrives < LINE_GAP after S1's source
+    # S2's translation begins only ~1 s after S1's own turn started — far
+    # below LINE_GAP, which is exactly why the old code merged the two
+    # speakers; SPK_GAP is what splits them instead.
+    _feed(b, "out", "İyiyim, teşekkürler!", SRC_LAG_S + SPK_GAP + 0.1)
     b._flush_turns()
 
     texts = [t["text"] for t in b._turns]
@@ -129,7 +137,7 @@ def test_source_buffer_split_tags_each_side():
     _feed(b, "in", "Alpha words.", 0.0)
     b._on_speaker(2)                      # splits + queues ("Alpha words.", spk 1)
     _feed(b, "in", "Beta words.", 0.3)    # new buffer starts under spk 2
-    assert b._src_done == [(1, "Alpha words.")]
+    assert b._src_done == [(1, "Alpha words.", 0.0)]
     assert b._src_spk == 2
     assert b._pending_spk_break
 

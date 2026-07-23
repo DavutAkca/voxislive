@@ -561,7 +561,7 @@ def get_session_key(target=None, caps=None, engine=None, mode=None) -> tuple[Opt
     With the "ephemeral" cap (SESSION_KEY_CAPS) the Gemini key may instead be a
     single-use auth token ("auth_tokens/…"); the server discriminates via
     key_type ("ephemeral" | "raw"). A response without the field (legacy path,
-    Qwen/OpenAI engines) is always a raw key.
+    Qwen engine) is always a raw key.
 
     Returns (key, engine, model, quality, quota, workspace, key_type, error);
     `quota` is the license snapshot dict when the server provided one

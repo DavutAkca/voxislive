@@ -157,8 +157,8 @@ class ProcessExcludeLoopback:
     def __init__(self, on_chunk, exclude_pid: int | None = None, rate: int = RATE):
         import os
         self._on_chunk = on_chunk
-        # Per-instance capture rate: 16 kHz for Gemini; 24 kHz when the OpenAI
-        # engine wants full-band input (overrides the class default).
+        # Per-instance capture rate: 16 kHz for every current engine (overrides
+        # the class default; kept generic for a future full-band engine).
         self.rate = int(rate)
         self._pid = exclude_pid or os.getpid()
         self._run = False

@@ -58,6 +58,5 @@ def test_czech_copy_has_no_accidental_literal_wrapper_quotes():
         'auth_sub:"\\" · Pro zobrazení',
         'behind_suffix:"\\" s zpoždění',
         'byok_hint:"\\"Pro používání',
-        'byok_openai_hint:"\\"Volitelné',
     ):
         assert bad not in HTML

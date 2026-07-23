@@ -150,7 +150,7 @@ def find_iscc_compiler() -> str:
 
 
 # API-key shapes that must never appear in the shipped seed's serialized text
-# (sk-… = OpenAI/DashScope, AIza… = Google/Gemini). Belt-and-braces on top of the
+# (sk-… = DashScope, AIza… = Google/Gemini). Belt-and-braces on top of the
 # config.SEED_WHITELIST allowlist: if that list is ever widened to admit a
 # secret-bearing key, this aborts the build instead of shipping the key.
 _SEED_KEY_SHAPES = re.compile(r"sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,}")
