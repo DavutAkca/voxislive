@@ -110,8 +110,6 @@ class QwenTranslator(BaseTranslator):
         self._prev_audio = b""
         self._dup_audio_count = 0
         self._dup_audio_warned = False
-        # TEMPORARY DIAGNOSTIC: see _receive_loop's event-type logger below.
-        self._seen_event_types = set()
 
     # ---- session config ---------------------------------------------------
     def _input_transcription_cfg(self) -> dict:
@@ -246,13 +244,6 @@ class QwenTranslator(BaseTranslator):
             except (ValueError, TypeError):
                 continue
             et = ev.get("type", "")
-            # TEMPORARY DIAGNOSTIC (remove once source-caption investigation is
-            # closed): log every distinct event type DashScope actually sends,
-            # so a real session's log proves/disproves the input-transcription
-            # event names this parser matches against.
-            if et and et not in self._seen_event_types:
-                self._seen_event_types.add(et)
-                _log.info("qwen event type seen: %s | keys=%s", et, sorted(ev.keys()))
             if et == "response.audio.delta":
                 b64 = ev.get("delta") or ev.get("audio")
                 if b64:
@@ -284,10 +275,9 @@ class QwenTranslator(BaseTranslator):
                 self._out_acc = ""
                 self._mark_text_output()
             elif et.endswith(".failed") and "input_audio_transcription" in et:
-                # TEMPORARY DIAGNOSTIC (remove once the missing-source-caption
-                # investigation is closed): DashScope's ASR rejected this
-                # utterance server-side — no transcript, no on_text("in", ...),
-                # and (before this line) no visibility at all into why.
+                # DashScope's ASR rejected this utterance server-side — no
+                # transcript, no on_text("in", ...); log why instead of failing
+                # silently.
                 _log.warning("qwen input transcription FAILED: %s",
                              ev.get("error") or ev)
             elif ("input_audio_transcription" in et

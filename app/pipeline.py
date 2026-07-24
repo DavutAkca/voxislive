@@ -1157,6 +1157,10 @@ class ModeController:
         self._session_failed = threading.Event()
         self._capture_dead_notified = False
         self._pipelines: list = []
+        # backlog/skipped/sped watermarks per stager id, so the heartbeat only
+        # logs playback health when catch-up compression or a stale-audio trim
+        # actually happened — not every 6s of a perfectly healthy 1.0x session.
+        self._stager_log_watermarks: dict[int, tuple[float, float]] = {}
         # Survives the session so the post-session A/B card can replay it.
         self._last_pro_pcm: bytes = b""
         self.mode: str | None = None
@@ -1335,6 +1339,7 @@ class ModeController:
             sid, delta, source = self._consume_minutes(accrue=self._is_session_live())
             self._maybe_warn_capture_dead()
             self._maybe_handle_translator_dead()
+            self._log_playback_health()
             if not sid:
                 continue
             if delta > 0:
@@ -1349,6 +1354,27 @@ class ModeController:
                     sid, min(delta, max_beat), source, self.current_engine() or "gemini",
                     on_quota_exceeded=self._fire_quota_exceeded)
             self._dispatch_usage_reported()
+
+    def _log_playback_health(self):
+        """Log translated-speech pacing stats once per heartbeat, but only when
+        catch-up compression or a stale-audio trim actually occurred since the
+        last check. A field report of choppy/harsh translated audio otherwise
+        has no telemetry to root-cause against — the stager tracks exactly
+        this (speed/skipped_s/sped_s), it just was not surfaced to the log."""
+        for p in self._pipelines:
+            stager = getattr(p, "_stager", None)
+            if stager is None:
+                continue
+            key = id(stager)
+            skipped, sped = stager.skipped_s, stager.sped_s
+            prev_skipped, prev_sped = self._stager_log_watermarks.get(key, (0.0, 0.0))
+            backlog = stager.backlog_s
+            if skipped > prev_skipped or sped > prev_sped or backlog >= 2.0:
+                _log.info(
+                    "playback health: engine=%s backlog=%.1fs speed=%.2fx "
+                    "compressed_total=%.1fs trimmed_total=%.1fs",
+                    getattr(p, "_engine", "?"), backlog, stager.speed, sped, skipped)
+            self._stager_log_watermarks[key] = (skipped, sped)
 
     def _maybe_warn_capture_dead(self):
         """Once per session, if a capture backend died mid-session, surface it so a
@@ -1684,6 +1710,7 @@ class ModeController:
         if self._pipelines:
             self.on_status(t("st_stopped"))
         self._pipelines = []
+        self._stager_log_watermarks.clear()
         self.mode = None
         with self._heartbeat_lock:
             self._session_id    = None
